@@ -1,68 +1,70 @@
 # Ikki Do‘st — Telegram Boti (`@ikki-dost/bot`)
 
-Ikki Do‘st choyxonasi xodimlari uchun yagona Telegram boti. Barcha qurilmalarda (iOS, Android, Windows, Mac, Linux) o‘rnatishlarsiz to‘g‘ridan-to‘g‘ri Telegram orqali ishlaydi.
+Ikki Do‘st choyxonasi xodimlari va mijozlari uchun yagona Telegram boti. iOS, Android, Windows, Mac va Linux'da Telegram orqali ishlaydi.
 
-## Asosiy afzalliklari
+## Asosiy imkoniyatlar
 
-- **Yagona backend va bitta DB**: Alohida ma'lumotlar bazasisiz, to‘g‘ridan-to‘g‘ri markaziy NestJS API (`apps/api`) bilan ishlaydi.
-- **To‘liq RBAC (rolga asoslangan kirish)**: Xodimlar o‘z lavozimlariga (`OWNER`, `WAITER`, `CHEF`, `CASHIER`) mos menyu va imkoniyatlarga ega bo‘ladi.
-- **Xavfsiz avtorizatsiya**: Parollar chatda saqlanmaydi (tekshirilgach zudlik bilan o‘chiriladi); JWT tokenlar rotatsiyasi va muddati tugaganda yangilanishi avtomatik amalga oshadi.
-- **Xabarnomalar (Notifications)**: Orqa fondagi poller orqali yangi buyurtmalar, tayyor taomlar va holat o‘zgarishlari xodimning Telegramiga darhol yuboriladi.
-- **Audit va qoidalar**: To‘lovlar faqat kassa yoki egasi tomonidan boshqariladi; qarzdorlik bilan xona yopish faqat sabab ko‘rsatilganda egasiga ruxsat etiladi (audit jurnalida qayd etiladi).
+- **Yagona backend va DB:** markaziy NestJS API (`apps/api`) bilan ishlaydi; botda biznes ma'lumotlari uchun alohida DB yo‘q.
+- **Xodimlar uchun RBAC:** `OWNER`, `WAITER`, `CHEF`, `CASHIER` rollariga mos menyu va amallar.
+- **Xavfsiz avtorizatsiya:** xodim paroli tekshirilgach chatdan o‘chiriladi; JWT refresh token rotatsiyasi avtomatik.
+- **Mijozlar uchun buyurtma:** zal yoki yetkazib berish buyurtmasi, savat, xizmat haqi preview, izoh, tasdiqlash va chek.
+- **Ofitsiant chaqirish:** xona deep-linki yoki bot menyusi orqali.
+- **Bildirishnomalar:** xodim chatlariga yangi buyurtma, tayyor taom va boshqa holatlar haqida xabar.
+- **Audit va qoidalar:** to‘lovlar faqat kassir/egasi tomonidan; qarz bilan xona yopish sabab va audit yozuvi talab qiladi.
 
----
+## Rollar
 
-## Rollar bo‘yicha imkoniyatlar
-
-| Rol | Buyruqlar va imkoniyatlar |
+| Rol | Imkoniyatlar |
 |---|---|
-| **Egasi (`OWNER`)** | Barcha bo‘limlar: Xonalar, Yetkazish, Oshxona, Hisobot (Dashboard), Qarz bilan yopish override, bildirishnomalar |
-| **Ofitsiant (`WAITER`)** | Xonalar ro‘yxati, xonaga yangi buyurtma ochish / taom qo‘shish, tayyor taomni berildi deb belgilash, yangi yetkazish yaratish |
-| **Oshpaz (`CHEF`)** | Oshxona ekrani (`/kitchen`), buyurtmalarni tayyorlashni boshlash va tayyor deb belgilash |
-| **Kassir (`CASHIER`)** | Xonalar va yetkazishlar holatini, hisob-kitoblarni ko‘rish |
-
----
+| **OWNER** | Xonalar, yetkazish, oshxona, hisobot, qarz bilan yopish |
+| **WAITER** | Xonalar, zal buyurtmalari, taom qo‘shish, yetkazish yaratish |
+| **CHEF** | Oshxona navbati, tayyorlashni boshlash va READY belgilash |
+| **CASHIER** | Xonalar/yetkazish holatlari va hisob-kitoblarni ko‘rish |
 
 ## Buyruqlar
 
-- `/start` — Botni ishga tushirish
-- `/login` — Tizimdagi login va parol orqali ulanish (`login parol`)
-- `/logout` — Telegram hisobini tizimdan uzish
-- `/menu` — Foydalanuvchi roliga mos bosh menyu
-- `/rooms` — Xonalar ro‘yxati va bandlik holati
-- `/kitchen` — Oshxona buyurtmalari (Oshpaz va Egasi)
-- `/delivery` — Faol yetkazish buyurtmalari ro‘yxati
-- `/newdel` — Yangi yetkazish buyurtmasi yaratish (Ofitsiant va Egasi)
-- `/dash` yoki `/stats` — Bugungi moliyaviy va operatsion hisobot (Faqat egasi)
-- `/me` — Foydalanuvchi ma'lumotlari va roli
-- `/help` — Yordam va buyruqlar ro‘yxati
+- `/start` — botni boshlash; xona deep-linkini ham qabul qiladi
+- `/login` — xodim hisobini ulash
+- `/logout` — hisobni uzish
+- `/menu` — bosh menyu
+- `/rooms` — xonalar
+- `/kitchen` — oshxona
+- `/delivery` — yetkazishlar
+- `/newdel` — yangi yetkazish
+- `/dash` yoki `/stats` — egasi uchun hisobot
+- `/me` — profil
+- `/help` — yordam
 
----
-
-## Sozlash va ishga tushirish
-
-### 1. Muhit o‘zgaruvchilari (`.env`)
+## Sozlash
 
 Loyiha ildizidagi `.env` yoki `apps/bot/.env` faylida:
 
 ```env
-BOT_TOKEN="123456789:ABCdefGHIjklMNOpqrsTUVwxyz" # @BotFather dan olingan token
-API_URL="http://localhost:3000/api"
+BOT_TOKEN="..."                         # @BotFather tokeni
+API_URL="https://api.example.uz/api"    # NestJS API manzili
+MINI_APP_URL="https://app.example.uz"   # Telegram Mini App HTTPS manzili
 BOT_NOTIFY_INTERVAL_MS=10000
 BOT_STORE_PATH="data/sessions.json"
+
+# Mijozlarning mustaqil buyurtmalari uchun alohida backend WAITER hisobi.
+# Bu hisobni admin panelda yarating; OWNER hisobidan foydalanmang.
+BOT_USERNAME="telegram-bot"
+BOT_PASSWORD="..."
 ```
 
-### 2. Ishga tushirish
+`BOT_USERNAME` va `BOT_PASSWORD` ikkalasi ham berilsa, mijoz buyurtmalari backenddagi alohida WAITER hisobi orqali yaratiladi. Ular berilmasa, xodimlar funksiyalari ishlaydi, lekin mijozlarning bot orqali buyurtma yuborishi o‘chiq bo‘ladi. Haqiqiy qiymatlarni GitHub'ga commit qilmang.
+
+Bot konfiguratsiyasi workspace ichidagi `.env` va monorepo ildizidagi `.env` fayllarini qo‘llab-quvvatlaydi.
+
+## Ishga tushirish
 
 Loyiha ildizidan:
 
 ```bash
-# Rivojlanish (dev) rejimida
+npm install
 npm run dev:bot
-
-# Build qilish
 npm run build -w @ikki-dost/bot
-
-# Typecheck
-npm run typecheck
+npm run typecheck -w @ikki-dost/bot
 ```
+
+Production'da botni process manager (masalan, systemd yoki PM2) orqali doimiy ishlating. API va Mini App HTTPS orqali tashqariga ochiq bo‘lishi kerak.
