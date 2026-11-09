@@ -15,7 +15,7 @@ export async function recomputeOrderTotals(tx: Prisma.TransactionClient, orderId
   const paidAmount = payments._sum.amount ?? 0;
   await tx.order.update({
     where: { id: orderId },
-    data: { itemsTotal, totalAmount: itemsTotal + order.serviceFeeAmount, paidAmount },
+    data: { itemsTotal, totalAmount: itemsTotal + order.serviceFeeAmount + order.deliveryFeeAmount, paidAmount },
   });
 }
 
