@@ -56,6 +56,7 @@ export function mapOrder(order: OrderWithRelations): OrderDto {
     delivery: order.delivery ? mapDelivery(order.delivery) : null,
     itemsTotal: order.itemsTotal,
     serviceFeeAmount: order.serviceFeeAmount,
+    deliveryFeeAmount: order.deliveryFeeAmount,
     serviceFeePerPerson: order.serviceFeePerPerson,
     serviceFeeMethod: order.serviceFeeMethod,
     totalAmount: order.totalAmount,
