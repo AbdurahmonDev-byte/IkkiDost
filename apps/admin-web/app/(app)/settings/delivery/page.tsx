@@ -78,7 +78,7 @@ export default function DeliverySettingsPage() {
         </Card>
 
         <Card className="h-fit">
-          <CardHeader title="Xizmat haqi" subtitle="Yetkazib berish buyurtmalari uchun" />
+          <CardHeader title="Yetkazib berish narxi" subtitle="Har bir uyga yetkazish buyurtmasiga qo‘shiladigan haq" />
           <div className="space-y-4 p-5">
             <Field label="Yetkazib berish narxi (so‘m)" hint="Har bir delivery buyurtmasiga bir marta qo‘shiladi">
               <Input type="number" min={0} value={deliveryFeeAmount} onChange={(e) => setDeliveryFeeAmount(e.target.value)} />
