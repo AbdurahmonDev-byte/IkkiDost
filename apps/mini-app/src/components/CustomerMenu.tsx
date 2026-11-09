@@ -158,6 +158,7 @@ export const CustomerMenu: React.FC<Props> = ({
             <div>
               <p className="font-black text-stone-900">Ikki Do‘st choyxonasi</p>
               <p className="text-xs text-stone-500">Buyurtma cheki #{activeOrder.orderNumber}</p>
+              <p className="text-[10px] text-stone-400">{new Date(activeOrder.createdAt).toLocaleString('uz-UZ')}</p>
             </div>
             <span className={`text-[10px] font-black uppercase px-2 py-1 rounded-full border ${statusColor[activeOrder.status]}`}>
               {orderStatusLabel[activeOrder.status]}
