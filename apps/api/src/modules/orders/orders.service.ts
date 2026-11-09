@@ -358,7 +358,7 @@ export class OrdersService {
         amountPerPerson: 4000,
         deliveryFeeAmount: 5000,
         applyToDineIn: true,
-        applyToDelivery: true,
+        applyToDelivery: false,
         method: 'PER_PERSON' as const,
       }
     );
