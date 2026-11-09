@@ -53,7 +53,7 @@ async function main() {
   // ===== Products (exact supplied names; integer UZS) =====
   async function upsertProduct(name: string, categoryId: string, unit: 'PIECE' | 'KG' | 'LITER' | 'PORTION' | 'OTHER', price: number) {
     const existing = await prisma.product.findFirst({ where: { name, categoryId } });
-    if (existing) return prisma.product.update({ where: { id: existing.id }, data: { unit, price } });
+    if (existing) return existing;
     return prisma.product.create({ data: { name, categoryId, unit, price } });
   }
 
@@ -90,7 +90,7 @@ async function main() {
   await prisma.serviceFeeConfig.upsert({
     where: { id: 'service_fee_config' },
     create: { id: 'service_fee_config', enabled: true, amountPerPerson: 4_000, deliveryFeeAmount: 5_000, applyToDineIn: true, applyToDelivery: false },
-    update: { deliveryFeeAmount: 5_000, applyToDelivery: false },
+    update: {},
   });
   console.log('[seed] Service fee config ready (4 000 so‘m / kishi)');
 
