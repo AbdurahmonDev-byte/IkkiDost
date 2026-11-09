@@ -1,0 +1,20 @@
+{
+  "name": "Ikki Do'st — Oshxona",
+  "short_name": "Oshxona",
+  "description": "Oshxona buyurtmalarini real vaqtda boshqarish",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f7f5f0",
+  "theme_color": "#1d5c3f",
+  "lang": "uz",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

@@ -1,0 +1,44 @@
+{
+  "name": "ikki-dost",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Ikki Do'st choyxonasi — complete business management ecosystem",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:api": "npm run dev -w @ikki-dost/api",
+    "dev:admin": "npm run dev -w @ikki-dost/admin-web",
+    "dev:chef": "npm run dev -w @ikki-dost/chef-web",
+    "dev:cashier": "npm run dev -w @ikki-dost/cashier-desktop",
+    "dev:mobile": "npm run start -w @ikki-dost/mobile",
+    "build": "npm run build --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "test:api": "npm run test -w @ikki-dost/api",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "db:start": "npm run db:start -w @ikki-dost/api",
+    "db:migrate": "npm run db:migrate -w @ikki-dost/api",
+    "db:seed": "npm run db:seed -w @ikki-dost/api",
+    "db:studio": "npm run db:studio -w @ikki-dost/api"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "overrides": {
+    "react-native": "0.74.5"
+  },
+  "allowScripts": {
+    "@embedded-postgres/linux-x64@18.6.0-beta.19": true,
+    "@prisma/client@5.22.0": true,
+    "@prisma/engines@5.22.0": true,
+    "argon2@0.41.1": true,
+    "esbuild@0.21.5": true,
+    "prisma@5.22.0": true,
+    "sharp@0.33.5": true,
+    "@swc/core@1.16.22": true
+  },
+  "devDependencies": {
+    "ts-loader": "^9.6.2"
+  }
+}

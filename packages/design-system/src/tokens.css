@@ -1,0 +1,25 @@
+/* CSS custom properties mirroring design-system tokens. */
+:root {
+  --color-primary: #1d5c3f;
+  --color-primary-50: #eef7f2;
+  --color-primary-100: #d7ecdf;
+  --color-primary-600: #1d5c3f;
+  --color-primary-700: #174a34;
+  --color-accent: #d99434;
+  --color-accent-100: #faeacc;
+  --color-accent-600: #b87723;
+  --color-neutral-50: #faf9f7;
+  --color-neutral-100: #f4f2ee;
+  --color-neutral-200: #e8e4dc;
+  --color-neutral-300: #d5cfc5;
+  --color-neutral-500: #93897c;
+  --color-neutral-700: #5e574f;
+  --color-neutral-900: #2b2620;
+  --color-success: #2e9e63;
+  --color-warning: #e0a32e;
+  --color-danger: #d4453a;
+  --color-info: #3a7bd4;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --font-sans: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+}

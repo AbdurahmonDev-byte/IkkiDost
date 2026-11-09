@@ -1,0 +1,36 @@
+{
+  "expo": {
+    "name": "Ikki Do‘st",
+    "slug": "ikki-dost",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "ikkidost",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": false,
+    "icon": "./assets/icon.png",
+    "splash": {
+      "image": "./assets/icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#1d5c3f"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "uz.ikkidost.app"
+    },
+    "android": {
+      "package": "uz.ikkidost.app",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/icon.png",
+        "backgroundColor": "#1d5c3f"
+      },
+      "permissions": []
+    },
+    "plugins": ["expo-router", "expo-secure-store"],
+    "experiments": {
+      "typedRoutes": false
+    },
+    "extra": {
+      "apiUrl": "http://10.0.2.2:3000/api"
+    }
+  }
+}

@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Ikki Do'st oshxona">
+  <rect width="512" height="512" rx="112" fill="#1d5c3f"/>
+  <path d="M150 176h212a10 10 0 0 1 0 20H150a10 10 0 0 1 0-20Z" fill="#f7f5f0"/>
+  <path d="M168 196h176v34c0 48-39 87-88 87s-88-39-88-87v-34Z" fill="#f7f5f0"/>
+  <path d="M256 317v43M204 360h104" stroke="#f7f5f0" stroke-width="20" stroke-linecap="round"/>
+  <circle cx="256" cy="138" r="16" fill="#d99434"/>
+  <path d="M214 138c0-23 19-42 42-42s42 19 42 42" stroke="#d99434" stroke-width="16" stroke-linecap="round" fill="none"/>
+</svg>

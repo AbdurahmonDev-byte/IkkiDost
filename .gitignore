@@ -1,0 +1,54 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Builds
+dist/
+build/
+out/
+.next/
+*.tsbuildinfo
+
+# Environment / secrets
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# Database (embedded postgres data)
+.pgdata/
+pgdata/
+
+# Uploads (local dev storage)
+uploads/
+!uploads/.gitkeep
+
+# Mobile
+.expo/
+*.apk
+*.aab
+*.ipa
+android/app/build/
+ios/build/
+
+# Desktop (Tauri)
+src-tauri/target/
+*.msi
+*.exe
+*.AppImage
+*.dmg
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS / editors
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+
+# Test coverage
+coverage/

@@ -1,0 +1,297 @@
+# DEPLOYMENT
+
+Target for a small restaurant: one Linux server (or VPS) running the API,
+PostgreSQL, and the two Next.js web apps; the Android app and the cashier
+desktop app connect over the network.
+
+> Everything below was exercised locally except the items marked
+> “not built in this environment” (Android APK, Windows `.exe`, Tauri AppImage).
+
+## 1. Prerequisites
+
+| Component | Version |
+|---|---|
+| Node.js | 20 LTS or newer |
+| PostgreSQL | 15+ (managed or self-hosted) |
+| npm | 10+ (workspaces) |
+| Reverse proxy | nginx (or Caddy) with TLS |
+| OS | Linux x86_64 recommended for the API/web apps |
+
+Optional build tooling:
+
+- Android Studio / Android SDK **or** an EAS account for the mobile app.
+- Windows 10/11 + MSVC + WebView2 for the cashier `.exe`/`.msi`.
+- WebKitGTK 4.1 + Rust (for building the Linux cashier app).
+
+## 2. Environment
+
+Copy `.env.example` to `apps/api/.env` (never commit it) and fill in:
+
+```ini
+DATABASE_URL="postgresql://ikki:STRONG_PASSWORD@127.0.0.1:5432/ikki_dost?schema=public"
+JWT_ACCESS_SECRET="<64+ random chars>"
+JWT_REFRESH_SECRET="<64+ random chars>"
+JWT_ACCESS_TTL="15m"
+JWT_REFRESH_TTL="30d"
+PORT=3000
+API_PREFIX="api"
+CORS_ORIGINS="https://admin.example.uz,https://chef.example.uz"
+UPLOAD_DIR="uploads"
+MAX_IMAGE_SIZE_BYTES=5242880
+VAPID_PUBLIC_KEY="<generated>"
+VAPID_PRIVATE_KEY="<generated>"
+VAPID_SUBJECT="mailto:admin@example.uz"
+```
+
+Generate secrets:
+
+```bash
+openssl rand -hex 48          # JWT secrets
+npx web-push generate-vapid-keys
+```
+
+Do **not** set `EMBEDDED_PG_PORT` in production; the embedded server is for
+local development only.
+
+## 3. Install and build
+
+```bash
+git clone <repo> /opt/ikki-dost
+cd /opt/ikki-dost
+npm ci
+npm run build -w @ikki-dost/shared-types   # if a package needs JS output
+npm run build -w @ikki-dost/api
+npm run build -w @ikki-dost/admin-web
+npm run build -w @ikki-dost/chef-web
+npm run build -w @ikki-dost/cashier-desktop   # static UI in apps/cashier-desktop/dist
+```
+
+The API compiles to `apps/api/dist`; the web apps to `.next/`.
+
+> Next.js/webpack and Metro resolve the TypeScript sources in `packages/`
+> directly. Keep `transpilePackages` in the Next configs and the extension
+> alias in `apps/mobile/metro.config.js` when editing build configs.
+
+## 4. Database
+
+```bash
+cd /opt/ikki-dost/apps/api
+npx prisma migrate deploy     # apply migrations (no data loss)
+node --experimental-strip-types scripts/seed.ts   # first install only
+```
+
+- Run `seed.ts` once on a fresh database. It is idempotent, but it creates the
+  default owner password — change it immediately after go-live.
+- Backups: nightly `pg_dump -Fc ikki_dost > /backup/ikki-$(date +%F).dump`,
+  retain 30 days, test restores quarterly.
+- The database is the only stateful service. Uploaded images live on disk (see
+  §7) and must be backed up too.
+
+## 5. Run the API
+
+systemd unit (`/etc/systemd/system/ikki-api.service`):
+
+```ini
+[Unit]
+Description=Ikki Do'st API
+After=network.target postgresql.service
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/ikki-dost/apps/api
+EnvironmentFile=/opt/ikki-dost/apps/api/.env
+ExecStart=/usr/bin/node dist/main.js
+Restart=always
+RestartSec=3
+User=ikki
+Group=ikki
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target
+```
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable --now ikki-api
+sudo systemctl status ikki-api
+```
+
+Alternative: `pm2 start apps/api/dist/main.js --name ikki-api --update-env`.
+
+## 6. Run the web apps
+
+```bash
+# admin (owner) — port 3001
+npm run start -w @ikki-dost/admin-web
+
+# chef (kitchen) — port 3002
+npm run start -w @ikki-dost/chef-web
+```
+
+Two more systemd units (or PM2 processes) with the same `EnvironmentFile` and
+`ExecStart=/usr/bin/npm run start -w @ikki-dost/admin-web` are sufficient.
+
+### nginx
+
+```nginx
+# Admin
+server {
+    listen 443 ssl http2;
+    server_name admin.example.uz;
+    ssl_certificate     /etc/letsencrypt/live/admin.example.uz/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/admin.example.uz/privkey.pem;
+
+    location / {
+        proxy_pass http://127.0.0.1:3001;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+
+# Chef (same shape, port 3002, server_name chef.example.uz)
+
+# API — must proxy WebSocket upgrades for /rt and allow 5 MB uploads
+server {
+    listen 443 ssl http2;
+    server_name api.example.uz;
+    client_max_body_size 6m;
+
+    location / {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 300s;
+    }
+}
+```
+
+Set `CORS_ORIGINS` to the exact web origins. If the panels and API share a
+domain, put `/api`, `/uploads`, `/rt` behind one server block instead.
+
+## 7. Uploads
+
+- Files are written to `apps/api/uploads` (or `UPLOAD_DIR`). Create the
+  directory, give the service user write access, and add it to backups
+  (`rsync`/restic).
+- Serve production uploads through the same nginx `location /uploads/` proxy to
+  the API, or a `root` alias to the directory.
+- Product images are re-encoded to WebP with generated thumbnails; only the
+  upload directory needs persistence.
+
+## 8. Mobile app (Expo / Android)
+
+Development:
+
+```bash
+cd apps/mobile
+EXPO_PUBLIC_API_URL="http://<LAN-IP>:3000/api" npx expo start
+```
+
+- Android emulator: default fallback is `http://10.0.2.2:3000/api`.
+- Physical device: use the server's LAN IP or public HTTPS URL.
+- The app is limited to OWNER and WAITER; other roles are rejected at login.
+
+Production build (requires Android SDK or EAS):
+
+```bash
+cd apps/mobile
+npx eas-cli login
+npx eas-cli build --platform android --profile production
+# → AAB for Play Store, APK for sideloading
+```
+
+Local APK (wizard-friendly):
+
+```bash
+npx expo prebuild --platform android
+cd android && ./gradlew assembleRelease
+```
+
+**Not built in this environment:** no Android SDK is installed, so no APK/AAB
+was produced. The JavaScript bundle was validated with
+`npx expo export --platform android --no-bytecode` (926 modules, 1.57 MB).
+
+## 9. Cashier desktop (Tauri 2)
+
+Development:
+
+```bash
+npm run dev:cashier            # browser UI at http://localhost:5173
+npx tauri dev                  # inside a desktop window
+```
+
+Linux build (verified here):
+
+```bash
+cd apps/cashier-desktop
+npx tauri build
+```
+
+Produced in this environment:
+
+- `src-tauri/target/release/ikki-dost-cashier` — 11 MB executable
+- `src-tauri/target/release/bundle/deb/Ikki Do'st Kassir_0.1.0_amd64.deb`
+- `src-tauri/target/release/bundle/rpm/Ikki Do'st Kassir-0.1.0-1.x86_64.rpm`
+
+The AppImage step failed because the `linuxdeploy-plugin-appimage` download was
+blocked in this environment. It is a packaging-only failure; the binary and
+`.deb`/`.rpm` are usable. Retry on a machine with network access or install
+`linuxdeploy`/`appimagetool` locally.
+
+Windows `.exe` / `.msi` (must be built on Windows, not cross-compiled here):
+
+```powershell
+cd apps\cashier-desktop
+npm install
+npx tauri build
+# → src-tauri\target\release\bundle\nsis\...-setup.exe
+# → src-tauri\target\release\bundle\msi\..._x64_en-US.msi
+```
+
+Install WebView2 (bundled by the Windows installer) and point the app at the
+production API before building (`EXPO`-style env does not apply; edit the
+cashier app's API base URL / runtime setting).
+
+## 10. First-run checklist
+
+1. Apply migrations and seed.
+2. Log in to admin-web as `owner`; immediately change the owner password and
+   create real staff accounts.
+3. Set the service fee (default 4 000 UZS/person) and decide dine-in/delivery
+   applicability.
+4. Upload product images, confirm the 14 seeded products and prices.
+5. Configure rooms.
+6. Install the chef web app on the kitchen iPhone (“Add to Home Screen”),
+   grant notifications, and test a Web Push.
+7. Install the cashier app on the billing PC and run a test payment + reversal.
+8. Install the Android app on waiter phones (point at the public API URL).
+9. Verify backups and restore on a staging database.
+
+## 11. Operations
+
+- **Updates:** `git pull && npm ci && npm run build -w @ikki-dost/api && npm run build -w @ikki-dost/admin-web && npm run build -w @ikki-dost/chef-web`, then
+  `npx prisma migrate deploy` and restart services. Migrations are
+  forward-only; take a backup first.
+- **Logs:** `journalctl -u ikki-api -f`; Next.js logs via PM2/systemd.
+- **Monitoring:** probe `GET /api/docs` (200) and the panel URLs; alert on 5xx
+  rates and disk usage (uploads + PostgreSQL).
+- **Scaling:** the API is stateless except for Socket.IO; run one instance or
+  add a Socket.IO adapter (Redis) before scaling horizontally. ADR-008 assumes
+  a single node initially.
+- **Security:** HTTPS everywhere, strong secrets, restricted `CORS_ORIGINS`,
+  firewall the database port, keep Node/PostgreSQL patched, rotate VAPID keys
+  only with a re-subscribe plan.
+
+## 12. Rollback
+
+1. Stop the API.
+2. Restore the pre-deploy database dump.
+3. Check out the previous release tag, rebuild, restart.
+4. The mobile/desktop clients are backward-compatible within a minor version;
+   avoid destructive API changes without a new client release.

@@ -1,0 +1,35 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  color-scheme: light;
+}
+
+html,
+body {
+  background: #f7f5f0;
+  color: #1c241f;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* iPhone Safari: prevent double-tap zoom on touch controls */
+button,
+a,
+[role='button'] {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+@layer utilities {
+  .pt-safe { padding-top: calc(var(--safe-top) + 0.75rem); }
+  .pb-safe { padding-bottom: calc(var(--safe-bottom) + 0.75rem); }
+}
+
+/* Large, calm scrollbars for touch screens */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb { background: #d5cfc5; border-radius: 8px; }
+::-webkit-scrollbar-track { background: transparent; }

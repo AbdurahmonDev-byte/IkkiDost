@@ -1,0 +1,409 @@
+// Ikki Do'st choyxonasi — PostgreSQL schema (source of truth).
+// Money is ALWAYS integer UZS (Int). Quantities are Decimal(8,3).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ===== Users & access =====
+
+enum Role {
+  OWNER
+  WAITER
+  CHEF
+  CASHIER
+}
+
+model User {
+  id               String         @id @default(uuid())
+  username         String         @unique
+  passwordHash     String
+  fullName         String
+  phone            String?
+  role             Role
+  isActive         Boolean        @default(true)
+  canCreateDelivery Boolean       @default(false)
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  refreshTokens    RefreshToken[]
+  ordersCreated    Order[]        @relation("OrderCreatedBy")
+  paymentsReceived Payment[]      @relation("PaymentReceivedBy")
+  deliveriesAssigned Delivery[]   @relation("DeliveryAssignedTo")
+  notifications    Notification[]
+  pushSubscriptions PushSubscription[]
+  auditLogs        AuditLog[]
+  expenses         Expense[]
+  statusHistories  OrderStatusHistory[]
+
+  @@index([role, isActive])
+}
+
+model RefreshToken {
+  id          String    @id @default(uuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash   String    @unique
+  familyId    String // rotation family; reuse of an old token revokes the whole family
+  expiresAt   DateTime
+  revokedAt   DateTime?
+  replacedById String?
+  createdAt   DateTime  @default(now())
+  userAgent   String?
+  ip          String?
+
+  @@index([userId])
+  @@index([familyId])
+}
+
+// ===== Rooms =====
+
+model Room {
+  id        String        @id @default(uuid())
+  name      String        @unique
+  isActive  Boolean       @default(true)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  sessions  RoomSession[]
+}
+
+enum RoomSessionStatus {
+  OPEN
+  CLOSED
+}
+
+model RoomSession {
+  id          String            @id @default(uuid())
+  roomId      String
+  room        Room              @relation(fields: [roomId], references: [id])
+  status      RoomSessionStatus @default(OPEN)
+  openedAt    DateTime          @default(now())
+  closedAt    DateTime?
+  // Cached financial totals, maintained transactionally by the payment/order services.
+  totalAmount     Int @default(0) // integer UZS (items + service fees)
+  paidAmount      Int @default(0)
+  closeOverrideReason String?
+  closeOverrideById   String?
+  orders    Order[]
+  payments    Payment[]
+
+  // NOTE: "one OPEN session per room" is enforced by a row-level lock on Room
+  // inside RoomsService.getOrCreateOpenSession (a @@unique on (roomId, status)
+  // would wrongly prevent multiple CLOSED sessions per room).
+  @@index([roomId, status])
+  @@index([status])
+}
+
+// ===== Catalog =====
+
+model Category {
+  id        String    @id @default(uuid())
+  name      String    @unique
+  sortOrder Int       @default(0)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  products  Product[]
+}
+
+enum MeasurementUnit {
+  PIECE
+  KG
+  LITER
+  PORTION
+  OTHER
+}
+
+enum ProductStatus {
+  ACTIVE
+  DISABLED
+  ARCHIVED
+}
+
+model Product {
+  id         String          @id @default(uuid())
+  name       String
+  categoryId String
+  category   Category        @relation(fields: [categoryId], references: [id])
+  unit       MeasurementUnit @default(PIECE)
+  price      Int // integer UZS per unit
+  status     ProductStatus   @default(ACTIVE)
+  image      ProductImage?
+  createdAt  DateTime        @default(now())
+  updatedAt  DateTime        @updatedAt
+  orderItems OrderItem[]
+
+  @@index([categoryId, status])
+  @@index([status])
+}
+
+model ProductImage {
+  id           String   @id @default(uuid())
+  productId    String   @unique
+  product      Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  fileName     String // stored file (uploads dir)
+  thumbnailName String? // optimized thumbnail
+  mimeType     String
+  sizeBytes    Int
+  createdAt    DateTime @default(now())
+}
+
+// ===== Orders =====
+
+enum OrderType {
+  DINE_IN
+  DELIVERY
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  PREPARING
+  PARTIALLY_READY
+  READY
+  SERVED
+  COMPLETED
+  CANCELLED
+}
+
+enum OrderItemStatus {
+  PENDING
+  PREPARING
+  READY
+  SERVED
+  CANCELLED
+}
+
+model Order {
+  id            String      @id @default(uuid())
+  orderNumber   Int         @unique // human-friendly sequential number
+  type          OrderType
+  status        OrderStatus @default(PENDING)
+  roomId        String?
+  roomSessionId String?
+  roomSession   RoomSession? @relation(fields: [roomSessionId], references: [id])
+  numberOfPeople Int        @default(0)
+  note          String?
+
+  // Financial snapshots (integer UZS).
+  itemsTotal        Int @default(0)
+  serviceFeeAmount  Int @default(0)
+  serviceFeePerPerson Int @default(0)
+  serviceFeeMethod  ServiceFeeMethod @default(PER_PERSON)
+  totalAmount       Int @default(0)
+  paidAmount        Int @default(0)
+
+  cancelReason  String?
+  cancelledAt   DateTime?
+
+  createdById   String
+  createdBy     User   @relation("OrderCreatedBy", fields: [createdById], references: [id])
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  items         OrderItem[]
+  delivery      Delivery?
+  payments      Payment[]
+  statusHistory OrderStatusHistory[]
+
+  @@index([status, type])
+  @@index([roomSessionId])
+  @@index([createdAt])
+  @@index([roomId])
+}
+
+model OrderItem {
+  id          String          @id @default(uuid())
+  orderId     String
+  order       Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId   String?
+  product     Product?        @relation(fields: [productId], references: [id])
+  // Historical snapshots — never change after creation.
+  productName String
+  productUnit MeasurementUnit
+  unitPrice   Int // integer UZS
+  quantity    Decimal         @db.Decimal(8, 3)
+  lineTotal   Int // integer UZS
+  status      OrderItemStatus @default(PENDING)
+  note        String?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  @@index([orderId])
+  @@index([status])
+}
+
+enum ServiceFeeMethod {
+  PER_PERSON
+}
+
+model OrderStatusHistory {
+  id         String   @id @default(uuid())
+  orderId    String
+  order      Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  fromStatus String?
+  toStatus   String
+  actorId    String?
+  actor      User?    @relation(fields: [actorId], references: [id])
+  note       String?
+  createdAt  DateTime @default(now())
+
+  @@index([orderId])
+}
+
+// ===== Delivery =====
+
+enum DeliveryStatus {
+  PENDING
+  CONFIRMED
+  PREPARING
+  READY
+  OUT_FOR_DELIVERY
+  DELIVERED
+  CANCELLED
+}
+
+model Delivery {
+  id            String         @id @default(uuid())
+  orderId       String         @unique
+  order         Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  customerName  String
+  customerPhone String
+  address       String
+  status        DeliveryStatus @default(PENDING)
+  assignedToId  String?
+  assignedTo    User?          @relation("DeliveryAssignedTo", fields: [assignedToId], references: [id])
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  @@index([status])
+  @@index([assignedToId])
+}
+
+// ===== Payments =====
+
+enum PaymentKind {
+  CASH
+  CARD
+  OTHER
+}
+
+model PaymentMethod {
+  id        String    @id @default(uuid())
+  name      String    @unique
+  kind      PaymentKind
+  isActive  Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  payments  Payment[]
+}
+
+model Payment {
+  id             String         @id @default(uuid())
+  orderId        String?
+  order          Order?         @relation(fields: [orderId], references: [id])
+  roomSessionId  String?
+  roomSession    RoomSession?   @relation(fields: [roomSessionId], references: [id])
+  amount         Int // integer UZS
+  methodId       String
+  method         PaymentMethod  @relation(fields: [methodId], references: [id])
+  note           String?
+  idempotencyKey String?        @unique
+  receivedById   String
+  receivedBy     User           @relation("PaymentReceivedBy", fields: [receivedById], references: [id])
+  reversedAt     DateTime?
+  reversal       PaymentReversal?
+  createdAt      DateTime       @default(now())
+
+  @@index([orderId])
+  @@index([roomSessionId])
+  @@index([createdAt])
+}
+
+model PaymentReversal {
+  id         String   @id @default(uuid())
+  paymentId  String   @unique
+  payment    Payment  @relation(fields: [paymentId], references: [id])
+  reason     String
+  reversedById String
+  reversedByName String
+  createdAt  DateTime @default(now())
+}
+
+// ===== Expenses =====
+
+model Expense {
+  id          String   @id @default(uuid())
+  title       String
+  amount      Int // integer UZS
+  category    String?
+  note        String?
+  spentAt     DateTime @default(now())
+  createdById String
+  createdBy   User     @relation(fields: [createdById], references: [id])
+  createdAt   DateTime @default(now())
+
+  @@index([spentAt])
+}
+
+// ===== Settings (singleton row, id = "service_fee_config") =====
+
+model ServiceFeeConfig {
+  id              String   @id @default("service_fee_config")
+  enabled         Boolean  @default(true)
+  amountPerPerson Int      @default(4000) // integer UZS
+  applyToDineIn   Boolean  @default(true)
+  applyToDelivery Boolean  @default(true)
+  method          ServiceFeeMethod @default(PER_PERSON)
+  updatedAt       DateTime @updatedAt
+}
+
+// ===== Notifications =====
+
+model Notification {
+  id        String    @id @default(uuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String // e.g. ITEM_READY, ORDER_CREATED
+  title     String
+  body      String
+  data      Json?
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId, readAt])
+  @@index([createdAt])
+}
+
+model PushSubscription {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+// ===== Audit =====
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  actorId   String?
+  actor     User?    @relation(fields: [actorId], references: [id])
+  actorName String
+  action    String // e.g. PRODUCT_PRICE_CHANGED, PAYMENT_REVERSED, SESSION_CLOSE_OVERRIDE
+  entity    String // e.g. Product, Payment, RoomSession
+  entityId  String?
+  details   Json?
+  createdAt DateTime @default(now())
+
+  @@index([entity, entityId])
+  @@index([createdAt])
+  @@index([actorId])
+}

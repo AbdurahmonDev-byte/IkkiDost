@@ -1,0 +1,9 @@
+Package: ikki-do-st-kassir
+Version: 0.1.0
+Architecture: amd64
+Installed-Size: 11016
+Maintainer: Ikki Do'st
+Priority: optional
+Depends: libwebkit2gtk-4.1-0, libgtk-3-0
+Description: Ikki Do'st cashier desktop
+ (none)
