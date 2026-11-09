@@ -22,13 +22,17 @@ export default function DeliverySettingsPage() {
   const settingsQuery = useQuery({ queryKey: ['service-fee'], queryFn: () => api.serviceFeeConfig() });
   const employeesQuery = useQuery({ queryKey: ['employees'], queryFn: () => api.employees() });
 
-  const [applyToDelivery, setApplyToDelivery] = useState(true);
+  const [applyToDelivery, setApplyToDelivery] = useState(false);
+  const [deliveryFeeAmount, setDeliveryFeeAmount] = useState('5000');
   useEffect(() => {
-    if (settingsQuery.data) setApplyToDelivery(settingsQuery.data.applyToDelivery);
+    if (settingsQuery.data) {
+      setApplyToDelivery(settingsQuery.data.applyToDelivery);
+      setDeliveryFeeAmount(String(settingsQuery.data.deliveryFeeAmount ?? 5000));
+    }
   }, [settingsQuery.data]);
 
   const feeMutation = useMutation({
-    mutationFn: () => api.updateServiceFeeConfig({ applyToDelivery }),
+    mutationFn: () => api.updateServiceFeeConfig({ applyToDelivery, deliveryFeeAmount: Number(deliveryFeeAmount) }),
     onSuccess: () => {
       toast.success('Saqlandi');
       void qc.invalidateQueries({ queryKey: ['service-fee'] });
@@ -76,6 +80,9 @@ export default function DeliverySettingsPage() {
         <Card className="h-fit">
           <CardHeader title="Xizmat haqi" subtitle="Yetkazib berish buyurtmalari uchun" />
           <div className="space-y-4 p-5">
+            <Field label="Yetkazib berish narxi (so‘m)" hint="Har bir delivery buyurtmasiga bir marta qo‘shiladi">
+              <Input type="number" min={0} value={deliveryFeeAmount} onChange={(e) => setDeliveryFeeAmount(e.target.value)} />
+            </Field>
             <label className="flex cursor-pointer items-center justify-between gap-3 rounded-xl bg-paper px-4 py-3">
               <div>
                 <p className="text-sm font-semibold">Xizmat haqi qo‘llansin</p>
@@ -88,7 +95,7 @@ export default function DeliverySettingsPage() {
                 className="h-5 w-5 accent-primary"
               />
             </label>
-            <Button className="w-full" loading={feeMutation.isPending} onClick={() => feeMutation.mutate()}>
+            <Button className="w-full" loading={feeMutation.isPending} disabled={!Number.isInteger(Number(deliveryFeeAmount)) || Number(deliveryFeeAmount) < 0} onClick={() => feeMutation.mutate()}>
               <Save size={15} /> Saqlash
             </Button>
             <p className="text-[11px] text-ink-faint">
