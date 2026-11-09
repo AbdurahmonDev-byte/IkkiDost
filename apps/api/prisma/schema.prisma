@@ -358,7 +358,7 @@ model ServiceFeeConfig {
   amountPerPerson Int      @default(4000) // integer UZS
   deliveryFeeAmount Int    @default(5000) // flat integer UZS per delivery order
   applyToDineIn   Boolean  @default(true)
-  applyToDelivery Boolean  @default(true)
+  applyToDelivery Boolean  @default(false)
   method          ServiceFeeMethod @default(PER_PERSON)
   updatedAt       DateTime @updatedAt
 }
