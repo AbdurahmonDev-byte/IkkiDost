@@ -192,6 +192,7 @@ model Order {
   // Financial snapshots (integer UZS).
   itemsTotal        Int @default(0)
   serviceFeeAmount  Int @default(0)
+  deliveryFeeAmount Int @default(0)
   serviceFeePerPerson Int @default(0)
   serviceFeeMethod  ServiceFeeMethod @default(PER_PERSON)
   totalAmount       Int @default(0)
@@ -355,6 +356,7 @@ model ServiceFeeConfig {
   id              String   @id @default("service_fee_config")
   enabled         Boolean  @default(true)
   amountPerPerson Int      @default(4000) // integer UZS
+  deliveryFeeAmount Int    @default(5000) // flat integer UZS per delivery order
   applyToDineIn   Boolean  @default(true)
   applyToDelivery Boolean  @default(true)
   method          ServiceFeeMethod @default(PER_PERSON)
