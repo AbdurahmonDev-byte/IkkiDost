@@ -1,8 +1,10 @@
 import { Bot } from 'grammy';
 import { loadConfig } from './config.js';
+import { SystemClient } from './api.js';
 import { customerKeyboard } from './keyboards.js';
 import { handleCloseReason, registerRooms } from './handlers/rooms.js';
 import { handleLoginText, registerAuth } from './handlers/auth.js';
+import { registerCustomer } from './handlers/customer.js';
 import { registerDashboard } from './handlers/dashboard.js';
 import {
   handleDeliveryAddress,
@@ -11,7 +13,7 @@ import {
   registerDelivery,
 } from './handlers/delivery.js';
 import { registerKitchen } from './handlers/kitchen.js';
-import { registerOrder } from './handlers/order.js';
+import { handleNoteText, registerOrder } from './handlers/order.js';
 import { startNotificationPoller } from './poller.js';
 import { flowKey, type Deps, type Flow } from './state.js';
 import { Refs, Store } from './store.js';
@@ -33,7 +35,22 @@ async function main() {
   const store = new Store(config.storePath);
   const refs = new Refs();
   const flows = new Map<string, Flow>();
-  const deps: Deps = { config, store, refs, flows };
+  const system =
+    config.systemUsername && config.systemPassword
+      ? new SystemClient(config, config.systemUsername, config.systemPassword)
+      : null;
+  const deps: Deps = {
+    config,
+    store,
+    refs,
+    flows,
+    system,
+    waiterCalls: new Map<string, number>(),
+  };
+
+  if (!system) {
+    console.warn('⚠️ BOT_USERNAME/BOT_PASSWORD sozlanmagan: mijozlarning mustaqil buyurtmalari o‘chiq.');
+  }
 
   const bot = new Bot(config.token);
 
@@ -42,8 +59,9 @@ async function main() {
     console.error('Botda kutilmagan xatolik:', err);
   });
 
-  // Register all role handlers
+  // Register all staff and customer handlers
   registerAuth(deps, bot);
+  registerCustomer(deps, bot);
   registerRooms(deps, bot);
   registerKitchen(deps, bot);
   registerDelivery(deps, bot);
@@ -70,6 +88,9 @@ async function main() {
         case 'delivery-address':
           return handleDeliveryAddress(deps, ctx, flow.name, flow.phone, text);
         case 'order':
+          if (flow.data.stage === 'note') {
+            return handleNoteText(deps, ctx, flow.data, text);
+          }
           await ctx.reply('Iltimos, ekrandagi tugmalardan foydalaning yoki /menu bosing.');
           return;
       }
