@@ -9,6 +9,7 @@ function toDto(c: ServiceFeeConfig): ServiceFeeConfigDto {
   return {
     enabled: c.enabled,
     amountPerPerson: c.amountPerPerson,
+    deliveryFeeAmount: c.deliveryFeeAmount,
     applyToDineIn: c.applyToDineIn,
     applyToDelivery: c.applyToDelivery,
     method: c.method,
@@ -45,6 +46,7 @@ export class SettingsService {
       update: {
         enabled: input.enabled ?? undefined,
         amountPerPerson: input.amountPerPerson ?? undefined,
+        deliveryFeeAmount: input.deliveryFeeAmount ?? undefined,
         applyToDineIn: input.applyToDineIn ?? undefined,
         applyToDelivery: input.applyToDelivery ?? undefined,
         method: input.method ?? undefined,
