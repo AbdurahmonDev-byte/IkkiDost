@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import {
   Bell,
   Check,
+  Printer,
   ChevronDown,
   FileEdit,
   Minus,
@@ -152,20 +153,35 @@ export const CustomerMenu: React.FC<Props> = ({
 
       {/* Active Order Tracker (if any) */}
       {activeOrder && (
-        <div className="rounded-3xl bg-gradient-to-r from-stone-900 to-stone-800 text-white p-4 shadow-lg space-y-2">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="flex h-2.5 w-2.5 rounded-full bg-emerald-400 animate-ping" />
-              <span className="font-extrabold text-sm">Buyurtmangiz #{activeOrder.orderNumber}</span>
+        <section id="ikki-dost-receipt" className="rounded-3xl bg-white border border-stone-200 p-4 shadow-sm space-y-3">
+          <div className="flex items-center justify-between gap-2">
+            <div>
+              <p className="font-black text-stone-900">Ikki Do‘st choyxonasi</p>
+              <p className="text-xs text-stone-500">Buyurtma cheki #{activeOrder.orderNumber}</p>
+              <p className="text-[10px] text-stone-400">{new Date(activeOrder.createdAt).toLocaleString('uz-UZ')}</p>
             </div>
-            <span className={`text-[11px] font-black uppercase px-2.5 py-1 rounded-full border ${statusColor[activeOrder.status]}`}>
+            <span className={`text-[10px] font-black uppercase px-2 py-1 rounded-full border ${statusColor[activeOrder.status]}`}>
               {orderStatusLabel[activeOrder.status]}
             </span>
           </div>
-          <div className="text-xs text-stone-300">
-            Jami: <span className="font-bold text-white">{money(activeOrder.totalAmount)}</span> · {activeOrder.items.length} taom
+          <div className="border-y border-dashed border-stone-300 py-2 space-y-1.5">
+            {activeOrder.items.map((item) => (
+              <div key={item.id} className="flex justify-between gap-3 text-xs">
+                <span className="text-stone-700">{item.productName} × {item.quantity}</span>
+                <span className="font-semibold text-stone-900">{money(item.lineTotal)}</span>
+              </div>
+            ))}
           </div>
-        </div>
+          <div className="space-y-1 text-xs text-stone-600">
+            <div className="flex justify-between"><span>Mahsulotlar</span><span>{money(activeOrder.itemsTotal)}</span></div>
+            {activeOrder.serviceFeeAmount > 0 && <div className="flex justify-between"><span>Xizmat haqi</span><span>{money(activeOrder.serviceFeeAmount)}</span></div>}
+            {activeOrder.deliveryFeeAmount > 0 && <div className="flex justify-between"><span>Yetkazib berish</span><span>{money(activeOrder.deliveryFeeAmount)}</span></div>}
+            <div className="flex justify-between border-t border-stone-200 pt-2 text-sm font-black text-stone-900"><span>Jami</span><span>{money(activeOrder.totalAmount)}</span></div>
+          </div>
+          <button onClick={() => window.print()} className="no-print flex w-full items-center justify-center gap-2 rounded-xl bg-stone-900 px-3 py-2.5 text-xs font-bold text-white">
+            <Printer className="h-4 w-4" /> Chekni chiqarish
+          </button>
+        </section>
       )}
 
       {/* Category Pills (Horizontal scrolling) */}

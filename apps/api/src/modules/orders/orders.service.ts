@@ -97,6 +97,7 @@ export class OrdersService {
       // 2. Service fee from the CURRENT configuration (snapshot onto the order).
       const feeConfig = await this.getFeeConfig(tx);
       const fee = computeServiceFee(feeConfig, input.type, input.numberOfPeople);
+      const deliveryFeeAmount = input.type === 'DELIVERY' ? feeConfig.deliveryFeeAmount : 0;
 
       // 3. Room session for dine-in.
       let roomSessionId: string | null = null;
@@ -117,9 +118,10 @@ export class OrdersService {
         note: input.note ?? null,
         itemsTotal,
         serviceFeeAmount: fee.amount,
+        deliveryFeeAmount,
         serviceFeePerPerson: fee.perPerson,
         serviceFeeMethod: fee.method,
-        totalAmount: itemsTotal + fee.amount,
+        totalAmount: itemsTotal + fee.amount + deliveryFeeAmount,
         paidAmount: 0,
         createdBy: { connect: { id: actor.id } },
         items: { create: itemRows },
@@ -354,8 +356,9 @@ export class OrdersService {
       cfg ?? {
         enabled: true,
         amountPerPerson: 4000,
+        deliveryFeeAmount: 5000,
         applyToDineIn: true,
-        applyToDelivery: true,
+        applyToDelivery: false,
         method: 'PER_PERSON' as const,
       }
     );

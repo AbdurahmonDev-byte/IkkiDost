@@ -127,6 +127,8 @@ export interface OrderDto {
   itemsTotal: Uzs;
   /** Snapshotted service fee values. */
   serviceFeeAmount: Uzs;
+  /** Flat delivery fee snapshot; zero for dine-in orders. */
+  deliveryFeeAmount: Uzs;
   serviceFeePerPerson: Uzs;
   serviceFeeMethod: ServiceFeeMethod;
   totalAmount: Uzs;
@@ -175,6 +177,7 @@ export interface ExpenseDto {
 export interface ServiceFeeConfigDto {
   enabled: boolean;
   amountPerPerson: Uzs;
+  deliveryFeeAmount: Uzs;
   applyToDineIn: boolean;
   applyToDelivery: boolean;
   method: ServiceFeeMethod;

@@ -182,6 +182,7 @@ export type CreateExpenseInput = z.infer<typeof createExpenseSchema>;
 export const updateServiceFeeConfigSchema = z.object({
   enabled: z.boolean().optional(),
   amountPerPerson: uzsSchema.optional(),
+  deliveryFeeAmount: uzsSchema.optional(),
   applyToDineIn: z.boolean().optional(),
   applyToDelivery: z.boolean().optional(),
   method: z.nativeEnum(ServiceFeeMethod).optional(),

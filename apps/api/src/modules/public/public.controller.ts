@@ -36,8 +36,8 @@ export class PublicController {
         include: { image: true },
         orderBy: { name: 'asc' },
       }),
-      this.prisma.serviceFeeConfig.findFirst({
-        where: { id: 'singleton' },
+      this.prisma.serviceFeeConfig.findUnique({
+        where: { id: 'service_fee_config' },
       }),
     ]);
 
@@ -63,6 +63,7 @@ export class PublicController {
         ? {
             enabled: feeConfig.enabled,
             amountPerPerson: feeConfig.amountPerPerson,
+            deliveryFeeAmount: feeConfig.deliveryFeeAmount,
             applyToDineIn: feeConfig.applyToDineIn,
             applyToDelivery: feeConfig.applyToDelivery,
             method: feeConfig.method,

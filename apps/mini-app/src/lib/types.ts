@@ -39,6 +39,7 @@ export interface Room {
 export interface ServiceFeeConfig {
   enabled: boolean;
   amountPerPerson: number;
+  deliveryFeeAmount: number;
   applyToDineIn: boolean;
   applyToDelivery: boolean;
   method: 'PER_PERSON';
@@ -73,6 +74,9 @@ export interface OrderDto {
   numberOfPeople: number;
   note: string | null;
   items: OrderItemDto[];
+  itemsTotal: number;
+  serviceFeeAmount: number;
+  deliveryFeeAmount: number;
   totalAmount: number;
   paidAmount: number;
   createdAt: string;

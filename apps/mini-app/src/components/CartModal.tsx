@@ -68,7 +68,8 @@ export const CartModal: React.FC<Props> = ({
     }
   }
 
-  const grandTotal = itemsSubtotal + serviceFeeAmount;
+  const deliveryFeeAmount = orderType === 'DELIVERY' ? (serviceFeeConfig?.deliveryFeeAmount ?? 5000) : 0;
+  const grandTotal = itemsSubtotal + serviceFeeAmount + deliveryFeeAmount;
 
   const handleSubmit = async () => {
     if (items.length === 0) return;
@@ -354,6 +355,12 @@ export const CartModal: React.FC<Props> = ({
                 <div className="flex justify-between">
                   <span>Xizmat haqi:</span>
                   <span className="font-medium text-stone-900">{money(serviceFeeAmount)}</span>
+                </div>
+              )}
+              {deliveryFeeAmount > 0 && (
+                <div className="flex justify-between">
+                  <span>Yetkazib berish:</span>
+                  <span className="font-medium text-stone-900">{money(deliveryFeeAmount)}</span>
                 </div>
               )}
               <div className="flex justify-between text-base font-bold text-stone-900 pt-1 border-t border-stone-200">
