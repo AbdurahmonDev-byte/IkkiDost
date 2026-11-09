@@ -20,6 +20,7 @@ artifacts (Android APK, Windows EXE, AppImage) documented.
 | 8. Admin panel | All 15 sections + reports | ✅ |
 | 9. Tests & integration | Unit/integration/E2E critical flows | ✅ backend 45/45; manual UI smoke |
 | 10. Deliverables | Deployment docs, build instructions | ✅ (limitations documented) |
+| 11. Telegram bot | Omni-device staff bot (rooms, orders, kitchen, delivery, stats, alerts) | ✅ |
 
 Docs: `docs/ARCHITECTURE.md`, `docs/DATABASE.md`, `docs/API.md`,
 `docs/DEPLOYMENT.md`, `docs/TESTING.md`, plus `DECISIONS.md`.
@@ -94,6 +95,16 @@ Expo SDK 51 + Expo Router app for OWNER and WAITER:
 `shared-types` (DTOs, enums, realtime events), `validation` (Zod request
 schemas), `utils` (integer-UZS money math, service fee, formatting),
 `api-client` (typed fetch client with auth + errors), `design-system` (tokens).
+
+### Telegram bot (`apps/bot`)
+Multi-role staff bot built with grammY on Node.js/TypeScript:
+- Staff login (`/login`) with ephemeral password message auto-deletion, JWT token rotation & refresh.
+- Role-adapted home menu and commands (`/rooms`, `/kitchen`, `/delivery`, `/newdel`, `/dash`, `/me`, `/help`).
+- Waiter / Owner room sessions: browse rooms, create dine-in orders with people count and menu categories, mark items as served, close sessions with reason when debt override is needed.
+- Kitchen queue for Chefs & Owners: view incoming orders, start preparation (`PREPARING`), mark items `READY`.
+- Delivery workflow: view active orders, advance delivery stages (`CONFIRMED` -> `PREPARING` -> `READY` -> `OUT_FOR_DELIVERY` -> `DELIVERED`), create new deliveries with customer name, phone, address, and food cart.
+- Owner dashboard (`/dash`): real-time summary of today's revenue, collected payments, unpaid debt, expenses, popular dishes.
+- Background notification poller with emoji alerts sent directly to staff chat.
 
 ## Known limitations of this environment
 

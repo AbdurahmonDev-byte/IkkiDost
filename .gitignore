@@ -39,6 +39,10 @@ src-tauri/target/
 *.AppImage
 *.dmg
 
+# Bot sessions
+apps/bot/data/
+data/sessions.json
+
 # Logs
 *.log
 npm-debug.log*

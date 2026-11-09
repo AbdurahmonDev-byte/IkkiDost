@@ -58,3 +58,13 @@
 
 ## ADR-015: Waiters never take payments
 - **Decision:** Payment routes are OWNER/CASHIER-only on the backend. The mobile app (OWNER + WAITER) therefore offers payment actions only to owners; waiters see the outstanding balance but must hand off to the cashier. This keeps cash handling audited on one workstation + the owner's hands.
+
+## ADR-016: Telegram bot as an omni-device staff interface
+- **Context:** Installing separate mobile or desktop apps on personal employee phones or devices can have friction; Telegram is already universally installed on all devices (Android, iPhone, Windows, Mac, Linux).
+- **Decision:** Implement `apps/bot` using grammY as a thin, multi-role client over the existing REST API. The bot keeps NO business logic, no custom database, and no duplicate calculations:
+  - RBAC is enforced by backend API tokens per Telegram chat.
+  - Money remains integer UZS throughout formatters.
+  - Session and delivery status transitions follow existing API endpoints.
+  - Notifications are delivered via a non-intrusive background poller.
+  - Plain-text passwords sent during `/login` are deleted immediately from the chat.
+- **Consequences:** All staff members can interact with the teahouse ecosystem from any device without installing specialized builds. Server-side audit and security remain strictly intact.

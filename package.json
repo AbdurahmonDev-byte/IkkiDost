@@ -10,9 +10,8 @@
   "scripts": {
     "dev:api": "npm run dev -w @ikki-dost/api",
     "dev:admin": "npm run dev -w @ikki-dost/admin-web",
-    "dev:chef": "npm run dev -w @ikki-dost/chef-web",
-    "dev:cashier": "npm run dev -w @ikki-dost/cashier-desktop",
-    "dev:mobile": "npm run start -w @ikki-dost/mobile",
+    "dev:bot": "npm run dev -w @ikki-dost/bot",
+    "dev:mini-app": "npm run dev -w @ikki-dost/mini-app",
     "build": "npm run build --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",
     "test:api": "npm run test -w @ikki-dost/api",
