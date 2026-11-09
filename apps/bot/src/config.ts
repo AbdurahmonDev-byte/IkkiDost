@@ -7,9 +7,11 @@ export interface BotConfig {
   pollIntervalMs: number;
   storePath: string;
   miniAppUrl: string;
+  systemUsername: string;
+  systemPassword: string;
 }
 
-/** Minimal .env loader (no dependency). */
+/** Minimal .env loader (no dependency). Existing process variables always win. */
 function loadDotEnv(file: string): void {
   try {
     const raw = fs.readFileSync(file, 'utf8');
@@ -34,13 +36,17 @@ function loadDotEnv(file: string): void {
 }
 
 export function loadConfig(): BotConfig {
+  // Support both apps/bot/.env and the monorepo-root .env.
   loadDotEnv(path.resolve(process.cwd(), '.env'));
+  loadDotEnv(path.resolve(process.cwd(), '../../.env'));
 
   const token = process.env.BOT_TOKEN?.trim() ?? '';
   const apiUrl = (process.env.API_URL ?? 'http://localhost:3000/api').replace(/\/$/, '');
   const pollIntervalMs = Math.max(3000, Number(process.env.BOT_NOTIFY_INTERVAL_MS ?? 10_000) || 10_000);
   const storePath = path.resolve(process.cwd(), process.env.BOT_STORE_PATH ?? 'data/sessions.json');
   const miniAppUrl = (process.env.MINI_APP_URL ?? 'http://localhost:5174').replace(/\/$/, '');
+  const systemUsername = process.env.BOT_USERNAME?.trim() ?? '';
+  const systemPassword = process.env.BOT_PASSWORD ?? '';
 
-  return { token, apiUrl, pollIntervalMs, storePath, miniAppUrl };
+  return { token, apiUrl, pollIntervalMs, storePath, miniAppUrl, systemUsername, systemPassword };
 }
