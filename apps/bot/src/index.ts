@@ -4,16 +4,11 @@ import { customerKeyboard } from './keyboards.js';
 import { handleCloseReason, registerRooms } from './handlers/rooms.js';
 import { handleLoginText, registerAuth } from './handlers/auth.js';
 import { registerDashboard } from './handlers/dashboard.js';
-import {
-  handleDeliveryAddress,
-  handleDeliveryName,
-  handleDeliveryPhone,
-  registerDelivery,
-} from './handlers/delivery.js';
+import { handleDeliveryText, registerDelivery } from './handlers/delivery.js';
 import { registerKitchen } from './handlers/kitchen.js';
 import { registerOrder } from './handlers/order.js';
 import { startNotificationPoller } from './poller.js';
-import { flowKey, type Deps, type Flow } from './state.js';
+import { flowKey, type ChatContext, type Deps, type Flow } from './state.js';
 import { Refs, Store } from './store.js';
 
 async function main() {
@@ -33,9 +28,14 @@ async function main() {
   const store = new Store(config.storePath);
   const refs = new Refs();
   const flows = new Map<string, Flow>();
-  const deps: Deps = { config, store, refs, flows };
+  const deps: Deps = { config, store, refs, flows, system: null, waiterCalls: new Map() };
 
-  const bot = new Bot(config.token);
+  const bot = new Bot<ChatContext>(config.token);
+
+  bot.use(async (ctx, next) => {
+    if (!ctx.chat) return;
+    await next();
+  });
 
   // Global error handler
   bot.catch((err) => {
@@ -64,11 +64,9 @@ async function main() {
         case 'close-reason':
           return handleCloseReason(deps, ctx, flow.sessionId, text);
         case 'delivery-name':
-          return handleDeliveryName(deps, ctx, text);
         case 'delivery-phone':
-          return handleDeliveryPhone(deps, ctx, flow.name, text);
         case 'delivery-address':
-          return handleDeliveryAddress(deps, ctx, flow.name, flow.phone, text);
+          return handleDeliveryText(deps, ctx, flow, text);
         case 'order':
           await ctx.reply('Iltimos, ekrandagi tugmalardan foydalaning yoki /menu bosing.');
           return;
@@ -101,8 +99,29 @@ async function main() {
   process.on('SIGINT', shutdown);
   process.on('SIGTERM', shutdown);
 
+  // Command menu shown in Telegram's input field (same list for every role;
+  // role checks happen inside each handler).
+  try {
+    await bot.api.setMyCommands([
+      { command: 'start', description: 'Boshlash / Mini App' },
+      { command: 'menu', description: 'Bosh menyu' },
+      { command: 'rooms', description: 'Xonalar va hisoblar' },
+      { command: 'kitchen', description: 'Oshxona navbati' },
+      { command: 'delivery', description: 'Yetkazish buyurtmalari' },
+      { command: 'newdel', description: 'Yangi yetkazish yaratish' },
+      { command: 'dash', description: 'Bugungi hisobot (egasi)' },
+      { command: 'me', description: 'Profil va rol' },
+      { command: 'login', description: 'Xodim sifatida ulanish' },
+      { command: 'logout', description: 'Hisobni uzish' },
+      { command: 'help', description: 'Yordam' },
+    ]);
+  } catch (error) {
+    console.warn('Bot buyruqlar menyusini o‘rnatib bo‘lmadi:', error);
+  }
+
   console.log('🚀 Ikki Do‘st Telegram boti ishga tushdi!');
   console.log(`Backend API: ${config.apiUrl}`);
+  console.log(`Mini App: ${config.miniAppUrl}`);
   console.log(`Sessiyalar bazasi: ${config.storePath}`);
 
   await bot.start({

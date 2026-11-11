@@ -1,5 +1,6 @@
 import { BadRequestException, Body, Controller, Get, NotFoundException, Param, Post, UsePipes } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import type { OrderDto } from '@ikki-dost/shared-types';
 import { createOrderSchema, type CreateOrderInput } from '@ikki-dost/validation';
 import { Public } from '../../common/decorators/public.decorator';
@@ -98,11 +99,16 @@ export class PublicController {
   }
 
   @Post('orders')
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
   @UsePipes(new ZodValidationPipe(createOrderSchema))
   async createOrder(@Body() input: CreateOrderInput): Promise<OrderDto> {
     // Resolve an actor to attach the created order in the database.
-    // If self-service from Telegram Mini App / Customer, use system or designated waiter.
+    // Self-service orders use the dedicated `bot` account so audit trails stay
+    // honest and are never attributed to a real waiter.
     const actorUser =
+      (await this.prisma.user.findFirst({
+        where: { username: 'bot', isActive: true },
+      })) ||
       (await this.prisma.user.findFirst({
         where: { role: 'WAITER', isActive: true },
       })) ||
@@ -126,6 +132,7 @@ export class PublicController {
   }
 
   @Post('call-waiter')
+  @Throttle({ default: { limit: 6, ttl: 60_000 } })
   async callWaiter(@Body() body: CallWaiterInput) {
     if (!body.roomId) {
       throw new BadRequestException('Xona ko‘rsatilmadi');

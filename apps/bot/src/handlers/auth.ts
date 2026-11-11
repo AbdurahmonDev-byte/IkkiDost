@@ -3,7 +3,7 @@ import type { Context } from 'grammy';
 import { customerKeyboard, greeting, homeKeyboard, roleLabel } from '../keyboards.js';
 import { flowKey, type Deps } from '../state.js';
 
-export function registerAuth(deps: Deps, bot: import('grammy').Bot) {
+export function registerAuth(deps: Deps, bot: import('../state.js').AppBot) {
   const { config, store, flows } = deps;
 
   bot.command('start', async (ctx) => {

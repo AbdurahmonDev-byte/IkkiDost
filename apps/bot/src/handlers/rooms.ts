@@ -17,7 +17,7 @@ function roomLine(room: RoomDto): string {
   return `🪑 ${room.name} — ${s.orderCount} buyurtma · ${money(s.totalAmount)}${debt}`;
 }
 
-export function registerRooms(deps: Deps, bot: import('grammy').Bot) {
+export function registerRooms(deps: Deps, bot: import('../state.js').AppBot) {
   const { config, store, refs, flows } = deps;
 
   async function showRooms(ctx: Context, edit: boolean) {

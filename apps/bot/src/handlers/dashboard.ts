@@ -6,7 +6,7 @@ import type { Deps } from '../state.js';
 import { expired } from './auth.js';
 import { handleError } from './rooms.js';
 
-export function registerDashboard(deps: Deps, bot: import('grammy').Bot) {
+export function registerDashboard(deps: Deps, bot: import('../state.js').AppBot) {
   const { config, store } = deps;
 
   async function showDashboard(ctx: Context, edit: boolean) {

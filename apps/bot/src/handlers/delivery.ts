@@ -8,7 +8,7 @@ import { startDeliveryWizard } from './order.js';
 
 const allowed = (role: string) => role === 'OWNER' || role === 'WAITER' || role === 'CASHIER';
 
-export function registerDelivery(deps: Deps, bot: import('grammy').Bot) {
+export function registerDelivery(deps: Deps, bot: import('../state.js').AppBot) {
   const { config, store, refs, flows } = deps;
 
   async function showList(ctx: Context, edit: boolean) {
@@ -127,16 +127,26 @@ export function registerDelivery(deps: Deps, bot: import('grammy').Bot) {
   });
 
   // New delivery (staff): prompt chain.
-  bot.callbackQuery('m:newdel', async (ctx) => {
+  async function promptNewDelivery(ctx: Context, edit: boolean) {
+    if (!ctx.chat) return;
     const session = store.get(ctx.chat.id);
     if (!session) return expired(deps, ctx);
     if (session.role !== 'OWNER' && session.role !== 'WAITER') {
-      return ctx.answerCallbackQuery({ text: 'Ruxsat yo‘q', show_alert: true });
+      if (edit) return ctx.answerCallbackQuery({ text: 'Ruxsat yo‘q', show_alert: true });
+      return ctx.reply('🛵 Yangi yetkazishni faqat ofitsiant va egasi yaratadi.');
     }
     flows.set(flowKey(ctx.chat.id), { kind: 'delivery-name', actor: 'staff' });
-    await ctx.answerCallbackQuery();
-    await ctx.editMessageText('🛵 Yangi yetkazish\n\n1/3 — Mijoz ismini yozing:');
-  });
+    const text = '🛵 Yangi yetkazish\n\n1/3 — Mijoz ismini yozing:';
+    if (edit) {
+      await ctx.answerCallbackQuery();
+      await ctx.editMessageText(text);
+    } else {
+      await ctx.reply(text);
+    }
+  }
+
+  bot.callbackQuery('m:newdel', (ctx) => promptNewDelivery(ctx, true));
+  bot.command('newdel', (ctx) => promptNewDelivery(ctx, false));
 }
 
 /** Text router handler for the name/phone/address prompt chain. */
@@ -151,19 +161,28 @@ export async function handleDeliveryText(
   const value = text.trim();
 
   if (flow.kind === 'delivery-name') {
-    if (value.length < 1) return ctx.reply('❌ Ism kiriting:');
+    if (value.length < 1) {
+      await ctx.reply('❌ Ism kiriting:');
+      return;
+    }
     flows.set(flowKey(chatId), { kind: 'delivery-phone', actor: flow.actor, name: value });
     await ctx.reply(`2/3 — ${value} telefon raqamini yozing (masalan: +998901234567):`);
     return;
   }
   if (flow.kind === 'delivery-phone') {
-    if (!/^[+\d][\d\s()-]{3,}$/.test(value)) return ctx.reply('❌ Telefon noto‘g‘ri. Qayta yozing:');
+    if (!/^[+\d][\d\s()-]{3,}$/.test(value)) {
+      await ctx.reply('❌ Telefon noto‘g‘ri. Qayta yozing:');
+      return;
+    }
     flows.set(flowKey(chatId), { kind: 'delivery-address', actor: flow.actor, name: flow.name!, phone: value });
     await ctx.reply('3/3 — Yetkazish manzilini yozing:');
     return;
   }
   if (flow.kind === 'delivery-address') {
-    if (value.length < 3) return ctx.reply('❌ Manzil juda qisqa. Qayta yozing:');
+    if (value.length < 3) {
+      await ctx.reply('❌ Manzil juda qisqa. Qayta yozing:');
+      return;
+    }
     if (flow.actor === 'customer') deps.store.patchCustomer(chatId, { name: flow.name, phone: flow.phone, address: value });
     await startDeliveryWizard(deps, ctx, flow.actor, { name: flow.name!, phone: flow.phone!, address: value });
   }

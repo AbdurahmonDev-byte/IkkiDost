@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+
 import {
   Lock,
   LogOut,
@@ -74,6 +75,21 @@ export const App: React.FC = () => {
 
     loadData();
   }, []);
+
+  // Follow the latest self-service order until it is finished.
+  useEffect(() => {
+    if (!activeOrder) return;
+    if (activeOrder.status === 'COMPLETED' || activeOrder.status === 'CANCELLED') return;
+    const timer = setInterval(async () => {
+      try {
+        const fresh = await api.getOrder(activeOrder.id);
+        setActiveOrder(fresh);
+      } catch {
+        // keep the last known state on transient network errors
+      }
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [activeOrder?.id, activeOrder?.status]);
 
   // Sync staffUser with localStorage
   const handleLoginSuccess = (user: StaffUser) => {

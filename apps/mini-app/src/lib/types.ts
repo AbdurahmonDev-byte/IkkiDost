@@ -73,8 +73,12 @@ export interface OrderDto {
   numberOfPeople: number;
   note: string | null;
   items: OrderItemDto[];
+  itemsTotal?: number;
+  serviceFeeAmount?: number;
+  serviceFeePerPerson?: number;
   totalAmount: number;
   paidAmount: number;
+  outstandingAmount?: number;
   createdAt: string;
 }
 

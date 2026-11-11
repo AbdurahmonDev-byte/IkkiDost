@@ -33,6 +33,15 @@ async function main() {
   await upsertUser('ofitsiant', DEV_PASSWORD, 'Ofitsiant Olim', 'WAITER', true);
   await upsertUser('oshpaz', DEV_PASSWORD, 'Oshpaz Jasur', 'CHEF');
   await upsertUser('kassir', DEV_PASSWORD, 'Kassir Dilnoza', 'CASHIER');
+  // Dedicated actor for unauthenticated self-service orders (Telegram Mini App).
+  // It keeps audit trails honest: such orders are not attributed to a real waiter.
+  await upsertUser(
+    'bot',
+    process.env.SEED_BOT_PASSWORD || DEV_PASSWORD,
+    'Mijoz (Self-service)',
+    'WAITER',
+    true,
+  );
   console.log('[seed] Users ready (owner login: "owner")');
 
   // ===== Rooms =====

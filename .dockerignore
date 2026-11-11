@@ -1,0 +1,12 @@
+**/node_modules
+**/dist
+**/.next
+**/.expo
+**/target
+.git
+.env
+.env.*
+**/.env
+**/.env.*
+apps/api/uploads
+apps/bot/data

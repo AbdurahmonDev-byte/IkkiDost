@@ -21,7 +21,7 @@ function kitchenText(orders: OrderDto[]): string {
   return parts.join('\n');
 }
 
-export function registerKitchen(deps: Deps, bot: import('grammy').Bot) {
+export function registerKitchen(deps: Deps, bot: import('../state.js').AppBot) {
   const { config, store, refs } = deps;
 
   async function showKitchen(ctx: Context, edit: boolean) {

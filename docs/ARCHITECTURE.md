@@ -1,6 +1,7 @@
 # ARCHITECTURE
 
-Ikki Do‘st choyxonasi — one backend, one PostgreSQL database, five clients.
+Ikki Do‘st choyxonasi — one backend, one PostgreSQL database, multiple clients
+(Telegram bot + Telegram Mini App, owner admin panel).
 
 ## 1. System overview
 
@@ -12,21 +13,24 @@ Ikki Do‘st choyxonasi — one backend, one PostgreSQL database, five clients.
                                         │
 ┌───────────────────────────────────────┴───────────────────────────────────────┐
 │                            apps/api  (NestJS)                                 │
-│  REST /api  ·  Swagger /api/docs  ·  Socket.IO namespace /rt  ·  /uploads     │
-│  auth + RBAC guards · Zod validation · transactions · audit log · Web Push    │
-└───┬───────────────┬────────────────┬─────────────────┬───────────────┬────────┘
-    │ HTTPS/JSON    │ HTTPS/JSON     │ HTTPS/JSON      │ HTTPS/JSON    │ WS + JSON
-    ▼               ▼                ▼                 ▼               ▼
-┌─────────┐   ┌───────────┐   ┌────────────┐   ┌──────────────┐  ┌───────────┐
-│admin-web│   │ chef-web  │   │mobile Expo │   │cashier (Tauri)│  │ realtime  │
-│ OWNER   │   │ CHEF+OWNER│   │OWNER+WAITER│   │CASHIER+OWNER  │  │  clients  │
-│ Next.js │   │ Next.js   │   │ React Native│  │ React + Vite  │  │           │
-└─────────┘   └───────────┘   └────────────┘   └──────────────┘  └───────────┘
+│  REST /api  ·  Swagger /api/docs  ·  Socket.IO /rt  ·  /uploads               │
+│  auth + RBAC guards · Zod validation · transactions · audit log · Web Push     │
+│  serves apps/mini-app/dist at / (same origin as /api)                         │
+└───┬───────────────────────┬────────────────────────┬──────────────────────────┘
+    │ HTTPS/JSON             │ HTTPS/JSON             │ HTTPS/JSON + WS
+    ▼                        ▼                        ▼
+┌──────────────┐   ┌────────────────────┐   ┌──────────────────┐
+│ telegram bot │   │ Telegram Mini App  │   │    admin-web     │
+│ grammY       │   │ customer + staff   │   │ OWNER (Next.js)  │
+│ all roles    │   │ Vite React         │   │                  │
+└──────────────┘   └────────────────────┘   └──────────────────┘
 ```
 
 - **One business logic layer.** Every client talks to the same API and shares the
-  same typed contracts (`packages/shared-types`, `packages/validation`) and the
-  same API client (`packages/api-client`). No client has its own database.
+  same typed contracts (`packages/shared-types`, `packages/validation`). No
+  client has its own database.
+- **Customer self-service** goes through narrowly scoped `/api/public/*` routes;
+  writes are attributed to a dedicated seeded `bot` actor, never a real waiter.
 - **Money is always integer UZS.** Quantities are decimal strings (`"0.750"`).
 - **Historical snapshots are immutable.** Order items snapshot product name,
   unit and unit price; orders snapshot the service-fee amount, per-person rate
@@ -36,16 +40,20 @@ Ikki Do‘st choyxonasi — one backend, one PostgreSQL database, five clients.
 
 ```
 apps/
-  api/              NestJS backend, Prisma schema + migrations + seed
+  api/              NestJS backend, Prisma schema + migrations + seed,
+                    static hosting for the Mini App and /uploads
   admin-web/        Next.js owner panel (15 sections)
-  chef-web/         Next.js kitchen screen (iPhone Safari, PWA + Web Push)
-  mobile/           Expo SDK 51 router app (OWNER + WAITER)
+  bot/              grammY Telegram bot (thin REST client, all roles)
+  mini-app/         Telegram Mini App — customer self-service + staff screens
+legacy/
+  mobile/           Expo React Native app (OWNER + WAITER)
+  chef-web/         Next.js kitchen screen
   cashier-desktop/  Vite React UI wrapped in Tauri 2
 packages/
   shared-types/     DTOs, enums, realtime event names
   validation/       Zod request schemas (shared by API and clients)
   utils/            money math, service fee, formatting
-  api-client/       typed fetch client used by every frontend
+  api-client/       typed fetch client used by frontends
   design-system/    shared tokens / Tailwind preset
 docs/               architecture, database, API, deployment, testing
 ```
@@ -53,7 +61,8 @@ docs/               architecture, database, API, deployment, testing
 npm workspaces. Build order is not enforced by npm, so every package either
 consumes TypeScript sources directly (Next.js `transpilePackages`, Metro) or is
 built before its dependents (`shared-types` → `validation` → `utils` →
-`api-client` for the API).
+`api-client` for the API). The Mini App is built separately and served by the
+API as static files.
 
 ## 3. Backend modules
 
@@ -72,6 +81,7 @@ built before its dependents (`shared-types` → `validation` → `utils` →
 | `notifications` | per-user notifications, Web Push subscriptions |
 | `audit` | audit log read API (OWNER) |
 | `realtime` | authenticated Socket.IO gateway + role-aware emitter |
+| `public` | unauthenticated but narrow customer endpoints (`/public/menu`, `/public/rooms`, `/public/orders`, `/public/call-waiter`), throttled |
 | `storage` | file storage abstraction for product images |
 
 Each domain service owns its transactions. Money-changing operations
@@ -100,9 +110,8 @@ GET  /api/auth/me         → current user
 | Capability | OWNER | WAITER | CHEF | CASHIER |
 |---|---|---|---|---|
 | Admin panel (`admin-web`) | ✅ | — | — | — |
-| Kitchen screen (`chef-web`) | ✅ | — | ✅ | — |
-| Mobile app (`mobile`) | ✅ | ✅ | — | — |
-| Cashier app (`cashier-desktop`) | ✅ | — | — | ✅ |
+| Mini App staff screens | ✅ | ✅ rooms | ✅ kitchen | ✅ rooms |
+| Telegram bot | ✅ | ✅ | ✅ kitchen | ✅ rooms/delivery |
 | Rooms / sessions read | ✅ | ✅ | — | ✅ |
 | Create dine-in/delivery orders, add items | ✅ | ✅ | — | — |
 | Kitchen item status | ✅ | ✅ (serve) | ✅ | — |
@@ -110,6 +119,7 @@ GET  /api/auth/me         → current user
 | Close room session | ✅ | — | — | ✅ |
 | Close session with debt | ✅ + reason + audit | — | — | — |
 | Catalog / employees / settings / reports | ✅ | read menu | — | read menu |
+| Public self-service ordering | anyone via `/api/public/*` (throttled) | | | |
 
 Waiter delivery creation additionally requires the per-user
 `canCreateDelivery` flag (OWNER bypasses it).
@@ -188,25 +198,35 @@ fallback** if the socket drops (important on unstable mobile networks).
 
 ## 7. Frontend architecture
 
-- All clients share `@ikki-dost/api-client` (fetch, bearer injection, typed
-  errors) and `@ikki-dost/shared-types`.
-- TanStack Query owns server state; Zustand owns local session/UI state.
-- admin-web / chef-web: Next.js App Router, Tailwind, shared design tokens.
-- chef-web is a PWA (manifest + service worker) with Web Push; optimised for
-  iPhone Safari safe areas and large touch targets.
-- mobile: Expo Router file routes, SecureStore-persisted JWT session,
-  Zustand + TanStack Query, Socket.IO realtime. API base URL is configurable
-  (`EXPO_PUBLIC_API_URL`); Android emulator defaults to `10.0.2.2:3000`.
-- cashier-desktop: the same React UI runs in a browser during development and
-  inside Tauri 2 in production; Tauri only provides the desktop shell.
+- admin-web: Next.js App Router, Tailwind, shared design tokens.
+- **Mini App** (`apps/mini-app`): Vite + React 18 + Tailwind + lucide-react.
+  Built to `dist/` and served by the API at `/` (same origin → `/api` and
+  `/uploads` work without CORS). Loads `telegram-web-app.js`, uses Telegram
+  haptics/theme, and exposes:
+  - customer mode: menu, cart, room/delivery choice, people count + fee preview,
+    per-item kitchen notes, order tracker (5 s polling), expandable e-receipt,
+    call-waiter modal;
+  - staff mode: login modal, kitchen queue, waiter room list, owner dashboard.
+- **Bot** (`apps/bot`): grammY long-polling client. JSON-file session store
+  (`apps/bot/data/sessions.json`, gitignored) holds JWT pairs per Telegram chat.
+  Inline keyboards map to the REST API; a background poller forwards
+  notifications. All business rules stay in the API.
+- `packages/api-client` remains for admin-web and legacy apps; the bot and Mini
+  App use their own small typed fetch wrappers to keep their runtimes free of
+  workspace-package build issues.
 
 ## 8. Security
 
-- Helmet, strict CORS allow-list (`CORS_ORIGINS`), global exception filter.
+- Helmet with a CSP tuned for Telegram: `script-src 'self' https://telegram.org`,
+  `frame-ancestors` allows Telegram Web; `object-src 'none'`.
+- Strict CORS allow-list (`CORS_ORIGINS`), global exception filter.
+- Public customer endpoints are `@Public()` but throttled (orders 20/min,
+  call-waiter 6/min) and validated with the same Zod schemas as staff routes.
 - Zod validation at the API boundary; Prisma parameterises all SQL.
 - Passwords hashed with argon2; refresh tokens stored hashed.
 - Upload validation: MIME allow-list, 5 MB limit, random filenames, sharp
   re-encoding to WebP (prevents polyglot/script payloads).
 - Audit log for destructive/financial actions (price changes, reversals,
-  session close override, cancellations).
+  session close override, cancellations). Self-service orders are attributed to
+  the dedicated `bot` actor.
 - Secrets never committed; `.env` is gitignored, `.env.example` documents keys.

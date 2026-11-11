@@ -84,8 +84,13 @@ async function main() {
 
   const running = await isPortOpen(PG_PORT);
   if (!running) {
-    console.log('[db-ensure] Initializing embedded PostgreSQL (first run downloads binaries)...');
-    await pg.initialise();
+    const initialized = fs.existsSync(path.join(PG_DIR, 'PG_VERSION'));
+    if (!initialized) {
+      console.log('[db-ensure] Initializing embedded PostgreSQL (first run downloads binaries)...');
+      process.env.LC_ALL = 'C.UTF-8';
+      process.env.LANG = 'C.UTF-8';
+      await pg.initialise();
+    }
     console.log('[db-ensure] Starting PostgreSQL in background...');
     const child = spawn(process.execPath, [path.join(__dirname, 'db-start.js')], {
       detached: true,

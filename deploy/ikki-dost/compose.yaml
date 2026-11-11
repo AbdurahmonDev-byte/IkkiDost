@@ -1,0 +1,98 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: ikki-dost-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ikki_dost
+      POSTGRES_USER: ikki_dost
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in deploy/ikki-dost/.env}
+    volumes:
+      - ikki_dost_db:/var/lib/postgresql/data
+    networks:
+      - private
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ikki_dost -d ikki_dost"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  api:
+    build:
+      context: ../..
+      dockerfile: Dockerfile.deploy
+    container_name: ikki-dost-api
+    restart: unless-stopped
+    working_dir: /app
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://ikki_dost:${POSTGRES_PASSWORD}@ikki-dost-db:5432/ikki_dost?schema=public
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:?Set JWT_ACCESS_SECRET in deploy/ikki-dost/.env}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?Set JWT_REFRESH_SECRET in deploy/ikki-dost/.env}
+      JWT_ACCESS_TTL: 15m
+      JWT_REFRESH_TTL: 30d
+      PORT: 3000
+      API_PREFIX: api
+      CORS_ORIGINS: https://ikkidost.abitcore.uz
+      UPLOAD_DIR: /app/apps/api/uploads
+      MINI_APP_DIR: /app/apps/mini-app/dist
+      MAX_IMAGE_SIZE_BYTES: 5242880
+      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
+      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
+      VAPID_SUBJECT: ${VAPID_SUBJECT:-mailto:admin@ikkidost.abitcore.uz}
+      SEED_OWNER_PASSWORD: ${SEED_OWNER_PASSWORD:?Set SEED_OWNER_PASSWORD in deploy/ikki-dost/.env}
+      SEED_PASSWORD: ${SEED_PASSWORD:?Set SEED_PASSWORD in deploy/ikki-dost/.env}
+      SEED_BOT_PASSWORD: ${SEED_BOT_PASSWORD:-}
+    volumes:
+      - ikki_dost_uploads:/app/apps/api/uploads
+    command: >-
+      sh -c 'npx prisma migrate deploy --schema apps/api/prisma/schema.prisma
+      && cd apps/api && node dist/main.js'
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - private
+      - deploy_default
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 4s
+      retries: 12
+      start_period: 30s
+
+  bot:
+    profiles: ["bot"]
+    build:
+      context: ../..
+      dockerfile: Dockerfile.deploy
+    container_name: ikki-dost-bot
+    restart: unless-stopped
+    working_dir: /app/apps/bot
+    environment:
+      NODE_ENV: production
+      BOT_TOKEN: ${BOT_TOKEN:-}
+      API_URL: http://ikki-dost-api:3000/api
+      BOT_NOTIFY_INTERVAL_MS: ${BOT_NOTIFY_INTERVAL_MS:-10000}
+      BOT_STORE_PATH: /app/apps/bot/data/sessions.json
+      MINI_APP_URL: https://ikkidost.abitcore.uz
+    volumes:
+      - ikki_dost_bot_data:/app/apps/bot/data
+    command: ["node", "dist/index.js"]
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - private
+      - deploy_default
+
+volumes:
+  ikki_dost_db:
+  ikki_dost_uploads:
+  ikki_dost_bot_data:
+
+networks:
+  private:
+    internal: true
+  deploy_default:
+    external: true

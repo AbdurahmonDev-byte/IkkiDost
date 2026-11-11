@@ -19,15 +19,51 @@ async function bootstrap() {
     .filter(Boolean);
   app.enableCors({ origin: origins, credentials: true });
 
-  app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
+  app.use(
+    helmet({
+      crossOriginResourcePolicy: { policy: 'cross-origin' },
+      contentSecurityPolicy: {
+        directives: {
+          defaultSrc: ["'self'"],
+          // Telegram's Mini App SDK is loaded from telegram.org.
+          scriptSrc: ["'self'", 'https://telegram.org'],
+          styleSrc: ["'self'", "'unsafe-inline'"],
+          imgSrc: ["'self'", 'data:', 'blob:'],
+          connectSrc: ["'self'"],
+          // Allow the Mini App to run inside Telegram Web (iframe).
+          frameAncestors: ["'self'", 'https://web.telegram.org', 'https://*.telegram.org'],
+        },
+      },
+    }),
+  );
   app.useGlobalFilters(new HttpExceptionFilter());
 
   // Serve uploaded product images.
   // eslint-disable-next-line @typescript-eslint/no-var-requires
   const express = require('express');
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const nodeFs = require('fs');
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
   const path = require('path');
   const uploadDir = path.resolve(process.cwd(), process.env.UPLOAD_DIR || 'uploads');
   app.use('/uploads', express.static(uploadDir, { maxAge: '7d', fallthrough: true }));
+
+  // Serve the Telegram Mini App (customer + staff web UI) from the same origin
+  // as the API. Built by `npm run build -w @ikki-dost/mini-app`.
+  const miniAppDir = path.resolve(process.cwd(), process.env.MINI_APP_DIR || '../mini-app/dist');
+  const miniAppIndex = path.join(miniAppDir, 'index.html');
+  if (nodeFs.existsSync(miniAppIndex)) {
+    app.use(express.static(miniAppDir, { maxAge: '1h', index: 'index.html' }));
+    app.use((req: { method: string; path: string }, res: { sendFile: (file: string) => void }, next: () => void) => {
+      if (req.method !== 'GET' || req.path.startsWith(`/${apiPrefix}`) || req.path.startsWith('/uploads')) {
+        return next();
+      }
+      res.sendFile(miniAppIndex);
+    });
+    logger.log(`Mini App served from ${miniAppDir}`);
+  } else {
+    logger.warn(`Mini App build not found at ${miniAppDir}; serving API only`);
+  }
 
   const config = new DocumentBuilder()
     .setTitle("Ikki Do'st API")

@@ -7,12 +7,11 @@
 | `npm run typecheck` | strict TypeScript across all 9 workspaces |
 | `cd apps/api && npx vitest run` | backend integration suite against real PostgreSQL |
 | `npm run build -w @ikki-dost/api` | NestJS production build |
+| `npm run build -w @ikki-dost/bot` | bot TypeScript build |
+| `npm run build -w @ikki-dost/mini-app` | `tsc` + Vite production bundle |
 | `npm run build -w @ikki-dost/admin-web` | Next.js production build + route prerender |
-| `npm run build -w @ikki-dost/chef-web` | Next.js production build |
-| `npm run build -w @ikki-dost/cashier-desktop` | `tsc` + Vite production bundle |
-| `cd apps/mobile && npx tsc --noEmit` | Expo/React Native typecheck |
-| `cd apps/mobile && npx expo export --platform android --no-bytecode` | Metro bundle + asset graph |
-| `cd apps/cashier-desktop && npx tauri build` | desktop binary + OS packages |
+| `cd legacy/mobile && npx tsc --noEmit` | legacy Expo/React Native typecheck |
+| `cd legacy/cashier-desktop && npx tauri build` | legacy desktop binary + OS packages |
 
 ### Backend test environment
 
@@ -35,22 +34,26 @@ Test credentials (seeded):
 | `ofitsiant` | `password123` | WAITER |
 | `oshpaz` | `password123` | CHEF |
 | `kassir` | `password123` | CASHIER |
+| `bot` | `SEED_BOT_PASSWORD` (falls back to `SEED_PASSWORD`, dev `password123`) | WAITER, self-service actor — do not log in with it |
 
-## 2. Current results (2026-11-09)
+## 2. Current results (2026-11-11)
 
-- Backend integration suite: **45/45 passing**, 1 file, ~2.3 s of test time.
-- `npm run typecheck`: **passing** for API, admin-web, chef-web, cashier,
-  mobile, and all shared packages.
-- admin-web production build: **passing** (20 routes).
-- chef-web production build: **passing**.
-- cashier-desktop `tsc` + Vite build: **passing**.
-- mobile TypeScript: **passing**; Metro Android export: **passing**
-  (926 modules, 1.57 MB bundle, 10 assets).
-- Tauri Linux: **binary + `.deb` + `.rpm` produced**. AppImage packaging failed
-  while downloading `linuxdeploy-plugin-appimage` (environment network
-  restriction, not an app defect).
+- Backend integration suite: **45/45 passing**, 1 file, ~2.6 s of test time.
+- `npm run typecheck`: **passing** for API, bot, mini-app, admin-web and all
+  shared packages.
+- API / bot / mini-app production builds: **passing**.
+- Mini App served by the API: `/` → 200 HTML, `/api/health` → 200,
+  unknown `/api/*` → 404, SPA fallback → 200.
+- Public API smoke test: self-service order created with the seeded `bot` actor
+  (`Mijoz (Self-service)`), fee snapshot correct; `call-waiter` → success.
+- admin-web production build: **passing** (20 routes, legacy result retained).
+- Tauri Linux: **binary + `.deb` + `.rpm` produced** (legacy app). AppImage
+  packaging failed while downloading `linuxdeploy-plugin-appimage`
+  (environment network restriction, not an app defect).
 - Android APK/AAB: **not built** — no Android SDK in this environment.
 - Windows `.exe`/`.msi`: **not built** — must be produced on Windows (`npx tauri build`).
+- Telegram bot: build + command registration verified; **live polling not run**
+  (no `BOT_TOKEN` available here).
 
 ## 3. What the backend suite covers
 
@@ -96,7 +99,33 @@ expenses/profit, audit entries.
 - CSV export downloads a file; date-range report renders.
 - Logout clears the session.
 
-### Chef app (CHEF, iPhone Safari)
+### Telegram Mini App (customer + staff)
+
+- Open `https://<domain>/` in Telegram (bot webApp button) and in a normal mobile
+  browser; layout adapts and the menu loads from `/api/public/menu`.
+- Pick a room, add items, set KG quantity, add a per-item note, set people
+  count → fee preview equals `people × 4 000`.
+- Submit a dine-in order → tracker shows status; expand the receipt and compare
+  items/fee/total with the kitchen ticket.
+- Submit a delivery order without name/phone/address → validation blocks it.
+- “Choy keltiring” creates a waiter notification; repeat taps are throttled.
+- Staff login as `ofitsiant` shows rooms; as `oshpaz` shows the kitchen queue;
+  as `owner` shows the dashboard. Logout works.
+- Kill the Mini App session and reopen: no stale active order is shown after it
+  is completed/cancelled.
+
+### Telegram bot (staff)
+
+- `/start` shows the role home menu with a “Universal Mini App” button.
+- `/login` asks for username/password; the password message is deleted.
+- `/rooms` → open session → add order → mark served; `/kitchen` → PREPARING →
+  READY; `/delivery` → advance status; `/newdel` → name/phone/address chain.
+- `/dash` is OWNER-only; other roles get a clear denial.
+- `/logout` clears the chat session; `/start` after logout is a guest flow.
+- A background notification (new order / ready item / waiter call) arrives in
+  the staff chat within the poll interval.
+
+### Legacy chef app (CHEF, iPhone Safari)
 
 - Login, kitchen queue shows new orders in realtime.
 - Mark an item PREPARING then READY; waiter sees `item:ready` notification.
@@ -104,7 +133,7 @@ expenses/profit, audit entries.
   browser is backgrounded (VAPID configured).
 - Safe-area layout is correct on a notched iPhone; buttons are large enough.
 
-### Mobile app (OWNER/WAITER)
+### Legacy mobile app (OWNER/WAITER)
 
 - Login as `ofitsiant`; CHEF/CASHIER login is rejected with an explanatory
   message.
@@ -119,7 +148,7 @@ expenses/profit, audit entries.
 - Kill and reopen the app: session is restored from SecureStore.
 - Toggle airplane mode: errors are shown without crashing; queries recover.
 
-### Cashier desktop (CASHIER/OWNER)
+### Legacy cashier desktop (CASHIER/OWNER)
 
 - Bills pane lists open rooms/orders; selecting one shows items and balance.
 - Partial payment then remaining payment; methods and notes saved.

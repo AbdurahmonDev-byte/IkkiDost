@@ -7,11 +7,16 @@ One backend, one PostgreSQL database, multiple connected apps.
 
 ```
 apps/
-  api/              NestJS + Prisma + PostgreSQL backend (REST + Socket.IO)
+  api/              NestJS + Prisma + PostgreSQL backend (REST + Socket.IO),
+                    also serves the built Mini App and /uploads
   admin-web/        Next.js owner admin panel
-  chef-web/         Next.js chef kitchen app (iPhone-Safari optimized)
-  mobile/           Expo React Native app (OWNER + WAITER)
-  cashier-desktop/  Tauri 2 + React + Vite cashier app (Windows)
+  bot/              grammY Telegram bot (thin REST client, all roles)
+  mini-app/         Telegram Mini App: Vite + React + Tailwind
+                    (customer self-service + staff screens)
+legacy/
+  mobile/           Expo React Native app (superseded by bot + Mini App)
+  chef-web/         Next.js kitchen app (superseded by Mini App)
+  cashier-desktop/  Tauri 2 cashier app (superseded by Mini App)
 packages/
   shared-types/     Shared TS types & enums (single source of truth for contracts)
   validation/       Shared Zod schemas
@@ -27,7 +32,7 @@ docs/               Architecture, database, API, deployment, testing docs
 - `npm run db:start` — start embedded dev PostgreSQL (no system install needed)
 - `npm run db:migrate` — run Prisma migrations
 - `npm run db:seed` — seed initial data (roles, owner, categories, products, service fee config)
-- `npm run dev:api` / `dev:admin` / `dev:chef` / `dev:cashier` / `dev:mobile`
+- `npm run dev:api` / `dev:admin` / `dev:bot` / `dev:mini-app`
 - `npm run test:api` — backend unit + integration tests
 - `npm run typecheck` — typecheck all workspaces
 

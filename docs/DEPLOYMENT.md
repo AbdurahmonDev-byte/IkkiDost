@@ -1,11 +1,12 @@
 # DEPLOYMENT
 
 Target for a small restaurant: one Linux server (or VPS) running the API,
-PostgreSQL, and the two Next.js web apps; the Android app and the cashier
-desktop app connect over the network.
+PostgreSQL, the Telegram bot and the Mini App; the owner admin panel can run on
+the same host. The bot and Mini App need no per-device installs.
 
 > Everything below was exercised locally except the items marked
-> “not built in this environment” (Android APK, Windows `.exe`, Tauri AppImage).
+> “not built in this environment” (Android APK, Windows `.exe`, Tauri AppImage,
+> Docker image build, live Telegram polling without a token).
 
 ## 1. Prerequisites
 
@@ -16,8 +17,9 @@ desktop app connect over the network.
 | npm | 10+ (workspaces) |
 | Reverse proxy | nginx (or Caddy) with TLS |
 | OS | Linux x86_64 recommended for the API/web apps |
+| Docker (optional) | 24+ with Compose v2 for the bundled deploy files |
 
-Optional build tooling:
+Optional legacy build tooling (only for apps under `legacy/`):
 
 - Android Studio / Android SDK **or** an EAS account for the mobile app.
 - Windows 10/11 + MSVC + WebView2 for the cashier `.exe`/`.msi`.
@@ -35,13 +37,27 @@ JWT_ACCESS_TTL="15m"
 JWT_REFRESH_TTL="30d"
 PORT=3000
 API_PREFIX="api"
-CORS_ORIGINS="https://admin.example.uz,https://chef.example.uz"
+CORS_ORIGINS="https://admin.example.uz"
 UPLOAD_DIR="uploads"
+MINI_APP_DIR="../mini-app/dist"
 MAX_IMAGE_SIZE_BYTES=5242880
 VAPID_PUBLIC_KEY="<generated>"
 VAPID_PRIVATE_KEY="<generated>"
 VAPID_SUBJECT="mailto:admin@example.uz"
 ```
+
+Bot settings live in `apps/bot/.env` (or the Compose environment):
+
+```ini
+BOT_TOKEN="123456789:ABCdefGHIjklMNOpqrsTUVwxyz"
+API_URL="https://ikkidost.abitcore.uz/api"
+MINI_APP_URL="https://ikkidost.abitcore.uz"
+BOT_NOTIFY_INTERVAL_MS=10000
+BOT_STORE_PATH="data/sessions.json"
+```
+
+`MINI_APP_URL` must be the public HTTPS origin of the API (same domain that
+serves `/`) because Telegram requires HTTPS for `webApp` buttons.
 
 Generate secrets:
 
@@ -59,18 +75,19 @@ local development only.
 git clone <repo> /opt/ikki-dost
 cd /opt/ikki-dost
 npm ci
-npm run build -w @ikki-dost/shared-types   # if a package needs JS output
+npx prisma generate --schema apps/api/prisma/schema.prisma
 npm run build -w @ikki-dost/api
-npm run build -w @ikki-dost/admin-web
-npm run build -w @ikki-dost/chef-web
-npm run build -w @ikki-dost/cashier-desktop   # static UI in apps/cashier-desktop/dist
+npm run build -w @ikki-dost/bot
+npm run build -w @ikki-dost/mini-app
+npm run build -w @ikki-dost/admin-web      # optional owner panel
 ```
 
-The API compiles to `apps/api/dist`; the web apps to `.next/`.
+The API compiles to `apps/api/dist`; the Mini App to `apps/mini-app/dist`; the
+bot to `apps/bot/dist`. The API serves the Mini App from `/` when `MINI_APP_DIR`
+(default `../mini-app/dist`, relative to `apps/api`) contains `index.html`.
 
-> Next.js/webpack and Metro resolve the TypeScript sources in `packages/`
-> directly. Keep `transpilePackages` in the Next configs and the extension
-> alias in `apps/mobile/metro.config.js` when editing build configs.
+> Next.js resolves the TypeScript sources in `packages/` directly. Keep
+> `transpilePackages` in the Next config when editing the admin build.
 
 ## 4. Database
 
@@ -119,18 +136,15 @@ sudo systemctl status ikki-api
 
 Alternative: `pm2 start apps/api/dist/main.js --name ikki-api --update-env`.
 
-## 6. Run the web apps
+## 6. Run the admin panel (optional)
 
 ```bash
 # admin (owner) — port 3001
 npm run start -w @ikki-dost/admin-web
-
-# chef (kitchen) — port 3002
-npm run start -w @ikki-dost/chef-web
 ```
 
-Two more systemd units (or PM2 processes) with the same `EnvironmentFile` and
-`ExecStart=/usr/bin/npm run start -w @ikki-dost/admin-web` are sufficient.
+One systemd unit (or PM2 process) with the same `EnvironmentFile` and
+`ExecStart=/usr/bin/npm run start -w @ikki-dost/admin-web` is sufficient.
 
 ### nginx
 
@@ -150,12 +164,10 @@ server {
     }
 }
 
-# Chef (same shape, port 3002, server_name chef.example.uz)
-
-# API — must proxy WebSocket upgrades for /rt and allow 5 MB uploads
+# API + Mini App — must proxy WebSocket upgrades for /rt and allow 5 MB uploads
 server {
     listen 443 ssl http2;
-    server_name api.example.uz;
+    server_name ikkidost.abitcore.uz;
     client_max_body_size 6m;
 
     location / {
@@ -171,8 +183,8 @@ server {
 }
 ```
 
-Set `CORS_ORIGINS` to the exact web origins. If the panels and API share a
-domain, put `/api`, `/uploads`, `/rt` behind one server block instead.
+Set `CORS_ORIGINS` to the exact web origins. The Mini App is same-origin with
+the API, so it needs no extra CORS entry.
 
 ## 7. Uploads
 
@@ -184,12 +196,91 @@ domain, put `/api`, `/uploads`, `/rt` behind one server block instead.
 - Product images are re-encoded to WebP with generated thumbnails; only the
   upload directory needs persistence.
 
-## 8. Mobile app (Expo / Android)
+## 8. Mini App (customer + staff web UI)
+
+Build and serve:
+
+```bash
+npm run build -w @ikki-dost/mini-app
+# served automatically by the API at https://<domain>/ from apps/mini-app/dist
+```
+
+- `MINI_APP_DIR` overrides the build location (default `../mini-app/dist`
+  relative to the API working directory).
+- The API keeps `/api`, `/api/docs`, `/uploads` and `/rt` intact; every other
+  GET falls back to `index.html` for client-side routing.
+- Helmet CSP allows `https://telegram.org` scripts and Telegram Web iframes. If
+  you add external assets, extend `scriptSrc`/`imgSrc` in `apps/api/src/main.ts`.
+- Customer flow: menu → room or delivery → per-item kitchen notes → cart with
+  people/fee preview → submit → 5 s status tracker + e-receipt.
+- Staff flow: “Xodim” login with the same credentials as the API role screens.
+
+Public endpoints used by the Mini App are documented in `docs/API.md` and are
+throttled at the API level.
+
+## 9. Telegram bot
+
+1. Create a bot with @BotFather and copy the token.
+2. Set `BOT_TOKEN`, `API_URL`, and `MINI_APP_URL` in `apps/bot/.env` (or the
+   Compose environment). Never commit the token.
+3. Start it:
+
+```bash
+npm run build -w @ikki-dost/bot
+cd apps/bot && npm start
+```
+
+or with the Compose profile:
+
+```bash
+docker compose -f deploy/ikki-dost/compose.yaml --env-file deploy/ikki-dost/.env \
+  --profile bot up -d bot
+```
+
+4. In @BotFather, set the Mini App / menu button to `MINI_APP_URL`
+   (`/setmenubutton` or Bot Settings → Menu Button). The bot also sends a
+   `webApp` button in its home keyboard.
+5. Staff log in once per Telegram account with `/login`; sessions persist in
+   `apps/bot/data/sessions.json` (gitignored, mount a volume in production).
+
+The bot uses long polling — no inbound port or webhook is required. Without a
+valid token it exits with a clear error; a token cannot be generated locally.
+
+## 10. Docker Compose (bundled deploy)
+
+`deploy/ikki-dost/` contains:
+
+- `compose.yaml` — `api` (also serves the Mini App), `db`, and an optional
+  `bot` profile;
+- `nginx.conf` / `nginx-http.conf` — TLS and ACME bootstrap for
+  `ikkidost.abitcore.uz`;
+- `.env.example`, `set-bot-token.sh`, `README.md`.
+
+```bash
+cp deploy/ikki-dost/.env.example deploy/ikki-dost/.env
+# fill in POSTGRES_PASSWORD, JWT secrets, SEED_* passwords
+docker compose -f deploy/ikki-dost/compose.yaml --env-file deploy/ikki-dost/.env \
+  up -d --build api db
+docker compose -f deploy/ikki-dost/compose.yaml --env-file deploy/ikki-dost/.env \
+  exec api sh -c 'cd apps/api && node --experimental-strip-types scripts/seed.ts'
+```
+
+`Dockerfile.deploy` builds the API, bot and Mini App; PostgreSQL data and
+uploads use named volumes. The image was reviewed but not built in this
+environment (no Docker daemon).
+
+## 11. Legacy clients
+
+The original `chef-web`, `mobile` and `cashier-desktop` apps live under
+`legacy/`. They still build with their original commands but are superseded by
+the bot + Mini App and are not part of the default deploy path.
+
+## 12. Legacy mobile app (Expo / Android)
 
 Development:
 
 ```bash
-cd apps/mobile
+cd legacy/mobile
 EXPO_PUBLIC_API_URL="http://<LAN-IP>:3000/api" npx expo start
 ```
 
@@ -200,7 +291,7 @@ EXPO_PUBLIC_API_URL="http://<LAN-IP>:3000/api" npx expo start
 Production build (requires Android SDK or EAS):
 
 ```bash
-cd apps/mobile
+cd legacy/mobile
 npx eas-cli login
 npx eas-cli build --platform android --profile production
 # → AAB for Play Store, APK for sideloading
@@ -217,19 +308,19 @@ cd android && ./gradlew assembleRelease
 was produced. The JavaScript bundle was validated with
 `npx expo export --platform android --no-bytecode` (926 modules, 1.57 MB).
 
-## 9. Cashier desktop (Tauri 2)
+## 13. Legacy cashier desktop (Tauri 2)
 
 Development:
 
 ```bash
-npm run dev:cashier            # browser UI at http://localhost:5173
+npm run dev:cashier            # legacy workspace if still wired
 npx tauri dev                  # inside a desktop window
 ```
 
-Linux build (verified here):
+Linux build (verified before the move):
 
 ```bash
-cd apps/cashier-desktop
+cd legacy/cashier-desktop
 npx tauri build
 ```
 
@@ -247,7 +338,7 @@ blocked in this environment. It is a packaging-only failure; the binary and
 Windows `.exe` / `.msi` (must be built on Windows, not cross-compiled here):
 
 ```powershell
-cd apps\cashier-desktop
+cd legacy\cashier-desktop
 npm install
 npx tauri build
 # → src-tauri\target\release\bundle\nsis\...-setup.exe
@@ -258,7 +349,7 @@ Install WebView2 (bundled by the Windows installer) and point the app at the
 production API before building (`EXPO`-style env does not apply; edit the
 cashier app's API base URL / runtime setting).
 
-## 10. First-run checklist
+## 14. First-run checklist
 
 1. Apply migrations and seed.
 2. Log in to admin-web as `owner`; immediately change the owner password and
@@ -267,28 +358,32 @@ cashier app's API base URL / runtime setting).
    applicability.
 4. Upload product images, confirm the 14 seeded products and prices.
 5. Configure rooms.
-6. Install the chef web app on the kitchen iPhone (“Add to Home Screen”),
-   grant notifications, and test a Web Push.
-7. Install the cashier app on the billing PC and run a test payment + reversal.
-8. Install the Android app on waiter phones (point at the public API URL).
-9. Verify backups and restore on a staging database.
+6. Create the Telegram bot, set `BOT_TOKEN` + `MINI_APP_URL`, and check the
+   Mini App button on a phone and on Telegram Desktop/Web.
+7. Run a customer test order (dine-in + delivery), verify the kitchen note,
+   tracker and e-receipt.
+8. Verify staff bot flows: `/login`, `/rooms`, `/kitchen`, `/delivery`,
+   `/newdel`, `/dash`.
+9. Test a cashier payment + reversal and a room close with/without debt.
+10. Verify backups and restore on a staging database.
 
-## 11. Operations
+## 15. Operations
 
-- **Updates:** `git pull && npm ci && npm run build -w @ikki-dost/api && npm run build -w @ikki-dost/admin-web && npm run build -w @ikki-dost/chef-web`, then
+- **Updates:** `git pull && npm ci && npm run build -w @ikki-dost/api && npm run build -w @ikki-dost/bot && npm run build -w @ikki-dost/mini-app`, then
   `npx prisma migrate deploy` and restart services. Migrations are
   forward-only; take a backup first.
-- **Logs:** `journalctl -u ikki-api -f`; Next.js logs via PM2/systemd.
-- **Monitoring:** probe `GET /api/docs` (200) and the panel URLs; alert on 5xx
+- **Logs:** `journalctl -u ikki-api -f` and `journalctl -u ikki-bot -f`;
+  Next.js logs via PM2/systemd.
+- **Monitoring:** probe `GET /api/health` (200) and the panel URLs; alert on 5xx
   rates and disk usage (uploads + PostgreSQL).
 - **Scaling:** the API is stateless except for Socket.IO; run one instance or
   add a Socket.IO adapter (Redis) before scaling horizontally. ADR-008 assumes
   a single node initially.
 - **Security:** HTTPS everywhere, strong secrets, restricted `CORS_ORIGINS`,
   firewall the database port, keep Node/PostgreSQL patched, rotate VAPID keys
-  only with a re-subscribe plan.
+  only with a re-subscribe plan. Never expose the bot data volume or `.env`.
 
-## 12. Rollback
+## 16. Rollback
 
 1. Stop the API.
 2. Restore the pre-deploy database dump.

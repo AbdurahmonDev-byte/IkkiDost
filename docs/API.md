@@ -212,6 +212,19 @@ Changing the config never modifies existing orders.
 |---|---|---|
 | GET | `/audit-logs` | `?limit=100` |
 
+### Public / customer (no auth)
+
+Used by the Telegram Mini App. All responses are read-only except the two
+writes, which are throttled.
+
+| Method | Path | Body | Notes |
+|---|---|---|---|
+| GET | `/public/menu` | — | `{ categories, products, serviceFee }` |
+| GET | `/public/rooms` | — | active rooms + current session summary |
+| GET | `/public/orders/:id` | — | order status, items, fee, totals (for the tracker) |
+| POST | `/public/orders` | `CreateOrderInput` | dine-in or delivery; throttled 20/min; actor = seeded `bot` user |
+| POST | `/public/call-waiter` | `{ roomId, note? }` | creates a `WAITER_CALLED` notification for waiters; 6/min |
+
 ### Notifications
 
 | Method | Path | Roles | Body |
@@ -251,9 +264,9 @@ resource rather than rely on payload completeness.
 
 ## 5. Health and docs
 
+- Health: `GET /api/health` → `{ status: 'ok', … }`
 - Swagger UI: `GET /api/docs`
 - OpenAPI JSON: `GET /api/docs-json`
 - Uploaded files: `GET /uploads/…`
-
-There is no dedicated `/health` route; use `GET /api/auth/me` (401 means the
-process is up, credentials are missing) or a TCP/HTTP probe on `/api/docs`.
+- Mini App: `GET /` (the API serves `apps/mini-app/dist`; SPA fallback for
+  non-`/api` GET routes)

@@ -1,6 +1,5 @@
-import type { Bot } from 'grammy';
 import { api, SessionExpiredError } from './api.js';
-import type { Deps } from './state.js';
+import type { AppBot, Deps } from './state.js';
 import type { NotificationDto } from './types.js';
 
 function notifIcon(type: string): string {
@@ -27,7 +26,7 @@ function notifIcon(type: string): string {
   }
 }
 
-export function startNotificationPoller(deps: Deps, bot: Bot): () => void {
+export function startNotificationPoller(deps: Deps, bot: AppBot): () => void {
   const { config, store } = deps;
   let running = true;
   let timeoutId: NodeJS.Timeout | null = null;

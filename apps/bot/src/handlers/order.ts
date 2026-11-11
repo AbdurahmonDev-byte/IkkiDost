@@ -221,7 +221,7 @@ export async function renderStage(deps: Deps, ctx: Context, flow: OrderFlow, edi
 
 // ===== Wizard registration =====
 
-export function registerOrder(deps: Deps, bot: import('grammy').Bot) {
+export function registerOrder(deps: Deps, bot: import('../state.js').AppBot) {
   const { config, store, refs, flows } = deps;
 
   function getFlow(chatId: number): OrderFlow | undefined {

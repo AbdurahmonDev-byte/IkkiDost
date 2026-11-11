@@ -48,6 +48,7 @@ export const CustomerMenu: React.FC<Props> = ({
   const [editingNoteFor, setEditingNoteFor] = useState<string | null>(null);
   const [tempNote, setTempNote] = useState('');
   const [showRoomDropdown, setShowRoomDropdown] = useState(false);
+  const [showTrackerDetails, setShowTrackerDetails] = useState(false);
 
   const filteredProducts = selectedCatId
     ? products.filter((p) => p.categoryId === selectedCatId)
@@ -162,9 +163,45 @@ export const CustomerMenu: React.FC<Props> = ({
               {orderStatusLabel[activeOrder.status]}
             </span>
           </div>
-          <div className="text-xs text-stone-300">
-            Jami: <span className="font-bold text-white">{money(activeOrder.totalAmount)}</span> · {activeOrder.items.length} taom
-          </div>
+          <button
+            onClick={() => setShowTrackerDetails((v) => !v)}
+            className="flex w-full items-center justify-between text-xs text-stone-300 hover:text-white transition-colors"
+          >
+            <span>
+              Jami: <span className="font-bold text-white">{money(activeOrder.totalAmount)}</span> · {activeOrder.items.length} taom
+            </span>
+            <ChevronDown
+              className={`h-4 w-4 transition-transform ${showTrackerDetails ? 'rotate-180' : ''}`}
+            />
+          </button>
+
+          {showTrackerDetails && (
+            <div className="rounded-2xl bg-black/20 p-3 text-xs space-y-1.5 border border-white/10">
+              {activeOrder.items
+                .filter((i) => i.status !== 'CANCELLED')
+                .map((i) => (
+                  <div key={i.id} className="flex justify-between gap-2">
+                    <span className="text-stone-300">
+                      {i.productName} × {qty(i.quantity, i.productUnit)}
+                    </span>
+                    <span className="font-semibold text-white">{money(i.lineTotal)}</span>
+                  </div>
+                ))}
+              {(activeOrder.serviceFeeAmount ?? 0) > 0 && (
+                <div className="flex justify-between gap-2 pt-1 border-t border-white/10">
+                  <span className="text-stone-400">Xizmat haqi</span>
+                  <span className="text-stone-200">{money(activeOrder.serviceFeeAmount!)}</span>
+                </div>
+              )}
+              <div className="flex justify-between gap-2 pt-1 border-t border-white/10">
+                <span className="text-stone-400">JAMI</span>
+                <span className="font-black text-white">{money(activeOrder.totalAmount)}</span>
+              </div>
+              <p className="pt-1 text-[10px] text-stone-400">
+                To‘lov kassada amalga oshiriladi. Bu sizning elektron chekingiz.
+              </p>
+            </div>
+          )}
         </div>
       )}
 

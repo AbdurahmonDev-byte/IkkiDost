@@ -68,3 +68,13 @@
   - Notifications are delivered via a non-intrusive background poller.
   - Plain-text passwords sent during `/login` are deleted immediately from the chat.
 - **Consequences:** All staff members can interact with the teahouse ecosystem from any device without installing specialized builds. Server-side audit and security remain strictly intact.
+
+## ADR-017: Customer self-service via Telegram Mini App
+- **Context:** Guests should be able to order to their room or request home delivery, leave a kitchen note, call a waiter and see a receipt without installing anything. Staff also need one UI that works on any device.
+- **Decision:** Build `apps/mini-app` (Vite + React + Tailwind) as a Telegram Mini App served by the API at `/` on the same origin as `/api`. The bot links to it with a `webApp` button (`MINI_APP_URL`); the Mini App reads Telegram user data via `telegram-web-app.js` for attribution.
+  - Customer endpoints are public and narrowly scoped: `GET /api/public/menu`, `GET /api/public/rooms`, `GET /api/public/orders/:id`, `POST /api/public/orders`, `POST /api/public/call-waiter`.
+  - Public writes are throttled (orders 20/min, call-waiter 6/min).
+  - Self-service orders are attributed to a dedicated seeded user `bot` (`Mijoz (Self-service)`), never to a real waiter, keeping audit honest.
+  - Notes are attached per order item and reach the kitchen; order totals and service fee are still computed only by the backend.
+  - Helmet CSP allows `https://telegram.org` scripts and Telegram iframe embedding (`frame-ancestors`).
+- **Consequences:** No separate customer app and no duplicated business logic. The bot remains a thin REST client; the Mini App shares the same API and validations. Offline ordering is not supported.

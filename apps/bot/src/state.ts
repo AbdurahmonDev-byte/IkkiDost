@@ -1,6 +1,10 @@
 import type { BotConfig } from './config.js';
 import type { SystemClient } from './api.js';
 import type { Refs, Store } from './store.js';
+import type { Bot, Context } from 'grammy';
+
+export type ChatContext = Context & { chat: NonNullable<Context['chat']> };
+export type AppBot = Bot<ChatContext>;
 
 export type Actor = 'staff' | 'customer';
 

@@ -96,6 +96,12 @@ export const CartModal: React.FC<Props> = ({
     setLoading(true);
     setError(null);
 
+    const tgUser = tg.user;
+    const tgTag = tgUser
+      ? `TG: ${[tgUser.first_name, tgUser.username ? `@${tgUser.username}` : ''].filter(Boolean).join(' ')}`
+      : '';
+    const note = [tgTag, generalNote.trim()].filter(Boolean).join(' | ') || null;
+
     try {
       const order = await api.createOrder({
         type: orderType,
@@ -106,7 +112,7 @@ export const CartModal: React.FC<Props> = ({
           quantity: String(i.quantity),
           note: i.note ? i.note.trim() : null,
         })),
-        note: generalNote.trim() || null,
+        note,
         customerName: orderType === 'DELIVERY' ? customerName.trim() : undefined,
         customerPhone: orderType === 'DELIVERY' ? customerPhone.trim() : undefined,
         address: orderType === 'DELIVERY' ? address.trim() : undefined,
