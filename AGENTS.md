@@ -42,7 +42,7 @@ docs/               Architecture, database, API, deployment, testing docs
 - Money is ALWAYS integer UZS (`Int` in Prisma). Never floating point for money.
 - No hardcoded products or service fees in frontends — everything comes from the API/DB.
 - Order items and payments store historical snapshots (product name, unit, price, fee).
-- Backend enforces all role permissions (OWNER / WAITER / CHEF / CASHIER) via guards — never rely on frontend hiding.
+- Backend enforces all role permissions (OWNER / WAITER / CHEF / CASHIER / DELIVERY) via guards — never rely on frontend hiding.
 - Rooms only, no table management.
 - Full and partial payments; a room session cannot close with an outstanding balance (owner override requires reason + audit log).
 - Never commit secrets. Use `.env` (see `.env.example`).

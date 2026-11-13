@@ -17,6 +17,7 @@ enum Role {
   WAITER
   CHEF
   CASHIER
+  DELIVERY
 }
 
 model User {
@@ -25,6 +26,12 @@ model User {
   passwordHash     String
   fullName         String
   phone            String?
+  /// Telegram numeric user id (string to stay JSON-safe). Used for passwordless staff login.
+  telegramId       String?        @unique
+  telegramUsername String?
+  firstName        String?
+  lastName         String?
+  phoneVerifiedAt  DateTime?
   role             Role
   isActive         Boolean        @default(true)
   canCreateDelivery Boolean       @default(false)
@@ -59,6 +66,27 @@ model RefreshToken {
 
   @@index([userId])
   @@index([familyId])
+}
+
+// ===== Customers (remote orders only) =====
+
+/// A registered Telegram customer. Phone ownership is verified by sharing a
+/// Telegram contact (bot) or by the API-triggered confirmation message.
+model Customer {
+  id               String    @id @default(uuid())
+  telegramId       String    @unique
+  telegramUsername String?
+  firstName        String
+  lastName         String
+  phone            String
+  phoneVerifiedAt  DateTime?
+  /// Default remote-order delivery address (text and/or map link).
+  deliveryAddress  String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  orders           Order[]
+
+  @@index([phone])
 }
 
 // ===== Rooms =====
@@ -202,6 +230,8 @@ model Order {
 
   createdById   String
   createdBy     User   @relation("OrderCreatedBy", fields: [createdById], references: [id])
+  customerId    String?
+  customer      Customer? @relation(fields: [customerId], references: [id])
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
@@ -214,6 +244,7 @@ model Order {
   @@index([roomSessionId])
   @@index([createdAt])
   @@index([roomId])
+  @@index([customerId])
 }
 
 model OrderItem {
@@ -277,6 +308,11 @@ model Delivery {
   status        DeliveryStatus @default(PENDING)
   assignedToId  String?
   assignedTo    User?          @relation("DeliveryAssignedTo", fields: [assignedToId], references: [id])
+  /// Cash the courier collected from the customer (integer UZS).
+  cashCollectedAmount Int?
+  cashCollectedAt     DateTime?
+  /// Set when the cashier/owner confirms the courier handed the cash over.
+  cashHandedOverAt    DateTime?
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
 

@@ -30,7 +30,12 @@ Ikki Do‘st choyxonasi — one backend, one PostgreSQL database, multiple clien
   same typed contracts (`packages/shared-types`, `packages/validation`). No
   client has its own database.
 - **Customer self-service** goes through narrowly scoped `/api/public/*` routes;
-  writes are attributed to a dedicated seeded `bot` actor, never a real waiter.
+  remote orders are delivery-only, require a Telegram-verified customer, and are
+  attributed to a dedicated seeded `bot` actor, never a real waiter.
+- **Staff authentication** resolves the employee role from the owner-assigned
+  Telegram ID. Mini App `initData` is signature-validated with `BOT_TOKEN`;
+  the bot uses the verified Telegram sender ID. Non-owner username/password
+  login and self-linking are rejected. OWNER also supplies an extra password.
 - **Money is always integer UZS.** Quantities are decimal strings (`"0.750"`).
 - **Historical snapshots are immutable.** Order items snapshot product name,
   unit and unit price; orders snapshot the service-fee amount, per-person rate
@@ -68,12 +73,12 @@ API as static files.
 
 | Module | Responsibility |
 |---|---|
-| `auth` | argon2 password verification, JWT access tokens (15 min), rotating refresh tokens with family reuse detection, login throttling |
-| `employees` | OWNER-only staff CRUD, `canCreateDelivery` flag |
+| `auth` | argon2 password verification, Telegram `initData` login/linking, JWT access tokens (15 min), rotating refresh tokens with family reuse detection, login throttling |
+| `employees` | OWNER-only staff CRUD, `canCreateDelivery`, Telegram identity fields |
 | `rooms` | rooms list/CRUD, open room sessions, session detail, close with debt rule |
 | `categories` / `products` | catalog CRUD, image upload (sharp → WebP + thumbnail), archive/disable |
 | `orders` | dine-in multi-order sessions, delivery orders, item CRUD, item status workflow, cancellation, history |
-| `deliveries` | delivery workflow transitions, courier assignment (OWNER) |
+| `deliveries` | delivery workflow transitions, courier claim/assignment (DELIVERY/OWNER) |
 | `payments` | full/partial payments, order- or session-level, idempotency keys, reversals |
 | `expenses` | owner expenses for profit reporting |
 | `settings` | singleton service-fee config |
@@ -81,7 +86,7 @@ API as static files.
 | `notifications` | per-user notifications, Web Push subscriptions |
 | `audit` | audit log read API (OWNER) |
 | `realtime` | authenticated Socket.IO gateway + role-aware emitter |
-| `public` | unauthenticated but narrow customer endpoints (`/public/menu`, `/public/rooms`, `/public/orders`, `/public/call-waiter`), throttled |
+| `public` | unauthenticated but narrow customer endpoints (menu, rooms, registration, phone verification, delivery orders, call-waiter), throttled; Telegram identity validated with `BOT_TOKEN` |
 | `storage` | file storage abstraction for product images |
 
 Each domain service owns its transactions. Money-changing operations
@@ -92,12 +97,22 @@ Each domain service owns its transactions. Money-changing operations
 ## 4. Authentication and authorization
 
 ```
-POST /api/auth/login      → { accessToken, refreshToken, user }
-POST /api/auth/refresh    → rotates refresh token, returns new pair
-POST /api/auth/logout     → revokes the presented refresh token
-GET  /api/auth/me         → current user
+POST /api/auth/login           → OWNER bootstrap or dedicated backend bot actor
+POST /api/auth/telegram        → Mini App auto-login from validated initData
+POST /api/auth/telegram/bot    → bot auto-login by Telegram id (bot secret)
+POST /api/auth/link-telegram   → OWNER-only legacy/bootstrap link
+POST /api/auth/refresh         → rotates refresh token, returns new pair
+POST /api/auth/logout          → revokes the presented refresh token
+GET  /api/auth/me              → current user
 ```
 
+- Telegram `initData` is HMAC-validated with `BOT_TOKEN` and rejected when older
+  than `TELEGRAM_AUTH_MAX_AGE_SECONDS` (default 86 400).
+- OWNER assigns each employee's Telegram ID in the employee manager or the
+  Mini App owner tab. The role is resolved from that ID; employee password
+  login and self-linking are rejected.
+- OWNER always supplies the extra account password (`OWNER_PASSWORD_REQUIRED`).
+- Bot-only routes require `x-bot-secret: <BOT_TOKEN>`.
 - Access token: JWT, `type: "access"`, 15-minute TTL, sent as
   `Authorization: Bearer <token>`.
 - Refresh token: opaque random string, stored **hashed** in `RefreshToken`,
@@ -107,19 +122,21 @@ GET  /api/auth/me         → current user
   namespace `/rt`; invalid sockets are disconnected immediately.
 - **The server enforces every rule**; frontends only hide unavailable actions.
 
-| Capability | OWNER | WAITER | CHEF | CASHIER |
-|---|---|---|---|---|
-| Admin panel (`admin-web`) | ✅ | — | — | — |
-| Mini App staff screens | ✅ | ✅ rooms | ✅ kitchen | ✅ rooms |
-| Telegram bot | ✅ | ✅ | ✅ kitchen | ✅ rooms/delivery |
-| Rooms / sessions read | ✅ | ✅ | — | ✅ |
-| Create dine-in/delivery orders, add items | ✅ | ✅ | — | — |
-| Kitchen item status | ✅ | ✅ (serve) | ✅ | — |
-| Payments / reversals | ✅ | — | — | ✅ |
-| Close room session | ✅ | — | — | ✅ |
-| Close session with debt | ✅ + reason + audit | — | — | — |
-| Catalog / employees / settings / reports | ✅ | read menu | — | read menu |
-| Public self-service ordering | anyone via `/api/public/*` (throttled) | | | |
+| Capability | OWNER | WAITER | CHEF | CASHIER | DELIVERY |
+|---|---|---|---|---|---|
+| Admin panel (`admin-web`) | ✅ | — | — | — | — |
+| Mini App staff screens | ✅ | ✅ rooms | ✅ kitchen | ✅ rooms + cashier | ✅ deliveries |
+| Telegram bot | ✅ | ✅ | ✅ kitchen | ✅ rooms/delivery/cashier | ✅ deliveries |
+| Rooms / sessions read | ✅ | ✅ | — | ✅ | — |
+| Create dine-in orders, add items | ✅ | ✅ | — | — | — |
+| Create delivery orders | ✅ | ✅ + flag | — | — | — |
+| Kitchen item status | ✅ | ✅ (serve) | ✅ | — | — |
+| Claim / advance delivery | ✅ | advance | — | advance | ✅ claim + hand-off |
+| Payments / reversals | ✅ | — | — | ✅ | — |
+| Close room session | ✅ | — | — | ✅ | — |
+| Close session with debt | ✅ + reason + audit | — | — | — | — |
+| Catalog / employees / settings / reports | ✅ | read menu | — | read menu | read menu |
+| Customer registration/delivery ordering | registered Telegram customers via `/api/public/*` (throttled) | | | | |
 
 Waiter delivery creation additionally requires the per-user
 `canCreateDelivery` flag (OWNER bypasses it).
@@ -148,11 +165,28 @@ PENDING → CONFIRMED → PREPARING → READY → OUT_FOR_DELIVERY → DELIVERED
         ↘ CANCELLED (allowed while not delivered)
 ```
 
-- Customer name/phone/address live on `Delivery` (1:1 with `Order`).
+- Customer name/phone/address live on `Delivery` (1:1 with `Order`); remote
+  orders additionally link to the registered `Customer` (`Order.customerId`).
 - `Delivery` status and `Order` status are kept in sync by the deliveries
-  service.
-- OWNER may assign a courier; OWNER/WAITER/CASHIER may advance status.
+  service. Kitchen readiness (`READY`) automatically propagates to the delivery.
+- DELIVERY staff see their own deliveries plus claimable unassigned ones
+  (`CONFIRMED`/`PREPARING`/`READY`), claim one, and may set only
+  `OUT_FOR_DELIVERY` / `DELIVERED`.
+- OWNER may assign a courier and override; OWNER/WAITER/CASHIER may advance
+  status. Claims and overrides are audited.
 - Delivery orders use the same item/fee/payment pipeline as dine-in orders.
+- Remote orders originate from `/api/public/orders` (delivery-only) and require
+  a registered customer with a Telegram-verified phone. The submitted address
+  is persisted to `Customer.deliveryAddress` for the next checkout; the bot asks
+  for a Telegram location (or manual text) and saves it through the bot-only
+  `PATCH /api/public/customers/bot`.
+- **Cash reconciliation:** on `DELIVERED` the courier records
+  `cashCollectedAmount` (default = outstanding, capped at it). The balance is
+  unchanged until CASHIER/OWNER call `POST /api/deliveries/:id/handover`, which
+  records a CASH payment with idempotency key `delivery-cash-<deliveryId>`, sets
+  `cashHandedOverAt`, audits `DELIVERY_CASH_HANDED_OVER` and notifies the
+  courier. Pending handovers are surfaced in the bot delivery list and the Mini
+  App “Kassa” tab.
 
 ### 5.3 Payments
 
@@ -172,6 +206,18 @@ PENDING → CONFIRMED → PREPARING → READY → OUT_FOR_DELIVERY → DELIVERED
   `serviceFeeMethod` and the computed `serviceFeeAmount`.
 - Adding items to an existing order does **not** recompute the fee.
 - Later config changes affect only new orders.
+
+### 5.5 Customer registration and receipts
+
+1. The Mini App sends `initData` to `/api/public/me`. If no linked `Customer`
+   exists, the registration screen asks for first/last name and a phone number.
+2. Phone verification uses Telegram contact sharing. The bot (or an API-triggered
+   message) shows a `request_contact` keyboard; the received contact must belong
+   to the same Telegram user (`contactUserId`). The phone is stored and
+   `phoneVerifiedAt` is set.
+3. Only registered + verified customers may place remote orders. Receipts are
+   rendered client-side from the order DTO with print CSS; no totals are
+   recomputed in the client.
 
 ## 6. Realtime
 
@@ -203,14 +249,17 @@ fallback** if the socket drops (important on unstable mobile networks).
   Built to `dist/` and served by the API at `/` (same origin → `/api` and
   `/uploads` work without CORS). Loads `telegram-web-app.js`, uses Telegram
   haptics/theme, and exposes:
-  - customer mode: menu, cart, room/delivery choice, people count + fee preview,
-    per-item kitchen notes, order tracker (5 s polling), expandable e-receipt,
-    call-waiter modal;
-  - staff mode: login modal, kitchen queue, waiter room list, owner dashboard.
+  - customer mode: redesigned menu/search, cart, delivery-only remote orders,
+    mandatory registration + phone verification gate, per-item kitchen notes,
+    order tracker (5 s polling), printable e-receipt, call-waiter modal;
+  - staff mode: Telegram auto-login (plus one-time link and OWNER password),
+    role tabs for rooms, kitchen, deliveries and owner management (products,
+    photos, categories, stats).
 - **Bot** (`apps/bot`): grammY long-polling client. JSON-file session store
   (`apps/bot/data/sessions.json`, gitignored) holds JWT pairs per Telegram chat.
   Inline keyboards map to the REST API; a background poller forwards
-  notifications. All business rules stay in the API.
+  notifications. Customer registration/contact verification happens in the bot;
+  ordering itself is Mini App only. All business rules stay in the API.
 - `packages/api-client` remains for admin-web and legacy apps; the bot and Mini
   App use their own small typed fetch wrappers to keep their runtimes free of
   workspace-package build issues.
@@ -220,8 +269,12 @@ fallback** if the socket drops (important on unstable mobile networks).
 - Helmet with a CSP tuned for Telegram: `script-src 'self' https://telegram.org`,
   `frame-ancestors` allows Telegram Web; `object-src 'none'`.
 - Strict CORS allow-list (`CORS_ORIGINS`), global exception filter.
-- Public customer endpoints are `@Public()` but throttled (orders 20/min,
-  call-waiter 6/min) and validated with the same Zod schemas as staff routes.
+- Public customer endpoints are `@Public()` but throttled (registration 10/min,
+  orders 20/min, call-waiter 6/min) and validated with the same Zod schemas as
+  staff routes. Telegram `initData` is HMAC-validated with `BOT_TOKEN`; bot-only
+  routes also require `x-bot-secret`.
+- Customer data access is scoped: `GET /public/orders/:id` only returns orders
+  whose `customerId` matches the authenticated Telegram customer.
 - Zod validation at the API boundary; Prisma parameterises all SQL.
 - Passwords hashed with argon2; refresh tokens stored hashed.
 - Upload validation: MIME allow-list, 5 MB limit, random filenames, sharp

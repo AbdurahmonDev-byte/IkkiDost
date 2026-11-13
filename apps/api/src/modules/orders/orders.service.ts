@@ -65,7 +65,19 @@ export class OrdersService {
     return loadOrder(this.prisma, id);
   }
 
-  async create(input: CreateOrderInput, actor: { id: string; fullName: string; role: string; canCreateDelivery: boolean }): Promise<OrderDto> {
+  /** Delivery staff may only open unassigned deliveries or their own. */
+  async findOneForActor(id: string, actor: { id: string; role: string }): Promise<OrderDto> {
+    const order = await this.findOne(id);
+    if (actor.role === 'DELIVERY') {
+      if (!order.delivery) throw new ForbiddenException('Bu buyurtma yetkazish emas');
+      if (order.delivery.assignedToId && order.delivery.assignedToId !== actor.id) {
+        throw new ForbiddenException('Bu yetkazish boshqa xodimga biriktirilgan');
+      }
+    }
+    return order;
+  }
+
+  async create(input: CreateOrderInput, actor: { id: string; fullName: string; role: string; canCreateDelivery: boolean }, customerId?: string): Promise<OrderDto> {
     if (input.type === 'DELIVERY' && actor.role !== 'OWNER' && !actor.canCreateDelivery) {
       throw new ForbiddenException('Yetkazib berish buyurtmasini yaratish uchun ruxsatingiz yo‘q');
     }
@@ -122,6 +134,7 @@ export class OrdersService {
         totalAmount: itemsTotal + fee.amount,
         paidAmount: 0,
         createdBy: { connect: { id: actor.id } },
+        ...(customerId ? { customer: { connect: { id: customerId } } } : {}),
         items: { create: itemRows },
         ...(input.type === 'DELIVERY'
           ? {
@@ -156,6 +169,9 @@ export class OrdersService {
       body: dto.type === 'DINE_IN' ? `${dto.roomName ?? 'Xona'} — ${dto.items.length} ta mahsulot` : `Yetkazish: ${dto.delivery?.customerName ?? ''} — ${dto.items.length} ta mahsulot`,
       data: { orderId: dto.id, orderNumber: dto.orderNumber },
     });
+    if (dto.type === 'DELIVERY') {
+      this.rt.emitToRoles(['DELIVERY'], RtEvent.ORDER_CREATED, dto);
+    }
     await this.audit.log({ actorId: actor.id, actorName: actor.fullName, action: 'ORDER_CREATED', entity: 'Order', entityId: dto.id, details: { type: dto.type, total: dto.totalAmount, people: dto.numberOfPeople } });
     return dto;
   }
@@ -242,6 +258,8 @@ export class OrdersService {
     }
 
     let itemName = '';
+    let deliveryChanged = false;
+    let deliveryBecameReady = false;
     const dto = await this.prisma.$transaction(async (tx) => {
       const order = await tx.order.findUnique({ where: { id: orderId } });
       if (!order) throw new NotFoundException('Buyurtma topilmadi');
@@ -263,6 +281,29 @@ export class OrdersService {
           data: { orderId, fromStatus: order.status, toStatus: newStatus, actorId: actor.id, note: `«${itemName}» — ${input.status}` },
         });
       }
+
+      // Keep the delivery workflow in sync with the kitchen: first cooking item
+      // moves the delivery to PREPARING, all items ready moves it to READY so
+      // the delivery person can claim it.
+      if (order.type === 'DELIVERY') {
+        const delivery = await tx.delivery.findUnique({ where: { orderId } });
+        if (delivery) {
+          let next: 'PREPARING' | 'READY' | null = null;
+          if ((newStatus === 'PREPARING' || newStatus === 'PARTIALLY_READY') && delivery.status === 'CONFIRMED') {
+            next = 'PREPARING';
+          } else if (newStatus === 'READY' && (delivery.status === 'CONFIRMED' || delivery.status === 'PREPARING')) {
+            next = 'READY';
+            deliveryBecameReady = true;
+          }
+          if (next) {
+            await tx.delivery.update({ where: { id: delivery.id }, data: { status: next } });
+            await tx.orderStatusHistory.create({
+              data: { orderId, fromStatus: delivery.status, toStatus: next, actorId: actor.id, note: 'Oshxona yetkazish holatini yangiladi' },
+            });
+            deliveryChanged = true;
+          }
+        }
+      }
       return loadOrder(tx, orderId);
     });
 
@@ -278,6 +319,17 @@ export class OrdersService {
     }
     if (dto.status === 'READY') {
       this.rt.emitToUser(dto.createdById, RtEvent.ORDER_READY, { orderId, orderNumber: dto.orderNumber });
+    }
+    if (deliveryChanged && dto.delivery) {
+      this.rt.emitToRoles(['DELIVERY', 'OWNER', 'CASHIER'], RtEvent.DELIVERY_STATUS_CHANGED, dto.delivery);
+      if (deliveryBecameReady) {
+        await this.notifications.notifyRole('DELIVERY', {
+          type: 'DELIVERY_READY',
+          title: `🛵 Buyurtma #${dto.orderNumber} tayyor`,
+          body: `${dto.delivery.customerName} · ${dto.delivery.address}`,
+          data: { orderId, deliveryId: dto.delivery.id },
+        });
+      }
     }
     this.rt.emitToRoles(['CHEF', 'OWNER', 'CASHIER'], RtEvent.ORDER_UPDATED, dto);
     return dto;

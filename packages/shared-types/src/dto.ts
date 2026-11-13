@@ -37,6 +37,28 @@ export interface AuthUser {
 export interface EmployeeDto extends AuthUser {
   phone: string | null;
   canCreateDelivery: boolean;
+  telegramId: string | null;
+  telegramUsername: string | null;
+  firstName: string | null;
+  lastName: string | null;
+  phoneVerifiedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Registered remote-order customer (Telegram identity + verified phone). */
+export interface CustomerDto {
+  id: string;
+  telegramId: string;
+  telegramUsername: string | null;
+  firstName: string;
+  lastName: string;
+  /** Official name — replaces the Telegram display name in the UI. */
+  fullName: string;
+  phone: string;
+  phoneVerified: boolean;
+  /** Default delivery address (text and/or map link) saved from the bot/Mini App. */
+  deliveryAddress: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -108,6 +130,20 @@ export interface DeliveryDto {
   status: DeliveryStatus;
   assignedToId: string | null;
   assignedToName: string | null;
+  /** Flattened order summary for delivery screens. */
+  orderNumber: number;
+  orderStatus: OrderStatus;
+  itemsTotal: Uzs;
+  totalAmount: Uzs;
+  paidAmount: Uzs;
+  outstandingAmount: Uzs;
+  note: string | null;
+  items: OrderItemDto[];
+  /** Cash the courier collected; null until the courier records it. */
+  cashCollectedAmount: Uzs | null;
+  cashCollectedAt: string | null;
+  /** Set when a cashier/owner confirms the cash handover. */
+  cashHandedOverAt: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -134,6 +170,8 @@ export interface OrderDto {
   outstandingAmount: Uzs;
   createdById: string;
   createdByName: string;
+  /** Registered customer for remote orders (null for staff-created orders). */
+  customerId: string | null;
   createdAt: string;
   updatedAt: string;
 }

@@ -1,18 +1,53 @@
-import { BadRequestException, Body, Controller, Get, NotFoundException, Param, Post, UsePipes } from '@nestjs/common';
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Get,
+  NotFoundException,
+  Param,
+  Patch,
+  Post,
+  Req,
+  UsePipes,
+} from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
-import type { OrderDto } from '@ikki-dost/shared-types';
-import { createOrderSchema, type CreateOrderInput } from '@ikki-dost/validation';
+import type { CustomerDto, OrderDto } from '@ikki-dost/shared-types';
+import {
+  botCustomerLookupSchema,
+  botUpdateCustomerSchema,
+  createPublicOrderSchema,
+  registerCustomerSchema,
+  updateCustomerSchema,
+  verifyPhoneSchema,
+  type BotCustomerLookupInput,
+  type BotUpdateCustomerInput,
+  type CreatePublicOrderInput,
+  type RegisterCustomerInput,
+  type UpdateCustomerInput,
+  type VerifyPhoneInput,
+} from '@ikki-dost/validation';
 import { Public } from '../../common/decorators/public.decorator';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe';
 import { PrismaService } from '../prisma/prisma.service';
-import { OrdersService } from '../orders/orders.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { RealtimeService } from '../realtime/realtime.service';
+import { isBotSecret } from '../auth/telegram';
+import { PublicService } from './public.service';
 
 interface CallWaiterInput {
   roomId: string;
   note?: string;
+}
+
+type PublicReq = {
+  ip?: string;
+  headers: Record<string, string | string[] | undefined>;
+};
+
+function header(req: PublicReq, name: string): string | undefined {
+  const value = req.headers[name.toLowerCase()];
+  return Array.isArray(value) ? value[0] : value;
 }
 
 @ApiTags('public')
@@ -21,10 +56,22 @@ interface CallWaiterInput {
 export class PublicController {
   constructor(
     private prisma: PrismaService,
-    private orders: OrdersService,
+    private publicService: PublicService,
     private notifications: NotificationsService,
     private rt: RealtimeService,
   ) {}
+
+  @Get('config')
+  config() {
+    const username = (process.env.BOT_USERNAME || 'ikkidostbot').replace(/^@/, '');
+    return {
+      botUsername: username,
+      botUrl: `https://t.me/${username}`,
+      registrationUrl: this.publicService.botUrl(),
+      remoteOrdering: true,
+      dineInOrdering: false,
+    };
+  }
 
   @Get('menu')
   async getMenu() {
@@ -37,8 +84,8 @@ export class PublicController {
         include: { image: true },
         orderBy: { name: 'asc' },
       }),
-      this.prisma.serviceFeeConfig.findFirst({
-        where: { id: 'singleton' },
+      this.prisma.serviceFeeConfig.findUnique({
+        where: { id: 'service_fee_config' },
       }),
     ]);
 
@@ -93,49 +140,102 @@ export class PublicController {
     }));
   }
 
+  // ===== Customer registration / profile =====
+
+  @Get('me')
+  @Throttle({ default: { limit: 60, ttl: 60_000 } })
+  async me(@Req() req: PublicReq): Promise<{ customer: CustomerDto | null }> {
+    const initData = header(req, 'x-telegram-init-data');
+    return { customer: await this.publicService.me(initData) };
+  }
+
+  @Post('register')
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @UsePipes(new ZodValidationPipe(registerCustomerSchema.omit({ telegramId: true, telegramUsername: true })))
+  async register(
+    @Body() input: Pick<RegisterCustomerInput, 'firstName' | 'lastName' | 'phone' | 'deliveryAddress'>,
+    @Req() req: PublicReq,
+  ) {
+    const initData = header(req, 'x-telegram-init-data') ?? (input as { initData?: string }).initData;
+    const tg = this.publicService.telegram(initData);
+    return this.publicService.register(tg, input);
+  }
+
+  /** Bot-only registration: phone is verified by Telegram contact sharing. */
+  @Post('register/bot')
+  @Throttle({ default: { limit: 60, ttl: 60_000 } })
+  @UsePipes(new ZodValidationPipe(registerCustomerSchema))
+  async registerBot(@Body() input: RegisterCustomerInput, @Req() req: PublicReq) {
+    if (!isBotSecret(req.headers)) throw new BadRequestException('Bot maxfiy kaliti noto‘g‘ri');
+    if (!input.telegramId) throw new BadRequestException('telegramId ko‘rsatilmagan');
+    const customer = await this.publicService.registerBot(
+      {
+        id: input.telegramId,
+        firstName: input.firstName,
+        lastName: input.lastName,
+        username: input.telegramUsername ?? null,
+        languageCode: null,
+        isPremium: false,
+      },
+      input,
+    );
+    return { customer };
+  }
+
+  @Post('customers/lookup')
+  @Throttle({ default: { limit: 120, ttl: 60_000 } })
+  @UsePipes(new ZodValidationPipe(botCustomerLookupSchema))
+  async lookupCustomer(@Body() input: BotCustomerLookupInput, @Req() req: PublicReq) {
+    if (!isBotSecret(req.headers)) throw new BadRequestException('Bot maxfiy kaliti noto‘g‘ri');
+    return { customer: await this.publicService.lookupBot(input.telegramId) };
+  }
+
+  @Post('verify-phone')
+  @Throttle({ default: { limit: 30, ttl: 60_000 } })
+  @UsePipes(new ZodValidationPipe(verifyPhoneSchema))
+  async verifyPhone(@Body() input: VerifyPhoneInput, @Req() req: PublicReq) {
+    if (!isBotSecret(req.headers)) throw new BadRequestException('Bot maxfiy kaliti noto‘g‘ri');
+    return { customer: await this.publicService.verifyPhone(input.telegramId, input.phone, input.contactUserId) };
+  }
+
+  @Patch('me')
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
+  @UsePipes(new ZodValidationPipe(updateCustomerSchema))
+  async updateMe(@Body() input: UpdateCustomerInput, @Req() req: PublicReq): Promise<{ customer: CustomerDto }> {
+    const initData = header(req, 'x-telegram-init-data');
+    return { customer: await this.publicService.updateProfile(initData, input) };
+  }
+
+  /** Bot-only profile patch: saves the delivery address/location sent in Telegram. */
+  @Patch('customers/bot')
+  @Throttle({ default: { limit: 60, ttl: 60_000 } })
+  @UsePipes(new ZodValidationPipe(botUpdateCustomerSchema))
+  async updateBotProfile(@Body() input: BotUpdateCustomerInput, @Req() req: PublicReq): Promise<{ customer: CustomerDto }> {
+    if (!isBotSecret(req.headers)) throw new BadRequestException('Bot maxfiy kaliti noto‘g‘ri');
+    return { customer: await this.publicService.updateBotProfile(input) };
+  }
+
+  // ===== Remote (delivery) orders =====
+
   @Get('orders/:id')
-  async getOrder(@Param('id') id: string): Promise<OrderDto> {
-    return this.orders.findOne(id);
+  @Throttle({ default: { limit: 120, ttl: 60_000 } })
+  async getOrder(@Param('id') id: string, @Req() req: PublicReq): Promise<OrderDto> {
+    return this.publicService.getOrder(header(req, 'x-telegram-init-data'), id);
   }
 
   @Post('orders')
   @Throttle({ default: { limit: 20, ttl: 60_000 } })
-  @UsePipes(new ZodValidationPipe(createOrderSchema))
-  async createOrder(@Body() input: CreateOrderInput): Promise<OrderDto> {
-    // Resolve an actor to attach the created order in the database.
-    // Self-service orders use the dedicated `bot` account so audit trails stay
-    // honest and are never attributed to a real waiter.
-    const actorUser =
-      (await this.prisma.user.findFirst({
-        where: { username: 'bot', isActive: true },
-      })) ||
-      (await this.prisma.user.findFirst({
-        where: { role: 'WAITER', isActive: true },
-      })) ||
-      (await this.prisma.user.findFirst({
-        where: { role: 'OWNER', isActive: true },
-      }));
-
-    if (!actorUser) {
-      throw new BadRequestException('Tizimda faol xodim topilmadi');
-    }
-
-    const customerName = input.type === 'DELIVERY' ? input.customerName : null;
-    const actor = {
-      id: actorUser.id,
-      fullName: customerName ? `Mijoz (${customerName})` : 'Mijoz (Self-service)',
-      role: 'WAITER',
-      canCreateDelivery: true,
-    };
-
-    return this.orders.create(input, actor);
+  @UsePipes(new ZodValidationPipe(createPublicOrderSchema))
+  async createOrder(@Body() input: CreatePublicOrderInput, @Req() req: PublicReq): Promise<OrderDto> {
+    const initData = header(req, 'x-telegram-init-data') ?? input.initData;
+    return this.publicService.createOrder(initData, input);
   }
 
   @Post('call-waiter')
   @Throttle({ default: { limit: 6, ttl: 60_000 } })
   async callWaiter(@Body() body: CallWaiterInput) {
     if (!body.roomId) {
-      throw new BadRequestException('Xona ko‘rsatilmadi');
+      throw new BadRequestException('Xona ko‘rsatilmagan');
     }
 
     const room = await this.prisma.room.findUnique({

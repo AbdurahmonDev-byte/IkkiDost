@@ -2,9 +2,20 @@ import { Bot } from 'grammy';
 import { loadConfig } from './config.js';
 import { customerKeyboard } from './keyboards.js';
 import { handleCloseReason, registerRooms } from './handlers/rooms.js';
-import { handleLoginText, registerAuth } from './handlers/auth.js';
+import {
+  handleCustomerLocationMessage,
+  handleCustomerLocationText,
+  handleOwnerPassword,
+  handleRegisterText,
+  registerAuth,
+} from './handlers/auth.js';
 import { registerDashboard } from './handlers/dashboard.js';
-import { handleDeliveryText, registerDelivery } from './handlers/delivery.js';
+import {
+  handleDeliveryAddressLocation,
+  handleDeliveryCashText,
+  handleDeliveryText,
+  registerDelivery,
+} from './handlers/delivery.js';
 import { registerKitchen } from './handlers/kitchen.js';
 import { registerOrder } from './handlers/order.js';
 import { startNotificationPoller } from './poller.js';
@@ -50,6 +61,18 @@ async function main() {
   registerOrder(deps, bot);
   registerDashboard(deps, bot);
 
+  // Telegram location messages: customer address prompt or staff delivery wizard.
+  bot.on('message:location', async (ctx) => {
+    if (!ctx.chat) return;
+    const flow = flows.get(flowKey(ctx.chat.id));
+    if (flow?.kind === 'customer-location') {
+      return handleCustomerLocationMessage(deps, ctx);
+    }
+    if (flow?.kind === 'delivery-address') {
+      return handleDeliveryAddressLocation(deps, ctx, flow);
+    }
+  });
+
   // Router for plain text messages based on active flows
   bot.on('message:text', async (ctx) => {
     if (!ctx.chat) return;
@@ -59,8 +82,18 @@ async function main() {
     const flow = flows.get(flowKey(ctx.chat.id));
     if (flow) {
       switch (flow.kind) {
-        case 'login':
-          return handleLoginText(deps, ctx, text);
+        case 'owner-password':
+          return handleOwnerPassword(deps, ctx, text);
+        case 'register-first-name':
+        case 'register-last-name':
+          return handleRegisterText(deps, ctx, flow, text);
+        case 'register-phone':
+          await ctx.reply('Iltimos, telefon raqamingizni pastdagi «📞 Telefon raqamni yuborish» tugmasi orqali yuboring.');
+          return;
+        case 'customer-location':
+          return handleCustomerLocationText(deps, ctx, text);
+        case 'delivery-cash':
+          return handleDeliveryCashText(deps, ctx, flow, text);
         case 'close-reason':
           return handleCloseReason(deps, ctx, flow.sessionId, text);
         case 'delivery-name':
@@ -111,7 +144,8 @@ async function main() {
       { command: 'newdel', description: 'Yangi yetkazish yaratish' },
       { command: 'dash', description: 'Bugungi hisobot (egasi)' },
       { command: 'me', description: 'Profil va rol' },
-      { command: 'login', description: 'Xodim sifatida ulanish' },
+      { command: 'register', description: 'Mijoz sifatida ro‘yxatdan o‘tish' },
+      { command: 'profile', description: 'Mijoz profili' },
       { command: 'logout', description: 'Hisobni uzish' },
       { command: 'help', description: 'Yordam' },
     ]);

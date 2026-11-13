@@ -92,6 +92,7 @@ export default function EmployeesPage() {
                       <div>
                         <p className="font-medium leading-tight">{e.fullName}</p>
                         <p className="text-[11px] text-ink-faint">@{e.username}</p>
+                        <p className="text-[11px] text-ink-faint">Telegram ID: {e.telegramId || 'biriktirilmagan'}</p>
                       </div>
                     </div>
                   </Td>
@@ -163,6 +164,7 @@ function EmployeeFormModal({
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [phone, setPhone] = useState('');
+  const [telegramId, setTelegramId] = useState('');
   const [role, setRole] = useState<Role>('WAITER');
   const [canCreateDelivery, setCanCreateDelivery] = useState(false);
 
@@ -172,6 +174,7 @@ function EmployeeFormModal({
     setUsername(employee?.username ?? '');
     setPassword('');
     setPhone(employee?.phone ?? '');
+    setTelegramId(employee?.telegramId ?? '');
     setRole(employee?.role ?? 'WAITER');
     setCanCreateDelivery(employee?.canCreateDelivery ?? false);
   }, [open, employee]);
@@ -183,16 +186,18 @@ function EmployeeFormModal({
           fullName: fullName.trim(),
           username: username.trim(),
           phone: phone.trim() || null,
+          telegramId: telegramId.trim(),
           role,
           canCreateDelivery,
-          ...(password ? { password } : {}),
+          ...(role === 'OWNER' && password ? { password } : {}),
         });
       }
       return api.createEmployee({
         fullName: fullName.trim(),
         username: username.trim(),
-        password,
+        password: role === 'OWNER' ? password : crypto.randomUUID(),
         phone: phone.trim() || null,
+        telegramId: telegramId.trim(),
         role,
         canCreateDelivery,
       });
@@ -208,7 +213,9 @@ function EmployeeFormModal({
   const valid =
     fullName.trim().length >= 2 &&
     username.trim().length >= 3 &&
-    (!employee ? password.length >= 6 : password === '' || password.length >= 6);
+    /^\d{4,20}$/.test(telegramId.trim()) &&
+    (role !== 'OWNER' ||
+      (employee?.role === 'OWNER' ? password === '' || password.length >= 6 : password.length >= 6));
 
   return (
     <Modal open={open} onClose={onClose} title={employee ? 'Xodimni tahrirlash' : 'Yangi xodim'}>
@@ -217,25 +224,35 @@ function EmployeeFormModal({
           <Input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Ism familiya" />
         </Field>
         <div className="grid gap-3 sm:grid-cols-2">
-          <Field label="Login">
+          <Field label="Tizim nomi">
             <Input value={username} onChange={(e) => setUsername(e.target.value)} autoCapitalize="none" placeholder="ofitsiant2" />
           </Field>
-          <Field label={employee ? 'Yangi parol (ixtiyoriy)' : 'Parol'} hint="Kamida 6 belgi">
-            <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="new-password" />
-          </Field>
+          {role === 'OWNER' && (
+            <Field label={employee ? 'Yangi egasi paroli (ixtiyoriy)' : 'Egasi paroli'} hint="Kamida 6 belgi">
+              <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="new-password" />
+            </Field>
+          )}
         </div>
         <div className="grid gap-3 sm:grid-cols-2">
           <Field label="Rol">
             <Select value={role} onChange={(e) => setRole(e.target.value as Role)}>
-              {(Object.keys(roleLabel) as Role[]).map((r) => (
-                <option key={r} value={r}>
-                  {roleLabel[r]}
+              {(Object.keys(roleLabel) as Role[]).map((itemRole) => (
+                <option key={itemRole} value={itemRole}>
+                  {roleLabel[itemRole]}
                 </option>
               ))}
             </Select>
           </Field>
           <Field label="Telefon">
             <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+998…" />
+          </Field>
+          <Field label="Telegram ID" hint="Xodim /start bosganda bot ko‘rsatadigan raqamli ID">
+            <Input
+              value={telegramId}
+              onChange={(e) => setTelegramId(e.target.value.replace(/\D/g, ''))}
+              inputMode="numeric"
+              placeholder="123456789"
+            />
           </Field>
         </div>
         {role === 'WAITER' && (

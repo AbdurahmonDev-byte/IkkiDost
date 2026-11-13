@@ -16,6 +16,9 @@ declare global {
         ready: () => void;
         expand: () => void;
         close: () => void;
+        openTelegramLink?: (url: string) => void;
+        openLink?: (url: string, options?: { try_instant_view?: boolean }) => void;
+        showAlert?: (message: string, callback?: () => void) => void;
         HapticFeedback?: {
           impactOccurred: (style: 'light' | 'medium' | 'heavy' | 'rigid' | 'soft') => void;
           notificationOccurred: (type: 'error' | 'success' | 'warning') => void;
@@ -89,5 +92,16 @@ export const tg = {
 
   get startParam() {
     return this.app?.initDataUnsafe?.start_param;
+  },
+
+  /** Opens a t.me link inside Telegram when possible. */
+  openTelegram(url: string) {
+    if (this.app?.openTelegramLink) this.app.openTelegramLink(url);
+    else window.open(url, '_blank');
+  },
+
+  alert(message: string) {
+    if (this.app?.showAlert) this.app.showAlert(message);
+    else window.alert(message);
   },
 };

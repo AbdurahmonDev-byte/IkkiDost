@@ -62,6 +62,16 @@ docker compose -f deploy/ikki-dost/compose.yaml --env-file deploy/ikki-dost/.env
 customers can open the self-service UI. The Mini App is built into the API
 image; no extra static host is needed.
 
+## Owner IDs and employee setup
+
+Add `OWNER_TELEGRAM_IDS=7483287151,317080284` to `deploy/ikki-dost/.env`.
+On first setup, open the Mini App in Telegram and use the owner bootstrap login
+with the seeded owner account. In the Owner tab, create staff accounts with
+their role (including DELIVERY) and Telegram ID. Staff can get their numeric ID
+by pressing `/start` in the bot; after the owner saves it, they press `/start`
+again and are logged in automatically. Non-owner staff do not use usernames or
+passwords to sign in. Both configured owner IDs still require the OWNER password.
+
 Check services and API health:
 
 ```sh

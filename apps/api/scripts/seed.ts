@@ -20,7 +20,7 @@ async function main() {
   console.log('[seed] Starting...');
 
   // ===== Users =====
-  async function upsertUser(username: string, password: string, fullName: string, role: 'OWNER' | 'WAITER' | 'CHEF' | 'CASHIER', canCreateDelivery = false) {
+  async function upsertUser(username: string, password: string, fullName: string, role: 'OWNER' | 'WAITER' | 'CHEF' | 'CASHIER' | 'DELIVERY', canCreateDelivery = false) {
     const passwordHash = await argon2.hash(password);
     return prisma.user.upsert({
       where: { username },
@@ -33,6 +33,7 @@ async function main() {
   await upsertUser('ofitsiant', DEV_PASSWORD, 'Ofitsiant Olim', 'WAITER', true);
   await upsertUser('oshpaz', DEV_PASSWORD, 'Oshpaz Jasur', 'CHEF');
   await upsertUser('kassir', DEV_PASSWORD, 'Kassir Dilnoza', 'CASHIER');
+  await upsertUser('kuryer', DEV_PASSWORD, 'Kuryer Sardor', 'DELIVERY');
   // Dedicated actor for unauthenticated self-service orders (Telegram Mini App).
   // It keeps audit trails honest: such orders are not attributed to a real waiter.
   await upsertUser(

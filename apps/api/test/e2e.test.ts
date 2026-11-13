@@ -3,6 +3,7 @@
  * Covers the 18 scenarios from the specification (section 17).
  */
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { createHmac } from 'crypto';
 import { bootstrapTestApp, req, type TestContext } from './helpers';
 
 let ctx: TestContext;
@@ -13,8 +14,26 @@ let productOqBaliq = { id: '', price: 45000 };
 let productChoy = { id: '', price: 3000 };
 let productNon = { id: '', price: 4000 };
 let cashMethodId = '';
+const testBotToken = 'test-telegram-bot-token';
+
+function telegramInitData(id: string, firstName: string, lastName: string): string {
+  const params = new URLSearchParams({
+    auth_date: String(Math.floor(Date.now() / 1000)),
+    user: JSON.stringify({ id, first_name: firstName, last_name: lastName }),
+  });
+  const dataCheckString = [...params.entries()]
+    .map(([key, value]) => `${key}=${value}`)
+    .sort()
+    .join('\n');
+  const secretKey = createHmac('sha256', 'WebAppData').update(testBotToken).digest();
+  const hash = createHmac('sha256', secretKey).update(dataCheckString).digest('hex');
+  params.set('hash', hash);
+  return params.toString();
+}
 
 beforeAll(async () => {
+  process.env.BOT_TOKEN = testBotToken;
+  process.env.OWNER_TELEGRAM_IDS = '7483287151,317080284';
   ctx = await bootstrapTestApp();
 
   const rooms = await req(ctx, 'GET', '/rooms', undefined, ctx.tokens.owner);
@@ -63,6 +82,288 @@ describe('1-2. Dine-in order for 5 people → service fee 20 000', () => {
     expect(kitchen.status).toBe(200);
     expect(kitchen.body.length).toBeGreaterThan(0);
     expect(kitchen.body[0].items[0].productName).toBeTruthy();
+  });
+});
+
+describe('Telegram identity and customer registration', () => {
+  it('authenticates staff by owner-assigned Telegram ID and requires the owner extra password', async () => {
+    const waiterInitData = telegramInitData('777700001', 'Waiter', 'Test');
+    const employees = await req(ctx, 'GET', '/employees', undefined, ctx.tokens.owner);
+    const waiter = employees.body.find((employee: { username: string }) => employee.username === 'ofitsiant');
+    const assignWaiterTelegram = await req(
+      ctx,
+      'PATCH',
+      `/employees/${waiter.id}`,
+      { telegramId: '777700001' },
+      ctx.tokens.owner,
+    );
+    expect(assignWaiterTelegram.status).toBe(200);
+
+    const waiterLogin = await req(ctx, 'POST', '/auth/telegram', { initData: waiterInitData });
+    expect(waiterLogin.status).toBe(201);
+    expect(waiterLogin.body.user.role).toBe('WAITER');
+    expect((await req(ctx, 'GET', '/rooms', undefined, waiterLogin.body.accessToken)).status).toBe(200);
+    expect((await req(ctx, 'GET', '/reports/dashboard', undefined, waiterLogin.body.accessToken)).status).toBe(403);
+
+    const waiterPasswordLogin = await req(ctx, 'POST', '/auth/login', {
+      username: 'ofitsiant',
+      password: 'password123',
+    });
+    expect(waiterPasswordLogin.status).toBe(401);
+    expect(waiterPasswordLogin.body.details.code).toBe('TELEGRAM_LOGIN_REQUIRED');
+
+    const waiterSelfLink = await req(ctx, 'POST', '/auth/link-telegram', {
+      initData: telegramInitData('777700004', 'Waiter', 'Other'),
+      username: 'ofitsiant',
+      password: 'password123',
+    });
+    expect(waiterSelfLink.status).toBe(401);
+    expect(waiterSelfLink.body.details.code).toBe('TELEGRAM_ID_OWNER_ASSIGNMENT_REQUIRED');
+
+    const reservedOwnerId = await req(
+      ctx,
+      'PATCH',
+      `/employees/${waiter.id}`,
+      { telegramId: '7483287151' },
+      ctx.tokens.owner,
+    );
+    expect(reservedOwnerId.status).toBe(400);
+
+    const newCourier = await req(ctx, 'POST', '/employees', {
+      username: 'courier_test',
+      password: 'internal-only-password',
+      fullName: 'Test Courier',
+      role: 'DELIVERY',
+      telegramId: '777700005',
+    }, ctx.tokens.owner);
+    expect(newCourier.status).toBe(201);
+    const courierLogin = await req(ctx, 'POST', '/auth/telegram', {
+      initData: telegramInitData('777700005', 'Courier', 'Test'),
+    });
+    expect(courierLogin.status).toBe(201);
+    expect(courierLogin.body.user.role).toBe('DELIVERY');
+
+    const ownerInitData = telegramInitData('777700002', 'Owner', 'Test');
+    const owner = employees.body.find((employee: { username: string }) => employee.username === 'owner');
+    const assignOwnerTelegram = await req(
+      ctx,
+      'PATCH',
+      `/employees/${owner.id}`,
+      { telegramId: '777700002' },
+      ctx.tokens.owner,
+    );
+    expect(assignOwnerTelegram.status).toBe(200);
+
+    const ownerWithoutPassword = await req(ctx, 'POST', '/auth/telegram', { initData: ownerInitData });
+    expect(ownerWithoutPassword.status).toBe(401);
+    expect(ownerWithoutPassword.body.details.code).toBe('OWNER_PASSWORD_REQUIRED');
+
+    const ownerLogin = await req(ctx, 'POST', '/auth/telegram', {
+      initData: ownerInitData,
+      password: 'owner12345',
+    });
+    expect(ownerLogin.status).toBe(201);
+    expect(ownerLogin.body.user.role).toBe('OWNER');
+
+    for (const ownerTelegramId of ['7483287151', '317080284']) {
+      const ownerIdentity = telegramInitData(ownerTelegramId, 'Owner', 'Allowlist');
+      const missingPassword = await req(ctx, 'POST', '/auth/telegram', { initData: ownerIdentity });
+      expect(missingPassword.status).toBe(401);
+      expect(missingPassword.body.details.code).toBe('OWNER_PASSWORD_REQUIRED');
+
+      const allowedOwnerLogin = await req(ctx, 'POST', '/auth/telegram', {
+        initData: ownerIdentity,
+        password: 'owner12345',
+      });
+      expect(allowedOwnerLogin.status).toBe(201);
+      expect(allowedOwnerLogin.body.user.role).toBe('OWNER');
+    }
+  });
+
+  it('requires verified registration and only permits public delivery orders', async () => {
+    const customerInitData = telegramInitData('777700003', 'Telegram', 'Name');
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input).startsWith('https://api.telegram.org/')) {
+        return new Response(JSON.stringify({ ok: true }), { status: 200 });
+      }
+      return originalFetch(input, init);
+    }) as typeof fetch;
+
+    try {
+      const registration = await req(ctx, 'POST', '/public/register', {
+        initData: customerInitData,
+        firstName: 'Rasmiy',
+        lastName: 'Mijoz',
+        phone: '+998901234567',
+      });
+      expect(registration.status).toBe(201);
+      expect(registration.body.customer.fullName).toBe('Rasmiy Mijoz');
+      expect(registration.body.customer.phoneVerified).toBe(false);
+      expect(registration.body.verificationSent).toBe(true);
+
+      const orderInput = {
+        type: 'DELIVERY',
+        numberOfPeople: 1,
+        items: [{ productId: productChoy.id, quantity: '1' }],
+        address: 'Toshkent, Chilonzor 12-uy',
+        initData: customerInitData,
+      };
+      const unverifiedOrder = await req(ctx, 'POST', '/public/orders', orderInput);
+      expect(unverifiedOrder.status, JSON.stringify(unverifiedOrder.body)).toBe(403);
+      expect(unverifiedOrder.body.details.code).toBe('PHONE_NOT_VERIFIED');
+
+      const verified = await fetch(`${ctx.baseUrl}/public/verify-phone`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-bot-secret': testBotToken,
+        },
+        body: JSON.stringify({
+          telegramId: '777700003',
+          contactUserId: '777700003',
+          phone: '+998901234567',
+        }),
+      });
+      expect(verified.status).toBe(201);
+
+      const deliveryOrder = await req(ctx, 'POST', '/public/orders', orderInput);
+      expect(deliveryOrder.status).toBe(201);
+      expect(deliveryOrder.body.delivery.customerName).toBe('Rasmiy Mijoz');
+      expect(deliveryOrder.body.customerId).toBe(registration.body.customer.id);
+
+      const dineInOrder = await req(ctx, 'POST', '/public/orders', {
+        ...orderInput,
+        type: 'DINE_IN',
+      });
+      expect(dineInOrder.status).toBe(400);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+});
+
+describe('Customer delivery location', () => {
+  const initData = telegramInitData('777700006', 'Lokatsiya', 'Mijoz');
+  const mapLink = 'https://maps.google.com/?q=41.299496,69.240073';
+
+  it('bot saves the location and the profile prefills it', async () => {
+    const registered = await fetch(`${ctx.baseUrl}/public/register/bot`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-bot-secret': testBotToken },
+      body: JSON.stringify({
+        telegramId: '777700006',
+        firstName: 'Lokatsiya',
+        lastName: 'Mijoz',
+        phone: '+998901112233',
+      }),
+    });
+    expect(registered.status).toBe(201);
+
+    const patched = await fetch(`${ctx.baseUrl}/public/customers/bot`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', 'x-bot-secret': testBotToken },
+      body: JSON.stringify({ telegramId: '777700006', deliveryAddress: mapLink }),
+    });
+    expect(patched.status).toBe(200);
+    const patchedBody = (await patched.json()) as { customer: { deliveryAddress: string | null } };
+    expect(patchedBody.customer.deliveryAddress).toBe(mapLink);
+
+    const me = await fetch(`${ctx.baseUrl}/public/me`, {
+      headers: { 'X-Telegram-Init-Data': initData },
+    });
+    expect(me.status).toBe(200);
+    const meBody = (await me.json()) as { customer: { deliveryAddress: string | null } };
+    expect(meBody.customer.deliveryAddress).toBe(mapLink);
+  });
+
+  it('persists the order address for the next Mini App visit', async () => {
+    const address = 'Toshkent, Yunusobod 7-kvartal, 21-uy';
+    const order = await req(ctx, 'POST', '/public/orders', {
+      type: 'DELIVERY',
+      numberOfPeople: 1,
+      items: [{ productId: productChoy.id, quantity: '1' }],
+      address,
+      initData,
+    });
+    expect(order.status, JSON.stringify(order.body)).toBe(201);
+    expect(order.body.delivery.address).toBe(address);
+
+    const me = await fetch(`${ctx.baseUrl}/public/me`, {
+      headers: { 'X-Telegram-Init-Data': initData },
+    });
+    const meBody = (await me.json()) as { customer: { deliveryAddress: string | null } };
+    expect(meBody.customer.deliveryAddress).toBe(address);
+  });
+});
+
+describe('Courier cash collection → cashier handover', () => {
+  let deliveryId = '';
+  let orderId = '';
+  let totalAmount = 0;
+  let courierToken = '';
+
+  it('courier records collected cash when marking the delivery delivered', async () => {
+    const courier = await req(ctx, 'POST', '/employees', {
+      username: 'courier_cash_test',
+      password: 'internal-only-password',
+      fullName: 'Cash Courier',
+      role: 'DELIVERY',
+      telegramId: '777700007',
+    }, ctx.tokens.owner);
+    expect(courier.status).toBe(201);
+
+    const courierLogin = await req(ctx, 'POST', '/auth/telegram', {
+      initData: telegramInitData('777700007', 'Cash', 'Courier'),
+    });
+    expect(courierLogin.status).toBe(201);
+    courierToken = courierLogin.body.accessToken;
+
+    const created = await req(ctx, 'POST', '/orders', {
+      type: 'DELIVERY',
+      numberOfPeople: 1,
+      customerName: 'Naqd Mijoz',
+      customerPhone: '+998901234000',
+      address: 'Toshkent, Mirzo Ulug‘bek, 5-uy',
+      items: [{ productId: productChoy.id, quantity: '1' }],
+    }, ctx.tokens.waiter);
+    expect(created.status).toBe(201);
+    orderId = created.body.id;
+    deliveryId = created.body.delivery.id;
+    totalAmount = created.body.totalAmount;
+
+    await req(ctx, 'POST', `/deliveries/${deliveryId}/status`, { status: 'PREPARING' }, ctx.tokens.owner);
+    await req(ctx, 'POST', `/deliveries/${deliveryId}/status`, { status: 'READY' }, ctx.tokens.owner);
+    expect((await req(ctx, 'POST', `/deliveries/${deliveryId}/claim`, undefined, courierToken)).status).toBe(201);
+    expect((await req(ctx, 'POST', `/deliveries/${deliveryId}/status`, { status: 'OUT_FOR_DELIVERY' }, courierToken)).status).toBe(201);
+
+    const delivered = await req(ctx, 'POST', `/deliveries/${deliveryId}/status`, {
+      status: 'DELIVERED',
+      cashCollectedAmount: totalAmount,
+    }, courierToken);
+    expect(delivered.status, JSON.stringify(delivered.body)).toBe(201);
+    expect(delivered.body.cashCollectedAmount).toBe(totalAmount);
+    expect(delivered.body.cashCollectedAt).toBeTruthy();
+    expect(delivered.body.cashHandedOverAt).toBeNull();
+    expect(delivered.body.outstandingAmount).toBe(totalAmount);
+
+    const forbiddenHandover = await req(ctx, 'POST', `/deliveries/${deliveryId}/handover`, {}, courierToken);
+    expect(forbiddenHandover.status).toBe(403);
+  });
+
+  it('cashier confirms the handover and the order becomes paid + completed', async () => {
+    const handover = await req(ctx, 'POST', `/deliveries/${deliveryId}/handover`, {}, ctx.tokens.cashier);
+    expect(handover.status, JSON.stringify(handover.body)).toBe(201);
+    expect(handover.body.cashHandedOverAt).toBeTruthy();
+    expect(handover.body.paidAmount).toBe(totalAmount);
+    expect(handover.body.outstandingAmount).toBe(0);
+
+    const order = await req(ctx, 'GET', `/orders/${orderId}`, undefined, ctx.tokens.owner);
+    expect(order.body.paidAmount).toBe(totalAmount);
+    expect(order.body.status).toBe('COMPLETED');
+
+    const second = await req(ctx, 'POST', `/deliveries/${deliveryId}/handover`, {}, ctx.tokens.cashier);
+    expect(second.status).toBe(400);
   });
 });
 

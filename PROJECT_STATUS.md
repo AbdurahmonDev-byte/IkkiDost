@@ -1,8 +1,13 @@
 # PROJECT STATUS
 
-Last updated: 2026-11-11 — Telegram bot + customer Mini App complete and served by
-the API; Docker deploy files added. Environment-limited artifacts (Android APK,
-Windows EXE, AppImage) remain documented only.
+Last updated: 2026-11-13 — Delivery-address capture (bot location prompt, saved
+customer address, Mini App prefill), courier cash collection with cashier
+“To‘lov qilindi” handover, and owner-managed employee roles/activation are
+implemented on top of Telegram-ID staff authentication, the DELIVERY role,
+mandatory customer registration, the remote-ordering workflow, owner
+menu/photo management, the redesigned customer Mini App and printable receipts.
+Environment-limited artifacts (Android APK, Windows EXE, AppImage) remain
+documented only.
 
 ## Legend
 - ✅ done · 🟡 in progress / partial · ⬜ not started
@@ -19,24 +24,39 @@ Windows EXE, AppImage) remain documented only.
 | 6. Android app | Expo app: waiter + owner interfaces (now `legacy/`) | ✅ code + bundle; ⬜ APK (no SDK) |
 | 7. Cashier desktop | Tauri 2 + React billing UI (now `legacy/`) | ✅ UI + Linux packages; ⬜ Windows EXE (needs Windows) |
 | 8. Admin panel | All 15 sections + reports | ✅ |
-| 9. Tests & integration | Unit/integration/E2E critical flows | ✅ backend 45/45; manual UI smoke |
+| 9. Tests & integration | Unit/integration/E2E critical flows | ✅ backend 51/51; manual UI smoke |
 | 10. Deliverables | Deployment docs, build instructions | ✅ (limitations documented) |
 | 11. Telegram bot | Omni-device staff bot (rooms, orders, kitchen, delivery, stats, alerts) | ✅ code; live run needs `BOT_TOKEN` |
 | 12. Customer Mini App | Telegram Mini App self-service (menu, room/delivery orders, notes, receipts, call waiter) + staff screens | ✅ |
+| 13. Telegram-ID staff auth | Staff login by verified Telegram identity, one-time credential linking, extra OWNER password, bot auto-login | ✅ |
+| 14. Delivery role & remote orders | Dedicated DELIVERY role, customer → kitchen → courier workflow, claimable deliveries, delivery-only public orders | ✅ |
+| 15. Registration, receipts & UI | Mandatory name/phone registration via Telegram contact, printable receipts, redesigned Mini App, owner menu/photo management | ✅ |
+| 16. Location, cash handover & roles | Telegram location address capture + saved address, courier cash collection, cashier handover confirmation, owner role/activation management | ✅ |
 
 Docs: `docs/ARCHITECTURE.md`, `docs/DATABASE.md`, `docs/API.md`,
 `docs/DEPLOYMENT.md`, `docs/TESTING.md`, plus `DECISIONS.md`.
 
-## Verification snapshot (2026-11-11)
+## Verification snapshot (2026-11-13)
 
 - `npm run typecheck` — passes for all 9 workspaces.
-- Backend: `cd apps/api && npx vitest run` — **45/45 tests pass**.
-- Builds: `@ikki-dost/api`, `@ikki-dost/bot`, `@ikki-dost/mini-app` all pass.
+- Backend: `cd apps/api && npx vitest run` — **51/51 tests pass**, including
+  owner-assigned Telegram IDs, employee password-login rejection, OWNER
+  extra-password protection, verified customer registration and delivery-only
+  public ordering, saved delivery location, and courier cash → cashier handover.
+- Builds: `@ikki-dost/api`, `@ikki-dost/bot`, `@ikki-dost/mini-app` and
+  `@ikki-dost/admin-web` all pass.
+- Mini App production bundle: JS 258.65 kB (72.19 kB gzip), CSS 34.50 kB
+  (6.60 kB gzip).
 - API serves the built Mini App at `/` (HTML 200, `/api/health` 200,
   unknown `/api/*` → 404, SPA fallback → 200).
-- Live public-API smoke test: self-service dine-in order created (2 people,
-  20 000 UZS items + 8 000 UZS fee), `createdByName: 'Mijoz (Self-service)'`;
-  `POST /api/public/call-waiter` returned success.
+- Live checks against the production host on 2026-11-11: bot connected to
+  `@ikkidostbot`, Mini App at `https://ikkidost.abitcore.uz`, smoke delivery
+  order created and cancelled, owner login verified. The 2026-11-13 change set
+  is not deployed yet.
+- DB migrations `20261112120000_telegram_auth_delivery_customers`,
+  `20261112180000_enforce_telegram_staff_login` and
+  `20261113005418_delivery_cash_handover` are applied and seeded locally;
+  production still runs the previous deployment until this change set is rolled out.
 - Legacy admin-web/chef-web/mobile/cashier-desktop build results from
   2026-11-09 are preserved under `legacy/`.
 
@@ -44,18 +64,38 @@ Docs: `docs/ARCHITECTURE.md`, `docs/DATABASE.md`, `docs/API.md`,
 
 ### Backend (`apps/api`)
 - Embedded PostgreSQL bootstrap for dev/tests (`npm run db:start`), Prisma schema
-  plus 2 migrations.
-- Seed: owner/ofitsiant/oshpaz/kassir + `bot` self-service actor, 3 rooms, 4
-  categories, all 14 specified products with exact names/prices/units,
+  plus 5 migrations.
+- Seed: owner/ofitsiant/oshpaz/kassir/kuryer + `bot` self-service actor, 3 rooms,
+  4 categories, all 14 specified products with exact names/prices/units,
   Naqd/Karta methods, service fee 4 000 UZS/person enabled for both order
   types.
 - Auth: argon2, JWT access + rotating refresh tokens with family reuse detection,
   login throttling.
-- RBAC enforced server-side on every route (OWNER/WAITER/CHEF/CASHIER).
+- Staff authenticate only through owner-assigned Telegram IDs; the API resolves
+  the employee role from the ID and rejects non-owner username/password logins.
+  OWNER always supplies the extra password. The rollout migration revokes
+  existing non-owner refresh sessions.
+  Bot-only routes are protected by the shared `BOT_TOKEN` secret header.
+- RBAC enforced server-side on every route
+  (OWNER/WAITER/CHEF/CASHIER/DELIVERY).
+- Customers register with first/last name and verify their phone by sharing a
+  Telegram contact; verified customers only may place remote (delivery) orders.
+  `Customer.deliveryAddress` stores the latest location/manual address and is
+  prefilled on the next order; `POST /public/orders` refreshes it.
+- Delivery cash reconciliation: the courier records collected cash on
+  `DELIVERED` (`Delivery.cashCollectedAmount`/`cashCollectedAt`), and
+  CASHIER/OWNER confirm receipt with `POST /deliveries/:id/handover`
+  (“To‘lov qilindi”), which records a CASH payment, sets `cashHandedOverAt`,
+  audits `DELIVERY_CASH_HANDED_OVER` and notifies the courier.
+- Owner-managed employee lifecycle: `PATCH /employees/:id` changes role,
+  activation, name/phone or Telegram ID; the last active OWNER cannot be
+  deactivated.
 - Rooms with a single OPEN session enforced by a row lock; multi-order sessions.
 - Orders: dine-in and delivery, item-level workflow, status history, cancellation,
   historical price/fee snapshots.
-- Delivery workflow with enforced transitions and courier assignment.
+- Delivery workflow with enforced transitions and optional courier assignment;
+  DELIVERY staff see their own deliveries plus claimable unassigned ones and may
+  only set `OUT_FOR_DELIVERY` / `DELIVERED` (kitchen readiness syncs to READY).
 - Payments: full/partial, order- or session-level, idempotency, reversal with
   audit, overpayment rejection, transactional cached totals.
 - Room close blocked with debt; owner override requires reason + audit entry.
@@ -100,11 +140,22 @@ schemas), `utils` (integer-UZS money math, service fee, formatting),
 
 ### Telegram bot (`apps/bot`)
 Multi-role staff bot built with grammY on Node.js/TypeScript:
-- Staff login (`/login`) with ephemeral password message auto-deletion, JWT token rotation & refresh.
+- Staff login by verified Telegram identity, with one-time username/password
+  linking; the extra OWNER password is requested when needed. Legacy password
+  login remains available.
 - Role-adapted home menu and commands (`/rooms`, `/kitchen`, `/delivery`, `/newdel`, `/dash`, `/me`, `/help`).
 - Waiter / Owner room sessions: browse rooms, create dine-in orders with people count and menu categories, mark items as served, close sessions with reason when debt override is needed.
-- Kitchen queue for Chefs & Owners: view incoming orders, start preparation (`PREPARING`), mark items `READY`.
-- Delivery workflow: view active orders, advance delivery stages (`CONFIRMED` -> `PREPARING` -> `READY` -> `OUT_FOR_DELIVERY` -> `DELIVERED`), create new deliveries with customer name, phone, address, and food cart.
+- Kitchen queue for Chefs & Owners: view incoming orders, start preparation (`PREPARING`), mark items `READY`; couriers cannot advance kitchen states.
+- Delivery workflow: view active deliveries, claim unassigned ones, advance
+  `OUT_FOR_DELIVERY` → `DELIVERED`, and create new deliveries.
+- Customer registration and phone verification by Telegram contact sharing;
+  `/start` and the customer menu immediately prompt for a delivery location
+  (Telegram location, manual text or skip) and save it to the profile.
+- Courier cash prompt on `DELIVERED` (defaults to the outstanding amount) and a
+  cashier “To‘lov qilindi” handover confirmation, with pending-cash badges in
+  the delivery list.
+- The bot no longer runs customer order wizards — customers order through the
+  Mini App.
 - Owner dashboard (`/dash`): real-time summary of today's revenue, collected payments, unpaid debt, expenses, popular dishes.
 - Background notification poller with emoji alerts sent directly to staff chat.
 - Command menu registered with Telegram; `/newdel` deep link for creating deliveries.
@@ -116,18 +167,34 @@ Multi-role staff bot built with grammY on Node.js/TypeScript:
 ### Customer Mini App (`apps/mini-app`)
 Telegram Mini App served by the API at `/` (same origin as `/api`), Vite + React
 + Tailwind + lucide-react:
-- Public menu with categories/search, cart, decimal KG quantities, room or
-  home-delivery selection.
-- Per-item kitchen notes entered by the customer (reaches the kitchen order).
-- People count with live service-fee preview (4 000 UZS/person default).
-- Delivery details (name, phone, address) validated before submission.
-- Order tracker polling every 5 s, expandable electronic receipt (items,
-  service fee, total) and “Choy keltiring / Hisobni bering” waiter call.
-- Staff mode: login for OWNER/WAITER/CHEF/CASHIER with role screens (kitchen
-  queue, waiter rooms, owner dashboard).
-- Self-service orders are created through `POST /api/public/orders` with a
-  dedicated seeded `bot` actor (`Mijoz (Self-service)`), so audit is honest.
-- Public endpoints throttled: orders 20/min, call-waiter 6/min.
+- Modern hero/search/category menu, cart, decimal KG quantities, and live
+  service-fee preview (default 4 000 UZS/person).
+- Mandatory first-run registration: first/last name plus phone verification
+  through Telegram contact sharing; bot `/start` offers Telegram profile names
+  for confirmation/editing, and the official name replaces the display name.
+- Remote ordering is delivery-only and requires a verified customer; on-site
+  guests can call a waiter from the room picker instead of ordering from a
+  phone.
+- Per-item kitchen notes, delivery details validation, order tracker polling
+  every 5 s, and a printable electronic receipt (items, service fee, total).
+- Cart prefills the saved `Customer.deliveryAddress` (or the last local address)
+  and still allows manual edits or a mapped geolocation link.
+- Staff mode: Telegram auto-login for OWNER/WAITER/CHEF/CASHIER/DELIVERY with
+  role tabs (rooms, kitchen, delivery, cashier, owner), one-time credential
+  linking and the extra OWNER password.
+- Owner screen: revenue/debt stats, add products, upload/replace dish photos,
+  add categories, manage the product list, assign Telegram IDs, change an
+  employee's role, activate/deactivate staff, and create
+  WAITER/CHEF/CASHIER/DELIVERY employees without needing the separate admin-web.
+- Delivery checkout requests device geolocation with user permission and stores
+  the resulting map URL with the manually editable delivery address.
+- DELIVERY screen: claim unassigned deliveries, advance hand-off status, and
+  record the cash collected at the door.
+- Cashier screen (OWNER/CASHIER): pending courier handovers with totals,
+  customer/courier details and a “To‘lov qilindi” confirmation.
+- Public endpoints throttled: orders 20/min, call-waiter 6/min, registration
+  10/min.
+- Customer receipts and tracking are scoped to the Telegram identity.
 
 ### Deployment
 - `Dockerfile.deploy` builds api + bot + mini-app; `deploy/ikki-dost/compose.yaml`
@@ -147,19 +214,23 @@ Telegram Mini App served by the API at `/` (same origin as `/api`), Vite + React
 - **No automated browser UI suite** (Playwright/Cypress); frontends were checked
   by production builds and manual smoke tests against the live API.
 - **No load testing**; single-node deployment is the target (ADR-008).
-- **Bot live run needs a real `BOT_TOKEN`** from @BotFather. Source, build and
-  command registration are complete, but polling cannot be exercised without a
-  token and a public `MINI_APP_URL`.
+- **Telegram runtime config** — production needs `BOT_TOKEN`, `BOT_USERNAME`
+  and `TELEGRAM_AUTH_MAX_AGE_SECONDS`; Telegram Mini App auth cannot be
+  exercised outside Telegram (the browser shows the menu only).
+- **Real SMS OTP is not used** — phone confirmation relies on Telegram contact
+  sharing, which requires the Mini App/bot to run inside Telegram.
 - Docker deploy files are provided and lint-reviewed, but no Docker daemon is
   available here, so the image was not built in this environment.
 
 ## Next steps for the owner
 
-1. Change the seeded owner password and create real staff accounts.
+1. Change the seeded owner password and create real staff accounts, linking each
+   employee's Telegram identity on first login.
 2. Upload real product images and confirm prices/units with the 14 products.
 3. Configure rooms and the service fee policy.
 4. Deploy per `docs/DEPLOYMENT.md`; enable HTTPS, backups, VAPID push.
-5. Create the bot with @BotFather, set `BOT_TOKEN` + `MINI_APP_URL`, start the
-   `bot` Compose profile, and register the Mini App URL via `/setmenubutton`.
-6. Build/sign the Android APK and the Windows cashier installer on suitable
+5. Set `BOT_TOKEN`, `BOT_USERNAME` and `TELEGRAM_AUTH_MAX_AGE_SECONDS` in the
+   deploy `.env`, restart API + bot, and roll out the new migration.
+6. Register the Mini App URL via `/setmenubutton` on `@BotFather`.
+7. Build/sign the Android APK and the Windows cashier installer on suitable
    machines, then run the manual QA checklist in `docs/TESTING.md`.

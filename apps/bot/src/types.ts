@@ -4,7 +4,7 @@
  * keeps its own type copies. Keep these in sync with packages/shared-types.
  */
 
-export type Role = 'OWNER' | 'WAITER' | 'CHEF' | 'CASHIER';
+export type Role = 'OWNER' | 'WAITER' | 'CHEF' | 'CASHIER' | 'DELIVERY';
 export type OrderType = 'DINE_IN' | 'DELIVERY';
 export type OrderStatus =
   | 'PENDING'
@@ -73,6 +73,8 @@ export interface ProductDto {
   unit: MeasurementUnit;
   price: number;
   status: 'ACTIVE' | 'DISABLED' | 'ARCHIVED';
+  imageUrl?: string | null;
+  thumbnailUrl?: string | null;
 }
 
 export interface OrderItemDto {
@@ -96,6 +98,32 @@ export interface DeliveryDto {
   status: DeliveryStatus;
   assignedToId: string | null;
   assignedToName: string | null;
+  orderNumber: number;
+  orderStatus: OrderStatus;
+  itemsTotal: number;
+  totalAmount: number;
+  paidAmount: number;
+  outstandingAmount: number;
+  note: string | null;
+  items: OrderItemDto[];
+  /** Cash the courier collected; null until recorded. */
+  cashCollectedAmount: number | null;
+  cashCollectedAt: string | null;
+  cashHandedOverAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CustomerDto {
+  id: string;
+  telegramId: string;
+  telegramUsername: string | null;
+  firstName: string;
+  lastName: string;
+  fullName: string;
+  phone: string;
+  phoneVerified: boolean;
+  deliveryAddress: string | null;
   createdAt: string;
   updatedAt: string;
 }

@@ -15,7 +15,7 @@ export interface OrderFlow {
   roomName?: string;
   customer?: { name: string; phone: string; address: string };
   people: number;
-  stage: 'people' | 'menu' | 'qty' | 'note' | 'room' | 'confirm';
+  stage: 'people' | 'menu' | 'qty' | 'note' | 'confirm';
   categoryId?: string;
   currentProductId?: string;
   /** productId -> quantity */
@@ -24,7 +24,13 @@ export interface OrderFlow {
 }
 
 export type Flow =
-  | { kind: 'login' }
+  | { kind: 'owner-password' }
+  | { kind: 'register-confirm-name'; firstName: string; lastName: string }
+  | { kind: 'register-first-name' }
+  | { kind: 'register-last-name'; firstName: string }
+  | { kind: 'register-phone'; firstName: string; lastName: string }
+  | { kind: 'customer-location' }
+  | { kind: 'delivery-cash'; deliveryId: string; orderNumber: number; outstanding: number }
   | { kind: 'delivery-name'; actor: Actor }
   | { kind: 'delivery-phone'; actor: Actor; name: string }
   | { kind: 'delivery-address'; actor: Actor; name: string; phone: string }

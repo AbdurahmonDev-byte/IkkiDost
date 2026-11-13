@@ -1,9 +1,9 @@
 import { InlineKeyboard, type Context } from 'grammy';
-import { ApiError, api } from '../api.js';
+import { api } from '../api.js';
 import { money, qty, unitShort } from '../format.js';
 import { orderReceipt, receiptMessage } from '../receipt.js';
 import { flowKey, type Actor, type Deps, type OrderFlow } from '../state.js';
-import type { CategoryDto, ProductDto, RoomDto, ServiceFeeConfigDto } from '../types.js';
+import type { CategoryDto, ProductDto, ServiceFeeConfigDto } from '../types.js';
 import { expired } from './auth.js';
 import { handleError, stale } from './rooms.js';
 
@@ -154,23 +154,6 @@ async function renderNote(ctx: Context, flow: OrderFlow, edit: boolean) {
   else await ctx.reply(text, { reply_markup: kb });
 }
 
-async function renderRoomPick(deps: Deps, ctx: Context, flow: OrderFlow, edit: boolean) {
-  const chatId = ctx.chat!.id;
-  let rooms: RoomDto[];
-  if (deps.system) rooms = await deps.system.get<RoomDto[]>('/rooms');
-  else rooms = await api.rooms(deps.config, deps.store, chatId);
-
-  const kb = new InlineKeyboard();
-  for (const room of rooms.filter((r) => r.isActive)) {
-    const busy = room.activeSession ? ' (band)' : '';
-    kb.text(`${room.name}${busy}`, `o:room:${deps.refs.ref(chatId, room.id)}`).row();
-  }
-  kb.text('❌ Bekor qilish', 'o:cancel');
-  const text = `${modeTitle(flow)}\n\nQaysi xonadasiz? Xonangizni tanlang:`;
-  if (edit) await ctx.editMessageText(text, { reply_markup: kb });
-  else await ctx.reply(text, { reply_markup: kb });
-}
-
 async function renderConfirm(deps: Deps, ctx: Context, flow: OrderFlow, edit: boolean) {
   const chatId = ctx.chat!.id;
   const data = await menuData(deps, chatId);
@@ -212,8 +195,6 @@ export async function renderStage(deps: Deps, ctx: Context, flow: OrderFlow, edi
     }
     case 'note':
       return renderNote(ctx, flow, edit);
-    case 'room':
-      return renderRoomPick(deps, ctx, flow, edit);
     case 'confirm':
       return renderConfirm(deps, ctx, flow, edit);
   }
@@ -354,34 +335,8 @@ export function registerOrder(deps: Deps, bot: import('../state.js').AppBot) {
     if (!flow) return stale(ctx);
     flow.note = undefined;
     await ctx.answerCallbackQuery();
-    if (flow.actor === 'customer' && flow.mode === 'DINE_IN' && !flow.roomId) {
-      flow.stage = 'room';
-      return renderRoomPick(deps, ctx, flow, true);
-    }
     flow.stage = 'confirm';
     return renderConfirm(deps, ctx, flow, true);
-  });
-
-  // Customer dine-in: room picked → confirm.
-  bot.callbackQuery(/^o:room:(.+)$/, async (ctx) => {
-    const flow = getFlow(ctx.chat.id);
-    if (!flow) return stale(ctx);
-    const roomId = refs.unref(ctx.chat.id, ctx.match[1]);
-    if (!roomId) return stale(ctx);
-    try {
-      const rooms: RoomDto[] = deps.system
-        ? await deps.system.get<RoomDto[]>('/rooms')
-        : await api.rooms(config, store, ctx.chat.id);
-      const room = rooms.find((r) => r.id === roomId);
-      if (!room) return stale(ctx);
-      flow.roomId = room.id;
-      flow.roomName = room.name;
-      flow.stage = 'confirm';
-      await ctx.answerCallbackQuery();
-      return renderConfirm(deps, ctx, flow, true);
-    } catch (error) {
-      return handleError(deps, ctx, error);
-    }
   });
 
   // Remove a line from the cart (confirm screen).
@@ -422,60 +377,30 @@ export function registerOrder(deps: Deps, bot: import('../state.js').AppBot) {
     }));
 
     try {
+      if (flow.actor !== 'staff') {
+        throw new Error('Mijozlar buyurtmani Mini App orqali beradi');
+      }
       let order;
-      if (flow.actor === 'staff') {
-        if (flow.mode === 'DINE_IN') {
-          order = await api.createDineInOrder(config, store, chatId, {
-            roomId: flow.roomId!,
-            numberOfPeople: flow.people,
-            items,
-            note: flow.note ?? null,
-          });
-        } else {
-          order = await api.createDeliveryOrder(config, store, chatId, {
-            numberOfPeople: flow.people,
-            items,
-            customerName: flow.customer!.name,
-            customerPhone: flow.customer!.phone,
-            address: flow.customer!.address,
-            note: flow.note ?? null,
-          });
-        }
+      if (flow.mode === 'DINE_IN') {
+        order = await api.createDineInOrder(config, store, chatId, {
+          roomId: flow.roomId!,
+          numberOfPeople: flow.people,
+          items,
+          note: flow.note ?? null,
+        });
       } else {
-        // Customer self-service via the dedicated bot staff account.
-        if (!deps.system) throw new ApiError(503, 'Mijoz buyurtmalari uchun bot hisobi sozlanmagan');
-        const profile = store.customer(chatId);
-        const tgUser = ctx.from?.username ? `@${ctx.from.username}` : ctx.from?.first_name ?? `chat ${chatId}`;
-        const tag = `[Telegram mijoz: ${profile.name ?? tgUser}]`;
-        const note = [tag, flow.note].filter(Boolean).join(' ');
-        if (flow.mode === 'DINE_IN') {
-          order = await deps.system.post('/orders', {
-            type: 'DINE_IN',
-            roomId: flow.roomId!,
-            numberOfPeople: flow.people,
-            items,
-            note,
-          });
-        } else {
-          order = await deps.system.post('/orders', {
-            type: 'DELIVERY',
-            numberOfPeople: flow.people,
-            items,
-            customerName: flow.customer!.name,
-            customerPhone: flow.customer!.phone,
-            address: flow.customer!.address,
-            note,
-          });
-        }
-        store.patchCustomer(chatId, {
-          lastRoomId: flow.roomId ?? profile.lastRoomId,
-          lastOrderAt: new Date().toISOString(),
+        order = await api.createDeliveryOrder(config, store, chatId, {
+          numberOfPeople: flow.people,
+          items,
+          customerName: flow.customer!.name,
+          customerPhone: flow.customer!.phone,
+          address: flow.customer!.address,
+          note: flow.note ?? null,
         });
       }
 
       flows.delete(flowKey(chatId));
       const receipt = orderReceipt(order as import('../types.js').OrderDto, { roomName: flow.roomName });
-      if (flow.actor === 'customer') store.patchCustomer(chatId, { lastReceipt: receipt });
 
       await ctx.editMessageText(
         `✅ Buyurtma #${(order as import('../types.js').OrderDto).orderNumber} qabul qilindi va oshpazga yuborildi!`,
@@ -490,10 +415,6 @@ export function registerOrder(deps: Deps, bot: import('../state.js').AppBot) {
 /** Called by the text router when the wizard waits for a chef note. */
 export async function handleNoteText(deps: Deps, ctx: Context, flow: OrderFlow, text: string): Promise<void> {
   flow.note = text.trim().slice(0, 300) || undefined;
-  if (flow.actor === 'customer' && flow.mode === 'DINE_IN' && !flow.roomId) {
-    flow.stage = 'room';
-    return renderRoomPick(deps, ctx, flow, false);
-  }
   flow.stage = 'confirm';
   return renderConfirm(deps, ctx, flow, false);
 }

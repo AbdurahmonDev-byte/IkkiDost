@@ -22,7 +22,7 @@ boots against the embedded PostgreSQL instance (port 5433) and resets the
 ```bash
 npm run db:start            # if the embedded server is not running
 cd apps/api
-npx vitest run              # 45 tests
+npx vitest run              # 51 tests
 npx vitest                  # watch mode
 ```
 
@@ -34,26 +34,45 @@ Test credentials (seeded):
 | `ofitsiant` | `password123` | WAITER |
 | `oshpaz` | `password123` | CHEF |
 | `kassir` | `password123` | CASHIER |
+| `kuryer` | `password123` | DELIVERY |
 | `bot` | `SEED_BOT_PASSWORD` (falls back to `SEED_PASSWORD`, dev `password123`) | WAITER, self-service actor — do not log in with it |
 
-## 2. Current results (2026-11-11)
+Telegram staff authentication and customer-registration integration tests
+generate signed, time-valid `initData` with a test bot token. Live Telegram
+delivery and Mini App behavior still require manual verification (see §4).
 
-- Backend integration suite: **45/45 passing**, 1 file, ~2.6 s of test time.
+## 2. Current results (2026-11-13)
+
+- Backend integration suite: **51/51 passing**, 1 file, ~4.5 s of test time.
+- Telegram tests cover owner-assigned staff IDs, employee password-login
+  rejection, the OWNER extra password, mandatory phone verification, official
+  customer names, and the delivery-only order rule.
+- Location/cash tests cover the bot-saved delivery address and Mini App profile
+  prefill, address persistence from `POST /public/orders`, the courier cash
+  prompt on `DELIVERED`, the cashier handover recording a CASH payment, the
+  order auto-completing after handover, the courier's handover rejection (`403`)
+  and repeated-handover rejection (`400`).
 - `npm run typecheck`: **passing** for API, bot, mini-app, admin-web and all
   shared packages.
-- API / bot / mini-app production builds: **passing**.
+- API / bot / mini-app / admin-web production builds: **passing**.
+- Mini App production bundle: JS 258.65 kB (72.19 kB gzip), CSS 34.50 kB
+  (6.60 kB gzip).
 - Mini App served by the API: `/` → 200 HTML, `/api/health` → 200,
   unknown `/api/*` → 404, SPA fallback → 200.
-- Public API smoke test: self-service order created with the seeded `bot` actor
-  (`Mijoz (Self-service)`), fee snapshot correct; `call-waiter` → success.
-- admin-web production build: **passing** (20 routes, legacy result retained).
+- Local DB migrations `20261112120000_telegram_auth_delivery_customers`,
+  `20261112180000_enforce_telegram_staff_login` and
+  `20261113005418_delivery_cash_handover` applied; seed includes the `kuryer`
+  DELIVERY account.
+- Telegram-auth, customer-registration, delivery-claim, location, cash-handover
+  and receipt flows: implemented and build-verified; final live verification
+  happens after the next production rollout (the server currently runs the
+  previous release).
+- admin-web production build: **passing** (20 routes).
 - Tauri Linux: **binary + `.deb` + `.rpm` produced** (legacy app). AppImage
   packaging failed while downloading `linuxdeploy-plugin-appimage`
   (environment network restriction, not an app defect).
 - Android APK/AAB: **not built** — no Android SDK in this environment.
 - Windows `.exe`/`.msi`: **not built** — must be produced on Windows (`npx tauri build`).
-- Telegram bot: build + command registration verified; **live polling not run**
-  (no `BOT_TOKEN` available here).
 
 ## 3. What the backend suite covers
 
@@ -85,7 +104,8 @@ Scenarios 1–18 from the specification:
 
 Additional coverage: category/product creation, archiving, archived products
 cannot be ordered, image upload validation, dashboard and range reports,
-expenses/profit, audit entries.
+expenses/profit, audit entries, saved delivery addresses and courier →
+cashier cash handover.
 
 ## 4. Manual QA checklist
 
@@ -103,25 +123,54 @@ expenses/profit, audit entries.
 
 - Open `https://<domain>/` in Telegram (bot webApp button) and in a normal mobile
   browser; layout adapts and the menu loads from `/api/public/menu`.
-- Pick a room, add items, set KG quantity, add a per-item note, set people
-  count → fee preview equals `people × 4 000`.
-- Submit a dine-in order → tracker shows status; expand the receipt and compare
-  items/fee/total with the kitchen ticket.
-- Submit a delivery order without name/phone/address → validation blocks it.
+- Add items, set a KG quantity, add a per-item note, set people count → fee
+  preview equals `people × 4 000`.
+- As an unregistered user, ordering is blocked with the registration prompt;
+  on-site guests use the room picker → “Choy keltiring” instead of ordering.
+- Delivery checkout prefills the saved address; edit it, then submit → tracker
+  shows status and the receipt matches the kitchen ticket. Reopen the cart:
+  the submitted address is prefilled again.
+- Submit a delivery order with an empty/short address → validation blocks it.
 - “Choy keltiring” creates a waiter notification; repeat taps are throttled.
-- Staff login as `ofitsiant` shows rooms; as `oshpaz` shows the kitchen queue;
-  as `owner` shows the dashboard. Logout works.
+- Owner assigns staff Telegram IDs in the employee manager / Mini App owner tab.
+  Staff `/start` logs in according to the assigned role; employee passwords and
+  self-linking are rejected. OWNER still supplies the extra password.
+- Owner changes an employee's role (e.g. WAITER → CASHIER) and toggles
+  activate/deactivate in the owner tab; the change is visible after the access
+  token refreshes (≤15 min) or on next login.
 - Kill the Mini App session and reopen: no stale active order is shown after it
   is completed/cancelled.
 
+### Telegram Mini App (courier → cashier)
+
+- Couriers see unassigned `CONFIRMED`/`PREPARING`/`READY` deliveries, claim one,
+  and can only advance `OUT_FOR_DELIVERY` → `DELIVERED`.
+- On “Yetkazildi”, the courier records the cash collected (default = outstanding,
+  capped at it); a `0` amount is treated as card/no cash.
+- The cashier/owner opens the “Kassa” tab, sees the pending handover with the
+  amount and courier, and confirms “To‘lov qilindi”.
+- The order shows `paidAmount = totalAmount`, `outstandingAmount = 0`, the
+  handover timestamp, and auto-completes. A second confirmation is rejected.
+- Without cash recorded, the courier cannot hand over; without a handover, the
+  order stays unpaid.
+
 ### Telegram bot (staff)
 
-- `/start` shows the role home menu with a “Universal Mini App” button.
-- `/login` asks for username/password; the password message is deleted.
+- `/start` auto-logs a staff member whose Telegram ID is assigned by the owner.
+- An unregistered customer is offered the Telegram profile name and surname or
+  can replace them, then shares their own contact to confirm their phone.
+- After customer registration (and on every subsequent `/start`) the bot asks
+  for the delivery location; send a Telegram location, type an address, or skip.
+  The saved address appears in “Profilim” and prefills the Mini App cart.
 - `/rooms` → open session → add order → mark served; `/kitchen` → PREPARING →
-  READY; `/delivery` → advance status; `/newdel` → name/phone/address chain.
+  READY; `/delivery` → advance status; `/newdel` → name/phone/address chain with
+  a location-or-text address prompt.
+- Courier `/delivery` → open an `OUT_FOR_DELIVERY` order → “Yetkazildi — naqdni
+  qayd etish” → choose the outstanding cash, another amount, or “naqdsiz”.
+- Cashier/owner `/delivery` shows pending cash and “Pul topshirildi” →
+  “Ha, to‘lov qilindi”; the courier receives a confirmation notification.
 - `/dash` is OWNER-only; other roles get a clear denial.
-- `/logout` clears the chat session; `/start` after logout is a guest flow.
+- `/logout` clears the chat session; `/start` checks the sender's ID again.
 - A background notification (new order / ready item / waiter call) arrives in
   the staff chat within the poll interval.
 

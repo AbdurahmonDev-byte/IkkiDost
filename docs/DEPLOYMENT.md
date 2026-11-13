@@ -4,9 +4,10 @@ Target for a small restaurant: one Linux server (or VPS) running the API,
 PostgreSQL, the Telegram bot and the Mini App; the owner admin panel can run on
 the same host. The bot and Mini App need no per-device installs.
 
-> Everything below was exercised locally except the items marked
-> “not built in this environment” (Android APK, Windows `.exe`, Tauri AppImage,
-> Docker image build, live Telegram polling without a token).
+> Everything below was exercised locally; an earlier release (bot + Mini App) was
+> deployed to the production host. Items marked “not built in this environment”
+> (Android APK, Windows `.exe`, Tauri AppImage, Docker image build) remain
+> environment-limited.
 
 ## 1. Prerequisites
 
@@ -44,12 +45,25 @@ MAX_IMAGE_SIZE_BYTES=5242880
 VAPID_PUBLIC_KEY="<generated>"
 VAPID_PRIVATE_KEY="<generated>"
 VAPID_SUBJECT="mailto:admin@example.uz"
+
+# Telegram (also used by the API to validate Mini App initData and to send
+# registration/verification messages)
+BOT_TOKEN="123456789:ABCdefGHIjklMNOpqrsTUVwxyz"
+BOT_USERNAME="ikkidostbot"
+OWNER_TELEGRAM_IDS="7483287151,317080284"
+TELEGRAM_AUTH_MAX_AGE_SECONDS=86400
 ```
+
+The API and the bot must share the same `BOT_TOKEN`; the API rejects Mini App
+`initData` and bot-secret requests otherwise.
+`OWNER_TELEGRAM_IDS` is a comma-separated allowlist of owner identities; each
+owner login still requires the OWNER account password.
 
 Bot settings live in `apps/bot/.env` (or the Compose environment):
 
 ```ini
 BOT_TOKEN="123456789:ABCdefGHIjklMNOpqrsTUVwxyz"
+BOT_USERNAME="ikkidostbot"
 API_URL="https://ikkidost.abitcore.uz/api"
 MINI_APP_URL="https://ikkidost.abitcore.uz"
 BOT_NOTIFY_INTERVAL_MS=10000
@@ -211,9 +225,15 @@ npm run build -w @ikki-dost/mini-app
   GET falls back to `index.html` for client-side routing.
 - Helmet CSP allows `https://telegram.org` scripts and Telegram Web iframes. If
   you add external assets, extend `scriptSrc`/`imgSrc` in `apps/api/src/main.ts`.
-- Customer flow: menu → room or delivery → per-item kitchen notes → cart with
-  people/fee preview → submit → 5 s status tracker + e-receipt.
-- Staff flow: “Xodim” login with the same credentials as the API role screens.
+- Customer flow: menu → mandatory registration + phone verification → delivery
+  order with per-item kitchen notes → cart with fee preview → submit → 5 s
+  status tracker + printable e-receipt. Dine-in guests call a waiter instead of
+  ordering remotely.
+- Staff flow: OWNER can create employees (including DELIVERY) and assign
+  Telegram IDs in the Mini App owner tab. The Mini App validates Telegram
+  `initData` and the bot uses the Telegram sender ID; the assigned employee role
+  selects the staff screen. Non-owner staff do not use passwords. OWNER also
+  enters the account password.
 
 Public endpoints used by the Mini App are documented in `docs/API.md` and are
 throttled at the API level.
@@ -221,8 +241,10 @@ throttled at the API level.
 ## 9. Telegram bot
 
 1. Create a bot with @BotFather and copy the token.
-2. Set `BOT_TOKEN`, `API_URL`, and `MINI_APP_URL` in `apps/bot/.env` (or the
-   Compose environment). Never commit the token.
+2. Set `BOT_TOKEN`, `BOT_USERNAME`, `API_URL`, and `MINI_APP_URL` in
+   `apps/bot/.env` (or the Compose environment). Set the same `BOT_TOKEN` in the
+   API environment — it validates Mini App `initData` and bot-secret calls. Never
+   commit the token.
 3. Start it:
 
 ```bash
@@ -240,8 +262,13 @@ docker compose -f deploy/ikki-dost/compose.yaml --env-file deploy/ikki-dost/.env
 4. In @BotFather, set the Mini App / menu button to `MINI_APP_URL`
    (`/setmenubutton` or Bot Settings → Menu Button). The bot also sends a
    `webApp` button in its home keyboard.
-5. Staff log in once per Telegram account with `/login`; sessions persist in
-   `apps/bot/data/sessions.json` (gitignored, mount a volume in production).
+5. On first setup, bootstrap the owner from the Mini App's owner sign-in, then
+  assign the owner's own Telegram ID and employee IDs in the Owner tab. Staff
+  press `/start` to see their ID; after the owner assigns it to the correct
+  employee record, they press `/start` again to log in. Sessions persist in
+  `apps/bot/data/sessions.json` (gitignored, mount a volume in production).
+  Customer registration and phone verification also happen in the bot;
+  delivery checkout can request location, and ordering is Mini App only.
 
 The bot uses long polling — no inbound port or webhook is required. Without a
 valid token it exits with a clear error; a token cannot be generated locally.
@@ -258,7 +285,8 @@ valid token it exits with a clear error; a token cannot be generated locally.
 
 ```bash
 cp deploy/ikki-dost/.env.example deploy/ikki-dost/.env
-# fill in POSTGRES_PASSWORD, JWT secrets, SEED_* passwords
+# fill in POSTGRES_PASSWORD, JWT secrets, SEED_* passwords,
+# BOT_TOKEN, BOT_USERNAME and TELEGRAM_AUTH_MAX_AGE_SECONDS
 docker compose -f deploy/ikki-dost/compose.yaml --env-file deploy/ikki-dost/.env \
   up -d --build api db
 docker compose -f deploy/ikki-dost/compose.yaml --env-file deploy/ikki-dost/.env \
@@ -358,20 +386,27 @@ cashier app's API base URL / runtime setting).
    applicability.
 4. Upload product images, confirm the 14 seeded products and prices.
 5. Configure rooms.
-6. Create the Telegram bot, set `BOT_TOKEN` + `MINI_APP_URL`, and check the
-   Mini App button on a phone and on Telegram Desktop/Web.
-7. Run a customer test order (dine-in + delivery), verify the kitchen note,
-   tracker and e-receipt.
-8. Verify staff bot flows: `/login`, `/rooms`, `/kitchen`, `/delivery`,
-   `/newdel`, `/dash`.
-9. Test a cashier payment + reversal and a room close with/without debt.
-10. Verify backups and restore on a staging database.
+6. Create the Telegram bot, set `BOT_TOKEN` + `BOT_USERNAME` on both API and bot,
+   set `MINI_APP_URL`, and check the Mini App button on a phone and on Telegram
+   Desktop/Web.
+7. Register a customer (first/last name + Telegram contact), place a delivery
+   order, verify the kitchen note, tracker and printable e-receipt, then claim
+   and deliver it as `kuryer`.
+8. Verify staff bot flows: Telegram auto-login/linking, `/rooms`, `/kitchen`,
+   `/delivery`, `/newdel`, `/dash`; confirm OWNER asks for the extra password.
+9. Verify that a browser (non-Telegram) session can only browse the menu and
+   cannot register or order.
+10. Test a cashier payment + reversal and a room close with/without debt.
+11. Verify backups and restore on a staging database.
 
 ## 15. Operations
 
 - **Updates:** `git pull && npm ci && npm run build -w @ikki-dost/api && npm run build -w @ikki-dost/bot && npm run build -w @ikki-dost/mini-app`, then
-  `npx prisma migrate deploy` and restart services. Migrations are
-  forward-only; take a backup first.
+  `npx prisma migrate deploy` and restart services. Keep `BOT_TOKEN` /
+  `BOT_USERNAME` identical on API and bot. Migrations are forward-only; take a
+  backup first. This rollout adds `20261113005418_delivery_cash_handover`
+  (delivery cash fields + `Customer.deliveryAddress`) on top of the
+  Telegram-auth/DELIVERY migrations.
 - **Logs:** `journalctl -u ikki-api -f` and `journalctl -u ikki-bot -f`;
   Next.js logs via PM2/systemd.
 - **Monitoring:** probe `GET /api/health` (200) and the panel URLs; alert on 5xx

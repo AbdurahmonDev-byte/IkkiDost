@@ -20,7 +20,7 @@ PostgreSQL 15+ via Prisma. Source of truth: `apps/api/prisma/schema.prisma`.
 
 | Enum | Values |
 |---|---|
-| `Role` | `OWNER`, `WAITER`, `CHEF`, `CASHIER` |
+| `Role` | `OWNER`, `WAITER`, `CHEF`, `CASHIER`, `DELIVERY` |
 | `RoomSessionStatus` | `OPEN`, `CLOSED` |
 | `MeasurementUnit` | `PIECE`, `KG`, `LITER`, `PORTION`, `OTHER` |
 | `ProductStatus` | `ACTIVE`, `DISABLED`, `ARCHIVED` |
@@ -39,8 +39,15 @@ Prisma enums are mirrored 1:1 in `packages/shared-types/src/enums.ts`.
 
 **User** — staff account.
 `id`, `username` (unique), `passwordHash` (argon2), `fullName`, `phone?`,
-`role`, `isActive`, `canCreateDelivery`, timestamps.
-Index: `(role, isActive)`.
+`role`, `isActive`, `canCreateDelivery`, `telegramId?` (unique, assigned by the
+owner), `telegramUsername?`, timestamps.
+Index: `(role, isActive)`. Staff log in by `telegramId`; username/password is
+kept for OWNER bootstrap and the backend `bot` actor.
+
+**Customer** — Telegram-identified remote customer (separate from `User`).
+`id`, `telegramId` (unique), `telegramUsername?`, `firstName`, `lastName`,
+`phone`, `phoneVerifiedAt?`, `deliveryAddress?` (latest Telegram location or
+manual address), timestamps. Orders link via `Order.customerId`.
 
 **RefreshToken** — refresh-token rotation family.
 `id`, `userId`, `tokenHash` (unique), `familyId`, `expiresAt`, `revokedAt?`,
@@ -100,7 +107,8 @@ timestamps. Indexes: `orderId`, `status`.
 
 **Delivery** — 1:1 with Order (`orderId` unique).
 `customerName`, `customerPhone`, `address`, `status`, `assignedToId?`,
-timestamps. Indexes: `status`, `assignedToId`.
+cash reconciliation: `cashCollectedAmount?`, `cashCollectedAt?`,
+`cashHandedOverAt?`, timestamps. Indexes: `status`, `assignedToId`.
 
 ### Payments
 
@@ -142,8 +150,9 @@ deleted.
 `actorId`.
 
 Actions include `PRODUCT_PRICE_CHANGED`, `PAYMENT_RECEIVED`,
-`PAYMENT_REVERSED`, `SESSION_CLOSE_OVERRIDE`, `ORDER_CANCELLED`, role/employee
-changes, and settings updates.
+`PAYMENT_REVERSED`, `SESSION_CLOSE_OVERRIDE`, `ORDER_CANCELLED`,
+`DELIVERY_CLAIMED`, `DELIVERY_CASH_HANDED_OVER`, role/employee changes, and
+settings updates.
 
 ## 4. Financial invariants
 
@@ -178,6 +187,9 @@ leave a half-applied balance.
 apps/api/prisma/migrations/
   20261109065541_init
   20261109074821_fix_room_session_unique
+  20261112120000_telegram_auth_delivery_customers
+  20261112180000_enforce_telegram_staff_login
+  20261113005418_delivery_cash_handover
 ```
 
 Apply in every environment:
@@ -202,6 +214,8 @@ Users (development credentials):
 | `ofitsiant` | `password123` | WAITER |
 | `oshpaz` | `password123` | CHEF |
 | `kassir` | `password123` | CASHIER |
+| `kuryer` | `password123` | DELIVERY |
+| `bot` | — | backend self-service actor (no login UI) |
 
 Rooms: 3 seeded rooms. Categories: Asosiy taomlar, Salat va qo‘shimchalar,
 Non, Ichimliklar.

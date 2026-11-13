@@ -26,7 +26,29 @@ export function mapOrderItem(item: OrderItem & { product?: (Product & { image?: 
   };
 }
 
-export function mapDelivery(d: Delivery & { assignedTo?: User | null }): DeliveryDto {
+interface DeliveryOrderSummary {
+  orderNumber: number;
+  status: Order['status'];
+  itemsTotal: number;
+  totalAmount: number;
+  paidAmount: number;
+  note: string | null;
+  items: (OrderItem & { product?: (Product & { image?: ProductImage | null }) | null })[];
+}
+
+type DeliveryWithOrder = Delivery & {
+  assignedTo?: User | null;
+  order?: DeliveryOrderSummary | null;
+};
+
+/**
+ * Maps a delivery. When the delivery was loaded on its own, its `order`
+ * relation must be included; when it is nested inside an order DTO the parent
+ * order is passed as the second argument.
+ */
+export function mapDelivery(d: DeliveryWithOrder, parentOrder?: DeliveryOrderSummary): DeliveryDto {
+  const order = d.order ?? parentOrder;
+  if (!order) throw new Error('mapDelivery: order context is required');
   return {
     id: d.id,
     orderId: d.orderId,
@@ -36,6 +58,17 @@ export function mapDelivery(d: Delivery & { assignedTo?: User | null }): Deliver
     status: d.status,
     assignedToId: d.assignedToId,
     assignedToName: d.assignedTo?.fullName ?? null,
+    orderNumber: order.orderNumber,
+    orderStatus: order.status,
+    itemsTotal: order.itemsTotal,
+    totalAmount: order.totalAmount,
+    paidAmount: order.paidAmount,
+    outstandingAmount: Math.max(0, order.totalAmount - order.paidAmount),
+    note: order.note,
+    items: order.items.map(mapOrderItem),
+    cashCollectedAmount: d.cashCollectedAmount ?? null,
+    cashCollectedAt: d.cashCollectedAt?.toISOString() ?? null,
+    cashHandedOverAt: d.cashHandedOverAt?.toISOString() ?? null,
     createdAt: d.createdAt.toISOString(),
     updatedAt: d.updatedAt.toISOString(),
   };
@@ -53,7 +86,7 @@ export function mapOrder(order: OrderWithRelations): OrderDto {
     numberOfPeople: order.numberOfPeople,
     note: order.note,
     items: order.items.map(mapOrderItem),
-    delivery: order.delivery ? mapDelivery(order.delivery) : null,
+    delivery: order.delivery ? mapDelivery(order.delivery, order) : null,
     itemsTotal: order.itemsTotal,
     serviceFeeAmount: order.serviceFeeAmount,
     serviceFeePerPerson: order.serviceFeePerPerson,
@@ -63,6 +96,7 @@ export function mapOrder(order: OrderWithRelations): OrderDto {
     outstandingAmount: order.totalAmount - order.paidAmount,
     createdById: order.createdById,
     createdByName: order.createdBy.fullName,
+    customerId: order.customerId,
     createdAt: order.createdAt.toISOString(),
     updatedAt: order.updatedAt.toISOString(),
   };

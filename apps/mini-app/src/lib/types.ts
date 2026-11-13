@@ -10,7 +10,15 @@ export type OrderStatus =
   | 'COMPLETED'
   | 'CANCELLED';
 export type OrderItemStatus = 'PENDING' | 'PREPARING' | 'READY' | 'SERVED' | 'CANCELLED';
-export type Role = 'OWNER' | 'WAITER' | 'CHEF' | 'CASHIER';
+export type Role = 'OWNER' | 'WAITER' | 'CHEF' | 'CASHIER' | 'DELIVERY';
+export type DeliveryStatus =
+  | 'PENDING'
+  | 'CONFIRMED'
+  | 'PREPARING'
+  | 'READY'
+  | 'OUT_FOR_DELIVERY'
+  | 'DELIVERED'
+  | 'CANCELLED';
 
 export interface Category {
   id: string;
@@ -22,6 +30,7 @@ export interface Product {
   id: string;
   name: string;
   categoryId: string;
+  categoryName?: string;
   unit: MeasurementUnit;
   price: number;
   status: 'ACTIVE' | 'DISABLED' | 'ARCHIVED';
@@ -44,16 +53,40 @@ export interface ServiceFeeConfig {
   method: 'PER_PERSON';
 }
 
+export interface PublicConfig {
+  botUsername: string;
+  botUrl: string;
+  registrationUrl: string;
+  remoteOrdering: boolean;
+  dineInOrdering: boolean;
+}
+
+export interface Customer {
+  id: string;
+  telegramId: string;
+  telegramUsername: string | null;
+  firstName: string;
+  lastName: string;
+  /** Official name — replaces the Telegram display name in the UI. */
+  fullName: string;
+  phone: string;
+  phoneVerified: boolean;
+  /** Saved default address (text and/or Google Maps link). */
+  deliveryAddress: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface CartItem {
   product: Product;
   quantity: number;
-  note?: string; // "haligini mini appni yozadigan joyiga yozadi u povarga boradi"
+  note?: string;
 }
 
 export interface OrderItemDto {
   id: string;
   orderId: string;
-  productId: string;
+  productId: string | null;
   productName: string;
   productUnit: MeasurementUnit;
   unitPrice: number;
@@ -61,6 +94,30 @@ export interface OrderItemDto {
   lineTotal: number;
   status: OrderItemStatus;
   note: string | null;
+}
+
+export interface DeliveryDto {
+  id: string;
+  orderId: string;
+  customerName: string;
+  customerPhone: string;
+  address: string;
+  status: DeliveryStatus;
+  assignedToId: string | null;
+  assignedToName: string | null;
+  orderNumber: number;
+  orderStatus: OrderStatus;
+  itemsTotal: number;
+  totalAmount: number;
+  paidAmount: number;
+  outstandingAmount: number;
+  note: string | null;
+  items: OrderItemDto[];
+  cashCollectedAmount: number | null;
+  cashCollectedAt: string | null;
+  cashHandedOverAt: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface OrderDto {
@@ -73,12 +130,16 @@ export interface OrderDto {
   numberOfPeople: number;
   note: string | null;
   items: OrderItemDto[];
-  itemsTotal?: number;
-  serviceFeeAmount?: number;
-  serviceFeePerPerson?: number;
+  delivery: DeliveryDto | null;
+  itemsTotal: number;
+  serviceFeeAmount: number;
+  serviceFeePerPerson: number;
+  serviceFeeMethod: 'PER_PERSON' | 'NONE';
   totalAmount: number;
   paidAmount: number;
-  outstandingAmount?: number;
+  outstandingAmount: number;
+  createdById: string;
+  createdByName: string;
   createdAt: string;
 }
 
@@ -87,5 +148,7 @@ export interface StaffUser {
   username: string;
   fullName: string;
   role: Role;
+  isActive?: boolean;
   accessToken: string;
+  refreshToken?: string;
 }

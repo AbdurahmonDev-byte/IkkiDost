@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-export type BotRole = 'OWNER' | 'WAITER' | 'CHEF' | 'CASHIER';
+export type BotRole = 'OWNER' | 'WAITER' | 'CHEF' | 'CASHIER' | 'DELIVERY';
 
 export interface Session {
   userId: string;
@@ -15,15 +15,15 @@ export interface Session {
   linkedAt: string;
 }
 
-/** Unauthenticated customer state (self-service ordering). */
+/** Registered Telegram customer (remote delivery orders). */
 export interface CustomerProfile {
-  name?: string;
+  id?: string;
+  fullName?: string;
   phone?: string;
+  phoneVerified?: boolean;
   address?: string;
-  lastRoomId?: string;
   lastReceipt?: string;
   lastOrderAt?: string;
-  /** In-memory only: waiter-call throttling. */
 }
 
 interface Persisted {

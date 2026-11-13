@@ -68,6 +68,7 @@ export const roleLabel: Record<Role, string> = {
   WAITER: 'Ofitsiant',
   CHEF: 'Oshpaz',
   CASHIER: 'Kassir',
+  DELIVERY: 'Yetkazib beruvchi',
 };
 
 export const orderStatusLabel: Record<OrderStatus, string> = {

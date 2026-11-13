@@ -31,6 +31,72 @@ export const refreshSchema = z.object({
 });
 export type RefreshInput = z.infer<typeof refreshSchema>;
 
+// ===== Telegram authentication =====
+/** Telegram WebApp initData string (validated server-side with BOT_TOKEN). */
+export const telegramInitDataSchema = z.string().min(10).max(8192);
+
+export const telegramAuthSchema = z.object({
+  initData: telegramInitDataSchema,
+  /** Required for OWNER accounts (extra password protection). */
+  password: z.string().min(6).max(128).optional(),
+});
+export type TelegramAuthInput = z.infer<typeof telegramAuthSchema>;
+
+/** Bot-only auto-login payload (requires X-Bot-Secret header). */
+export const telegramBotAuthSchema = z.object({
+  telegramId: z.string().regex(/^\d{4,20}$/),
+  password: z.string().min(6).max(128).optional(),
+});
+export type TelegramBotAuthInput = z.infer<typeof telegramBotAuthSchema>;
+
+export const telegramLinkSchema = z.object({
+  initData: telegramInitDataSchema.optional(),
+  /** Bot-only fallback (requires X-Bot-Secret header). */
+  telegramId: z.string().regex(/^\d{4,20}$/).optional(),
+  telegramUsername: z.string().max(64).optional().nullable(),
+  username: z.string().min(3).max(64),
+  password: z.string().min(6).max(128),
+});
+export type TelegramLinkInput = z.infer<typeof telegramLinkSchema>;
+
+// ===== Customers (remote orders) =====
+export const registerCustomerSchema = z.object({
+  initData: telegramInitDataSchema.optional(),
+  telegramId: z.string().regex(/^\d{4,20}$/).optional(),
+  telegramUsername: z.string().max(64).optional().nullable(),
+  firstName: z.string().min(1).max(64),
+  lastName: z.string().min(1).max(64),
+  phone: z.string().min(7).max(32),
+  deliveryAddress: z.string().min(3).max(500).optional().nullable(),
+});
+export type RegisterCustomerInput = z.infer<typeof registerCustomerSchema>;
+
+export const updateCustomerSchema = z.object({
+  firstName: z.string().min(1).max(64).optional(),
+  lastName: z.string().min(1).max(64).optional(),
+  phone: z.string().min(7).max(32).optional(),
+  deliveryAddress: z.string().min(3).max(500).optional().nullable(),
+});
+export type UpdateCustomerInput = z.infer<typeof updateCustomerSchema>;
+
+/** Bot-only customer profile patch (the Telegram id comes from the bot). */
+export const botUpdateCustomerSchema = updateCustomerSchema.extend({
+  telegramId: z.string().regex(/^\d{4,20}$/),
+});
+export type BotUpdateCustomerInput = z.infer<typeof botUpdateCustomerSchema>;
+
+export const botCustomerLookupSchema = z.object({
+  telegramId: z.string().regex(/^\d{4,20}$/),
+});
+export type BotCustomerLookupInput = z.infer<typeof botCustomerLookupSchema>;
+
+export const verifyPhoneSchema = z.object({
+  telegramId: z.string().regex(/^\d{4,20}$/),
+  phone: z.string().min(7).max(32),
+  contactUserId: z.string().regex(/^\d{4,20}$/),
+});
+export type VerifyPhoneInput = z.infer<typeof verifyPhoneSchema>;
+
 // ===== Employees =====
 export const createEmployeeSchema = z.object({
   username: z.string().min(3).max(64).regex(/^[a-zA-Z0-9_.-]+$/, 'Faqat harf, raqam, _, ., -'),
@@ -39,6 +105,8 @@ export const createEmployeeSchema = z.object({
   phone: z.string().max(32).optional().nullable(),
   role: z.nativeEnum(Role),
   canCreateDelivery: z.boolean().optional().default(false),
+  telegramId: z.string().regex(/^\d{4,20}$/),
+  telegramUsername: z.string().max(64).optional().nullable(),
 });
 export type CreateEmployeeInput = z.infer<typeof createEmployeeSchema>;
 
@@ -110,6 +178,21 @@ export type CreateDeliveryOrderInput = z.infer<typeof createDeliveryOrderSchema>
 export const createOrderSchema = z.discriminatedUnion('type', [createDineInOrderSchema, createDeliveryOrderSchema]);
 export type CreateOrderInput = z.infer<typeof createOrderSchema>;
 
+/**
+ * Public (Telegram Mini App) ordering is delivery-only. On-site guests must
+ * call a waiter instead of placing a dine-in order from their phone.
+ */
+export const createPublicOrderSchema = z.object({
+  type: z.literal(OrderType.DELIVERY),
+  numberOfPeople: z.number().int().min(1).max(50).default(1),
+  note: z.string().max(500).optional().nullable(),
+  items: z.array(orderItemInputSchema).min(1),
+  address: z.string().min(3).max(500),
+  /** Optional; normally supplied via the X-Telegram-Init-Data header. */
+  initData: z.string().min(10).max(8192).optional(),
+});
+export type CreatePublicOrderInput = z.infer<typeof createPublicOrderSchema>;
+
 export const addOrderItemsSchema = z.object({ items: z.array(orderItemInputSchema).min(1) });
 export type AddOrderItemsInput = z.infer<typeof addOrderItemsSchema>;
 
@@ -130,11 +213,19 @@ export type ItemStatusInput = z.infer<typeof itemStatusSchema>;
 // ===== Delivery =====
 export const updateDeliveryStatusSchema = z.object({
   status: z.nativeEnum(DeliveryStatus),
+  /** Couriers record the cash they collected when marking a delivery delivered. */
+  cashCollectedAmount: z.number().int().min(0).optional(),
 });
 export type UpdateDeliveryStatusInput = z.infer<typeof updateDeliveryStatusSchema>;
 
 export const assignDeliverySchema = z.object({ assignedToId: z.string().min(1).nullable() });
 export type AssignDeliveryInput = z.infer<typeof assignDeliverySchema>;
+
+export const handoverDeliveryCashSchema = z.object({
+  methodId: z.string().min(1).optional(),
+  note: z.string().max(500).optional().nullable(),
+});
+export type HandoverDeliveryCashInput = z.infer<typeof handoverDeliveryCashSchema>;
 
 // ===== Payments =====
 export const createPaymentSchema = z.object({

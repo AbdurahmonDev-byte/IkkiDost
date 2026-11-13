@@ -15,7 +15,7 @@ Header: `Authorization: Bearer <accessToken>` for every protected route.
 POST /api/auth/login
 Content-Type: application/json
 
-{ "username": "ofitsiant", "password": "password123" }
+{ "username": "owner", "password": "<owner-password>" }
 ```
 
 ```json
@@ -31,13 +31,39 @@ Content-Type: application/json
 
 | Method | Path | Auth | Description |
 |---|---|---|---|
-| POST | `/auth/login` | public (10/min) | Login, returns token pair + user |
+| POST | `/auth/login` | public (10/min) | OWNER bootstrap or backend `bot` actor; staff credentials are rejected |
+| POST | `/auth/telegram` | public (30/min) | Mini App login with signed `initData` (+ OWNER password) |
+| POST | `/auth/telegram/bot` | public + `x-bot-secret` (60/min) | Bot auto-login by `telegramId` |
+| POST | `/auth/link-telegram` | public (15/min) | OWNER-only legacy/bootstrap link; employees must be assigned by OWNER |
 | POST | `/auth/refresh` | public (30/min) | Rotate refresh token |
 | POST | `/auth/logout` | public | Revoke the presented refresh token |
 | GET | `/auth/me` | any role | Current user |
 
 Refresh body: `{ "refreshToken": "…" }`. Reusing an already-rotated refresh
 token revokes the whole token family.
+
+Telegram login body:
+
+```json
+{ "initData": "<Telegram.WebApp.initData>", "password": "<owner password, optional>" }
+```
+
+`initData` is HMAC-validated with `BOT_TOKEN` and must be newer than
+`TELEGRAM_AUTH_MAX_AGE_SECONDS` (default 86 400). Errors carry a machine-readable
+`details.code`:
+
+- `TELEGRAM_NOT_LINKED` — the Telegram identity is not bound to a staff account;
+  call `/auth/link-telegram` once with username/password.
+- `OWNER_PASSWORD_REQUIRED` / `OWNER_PASSWORD_INVALID` — OWNER must supply the
+  extra account password every time.
+
+Link body (Mini App): `{ "initData": "…", "username": "…", "password": "…" }`.
+Link body (bot): `{ "telegramId": "…", "telegramUsername": "…", "username": "…", "password": "…" }`
+plus `x-bot-secret: <BOT_TOKEN>`. After linking, `/auth/telegram` works without a
+password for all roles except OWNER.
+
+Bot-only endpoints require `x-bot-secret: <BOT_TOKEN>`; never send that header
+from a browser.
 
 ## 2. Error format
 
@@ -67,8 +93,21 @@ listed; it is not implicitly added to every route.
 | Method | Path | Body / query |
 |---|---|---|
 | GET | `/employees` | — |
-| POST | `/employees` | `{ username, password, fullName, phone?, role, canCreateDelivery? }` |
-| PATCH | `/employees/:id` | partial employee fields, `isActive`, `password?` |
+| POST | `/employees` | `{ username, password, fullName, phone?, role, canCreateDelivery?, telegramId, telegramUsername? }` |
+| PATCH | `/employees/:id` | partial employee fields, `isActive`, `password?`, Telegram fields |
+
+`role` is one of `OWNER`, `WAITER`, `CHEF`, `CASHIER`, `DELIVERY`. The owner
+assigns each employee's numeric `telegramId` in the employee manager (also
+available in the Mini App owner tab). The API resolves the employee and role
+from this ID. Non-owner employees cannot log in with username/password or link
+their own ID. OWNER signs in with their assigned Telegram ID and the extra
+account password. `/auth/login` remains available for OWNER bootstrap and the
+dedicated backend `bot` actor only.
+
+`PATCH /employees/:id` lets the owner change any employee's `role`, name/phone,
+or `isActive` flag, and reassign the Telegram ID without deleting history.
+Deactivating the last active OWNER is rejected; a Telegram ID reserved for the
+owner cannot be assigned to another role.
 
 ### Rooms and sessions
 
@@ -155,14 +194,45 @@ Waiter accounts need `canCreateDelivery` to create delivery orders.
 
 | Method | Path | Roles | Body |
 |---|---|---|---|
-| GET | `/deliveries` | OWNER, WAITER, CASHIER | `?status=` |
-| POST | `/deliveries/:id/status` | OWNER, WAITER, CASHIER | `{ status }` |
+| GET | `/deliveries` | OWNER, WAITER, CASHIER, DELIVERY | `?status=` (DELIVERY sees own + claimable) |
+| GET | `/deliveries/:id` | OWNER, WAITER, CASHIER, DELIVERY | |
+| POST | `/deliveries/:id/claim` | OWNER, DELIVERY | claims an unassigned `CONFIRMED`/`PREPARING`/`READY` delivery |
+| POST | `/deliveries/:id/status` | OWNER, WAITER, CASHIER, DELIVERY | `{ status, cashCollectedAmount? }` |
+| POST | `/deliveries/:id/handover` | OWNER, CASHIER | `{ methodId?, note? }` — confirms the courier handed over the collected cash |
 | POST | `/deliveries/:id/assign` | OWNER | `{ assignedToId }` |
 
 Allowed transitions:
 `PENDING → CONFIRMED → PREPARING → READY → OUT_FOR_DELIVERY → DELIVERED`;
 `CANCELLED` is allowed while not delivered. The delivery `id` (not the order
 id) is used in these paths.
+
+Delivery DTO cash fields: `cashCollectedAmount`, `cashCollectedAt`,
+`cashHandedOverAt` (all nullable), plus the order's `paidAmount`,
+`outstandingAmount`, `customerPhone` and `address`.
+
+Cash reconciliation:
+
+- When a courier sets `DELIVERED`, `cashCollectedAmount` records the cash they
+  took from the customer. It defaults to the outstanding amount and may not
+  exceed it; `0` means the order was paid by card / no cash. The timestamp is
+  stored in `cashCollectedAt`.
+- `POST /deliveries/:id/handover` is the cashier's “To‘lov qilindi” confirmation.
+  It records a `CASH` payment for `min(cashCollectedAmount, outstanding)` (the
+  active cash method unless `methodId` is given) with the idempotency key
+  `delivery-cash-<deliveryId>`, sets `cashHandedOverAt`, writes a
+  `DELIVERY_CASH_HANDED_OVER` audit entry and notifies the courier. A second
+  handover returns `400`; a handover with no recorded cash also returns `400`.
+- Marking `DELIVERED` with collected cash notifies CASHIER and OWNER
+  (`DELIVERY_CASH_PENDING`).
+
+Role rules:
+
+- DELIVERY staff must claim a delivery before changing its status and may only
+  set `OUT_FOR_DELIVERY` or `DELIVERED`. Kitchen states are advanced by
+  CHEF/OWNER; when the kitchen marks the order ready the delivery becomes
+  `READY` automatically.
+- A delivery assigned to someone else cannot be updated by another courier.
+- `POST /deliveries/:id/claim` writes a `DELIVERY_CLAIMED` audit entry.
 
 ### Payments
 
@@ -214,16 +284,56 @@ Changing the config never modifies existing orders.
 
 ### Public / customer (no auth)
 
-Used by the Telegram Mini App. All responses are read-only except the two
-writes, which are throttled.
+Used by the Telegram Mini App and the registration bot. Telegram identity is
+passed as `x-telegram-init-data` (or the `initData` body field) and validated
+server-side with `BOT_TOKEN`. Bot-only routes additionally require
+`x-bot-secret: <BOT_TOKEN>`.
 
 | Method | Path | Body | Notes |
 |---|---|---|---|
+| GET | `/public/config` | — | `{ botUsername, botUrl, registrationUrl, remoteOrdering, dineInOrdering }` |
 | GET | `/public/menu` | — | `{ categories, products, serviceFee }` |
-| GET | `/public/rooms` | — | active rooms + current session summary |
-| GET | `/public/orders/:id` | — | order status, items, fee, totals (for the tracker) |
-| POST | `/public/orders` | `CreateOrderInput` | dine-in or delivery; throttled 20/min; actor = seeded `bot` user |
-| POST | `/public/call-waiter` | `{ roomId, note? }` | creates a `WAITER_CALLED` notification for waiters; 6/min |
+| GET | `/public/rooms` | — | active rooms + occupancy |
+| GET | `/public/me` | — | current customer profile or `null` |
+| POST | `/public/register` | `{ firstName, lastName, phone, deliveryAddress? }` | Mini App registration; 10/min |
+| POST | `/public/register/bot` | `{ telegramId, firstName, lastName, phone, deliveryAddress?, ... }` | bot-only registration; 60/min |
+| POST | `/public/customers/lookup` | `{ telegramId }` | bot-only profile lookup |
+| PATCH | `/public/customers/bot` | `{ telegramId, firstName?, lastName?, deliveryAddress? }` | bot-only profile/address patch (Telegram location or manual text); 60/min |
+| POST | `/public/verify-phone` | `{ telegramId, phone, contactUserId }` | bot-only; Telegram contact confirmation |
+| PATCH | `/public/me` | `{ firstName?, lastName?, phone?, deliveryAddress? }` | update own profile |
+| GET | `/public/orders/:id` | — | own order only (status, items, fee, totals) |
+| POST | `/public/orders` | `{ type: "DELIVERY", numberOfPeople, items, address, note? }` | delivery-only; requires registered + phone-verified customer; 20/min |
+| POST | `/public/call-waiter` | `{ roomId, note? }` | creates a `WAITER_CALLED` notification; 6/min |
+
+Public ordering rules:
+
+- `type` must be `DELIVERY`; dine-in orders cannot be created remotely.
+- Customer name and phone come from the verified `Customer` profile — the body
+  has no `customerName`/`customerPhone`.
+- Unregistered or unverified callers get `403` with
+  `details.code = CUSTOMER_NOT_REGISTERED` or `PHONE_NOT_VERIFIED`.
+- Orders are attributed to the seeded `bot` actor and linked to the customer
+  via `Order.customerId`; other customers cannot read them.
+- The submitted `address` is saved to `Customer.deliveryAddress`, so the next
+  Mini App checkout and bot `/start` prefill the last used address.
+- On-site guests call a waiter instead of ordering from their phone.
+
+Receipts are rendered client-side from `GET /orders/:id` or the order returned
+by `POST /public/orders`; there is no separate receipt endpoint. The receipt
+shows the immutable snapshots stored on the order.
+
+### Telegram bot secret
+
+Routes marked "bot-only" (`/auth/telegram/bot`, `/auth/link-telegram` with
+`telegramId`, `/public/register/bot`, `/public/customers/lookup`,
+`/public/customers/bot`, `/public/verify-phone`) require:
+
+```http
+x-bot-secret: <BOT_TOKEN>
+```
+
+Requests without the exact token receive `401`/`400`. Never expose this header
+to browsers or logs.
 
 ### Notifications
 

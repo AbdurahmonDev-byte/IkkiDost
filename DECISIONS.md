@@ -66,7 +66,8 @@
   - Money remains integer UZS throughout formatters.
   - Session and delivery status transitions follow existing API endpoints.
   - Notifications are delivered via a non-intrusive background poller.
-  - Plain-text passwords sent during `/login` are deleted immediately from the chat.
+  - Staff do not send passwords in the bot; their role is resolved from the
+    Telegram ID assigned by the owner.
 - **Consequences:** All staff members can interact with the teahouse ecosystem from any device without installing specialized builds. Server-side audit and security remain strictly intact.
 
 ## ADR-017: Customer self-service via Telegram Mini App
@@ -78,3 +79,129 @@
   - Notes are attached per order item and reach the kitchen; order totals and service fee are still computed only by the backend.
   - Helmet CSP allows `https://telegram.org` scripts and Telegram iframe embedding (`frame-ancestors`).
 - **Consequences:** No separate customer app and no duplicated business logic. The bot remains a thin REST client; the Mini App shares the same API and validations. Offline ordering is not supported.
+
+## ADR-018: Telegram identity as the staff login
+- **Context:** Staff move between phones and desktop machines and often forget
+  passwords; typed passwords in chat are a security risk.
+- **Decision:** The owner assigns each employee's Telegram ID in the employee
+  manager. The Mini App sends signed `initData` to `POST /auth/telegram`; the
+  API validates the HMAC with `BOT_TOKEN` and resolves the employee and role by
+  the ID. The bot performs the same lookup through `POST /auth/telegram/bot`,
+  protected by the `x-bot-secret` header. Non-owner employees cannot receive
+  sessions through username/password login or self-link their Telegram ID.
+  The Mini App owner tab and admin-web both support ID assignment.
+  - OWNER always supplies the extra account password; the API replies
+    `OWNER_PASSWORD_REQUIRED` until it is provided.
+  - `TELEGRAM_AUTH_MAX_AGE_SECONDS` (default 86 400) rejects stale payloads.
+  - Usernames that later change in Telegram are refreshed on login.
+- **Consequences:** Employees log in from any Telegram client with no shared
+  passwords. A stolen phone still cannot act as OWNER without the extra
+  password. Existing non-owner refresh sessions are revoked by migration
+  `20261112180000_enforce_telegram_staff_login` during rollout.
+
+## ADR-019: Dedicated DELIVERY role and customer → kitchen → courier flow
+- **Context:** Remote orders need a responsible courier, but waiters and
+  cashiers should not manage hand-offs from their own screens.
+- **Decision:** Add `DELIVERY` to the shared and Prisma `Role` enums. Couriers
+  see their assigned deliveries plus unassigned ones in `CONFIRMED`,
+  `PREPARING` or `READY`, claim one (`POST /deliveries/:id/claim`), and may set
+  only `OUT_FOR_DELIVERY` and `DELIVERED`. Kitchen readiness stays with CHEF /
+  OWNER and automatically advances the delivery to `READY`. OWNER keeps full
+  control (assign, override statuses).
+- **Consequences:** The remote-order lifecycle is explicit and auditable
+  (`DELIVERY_CLAIMED` audit entry); a courier cannot mark food ready or cook it.
+  The same REST endpoints serve the bot and the Mini App.
+
+## ADR-020: Mandatory customer registration and delivery-only remote orders
+- **Context:** Anonymous phone orders cannot be attributed, contacted or shown
+  a receipt later. On-site guests should not bypass the waiter by ordering from
+  their own phone.
+- **Decision:**
+  - Customers register with first and last name; the Telegram contact-sharing
+    button verifies the phone number (`request_contact`, `contact.user_id`
+    checked against the Telegram identity). Registration is stored in the
+    `Customer` table keyed by `telegramId`.
+  - On first `/start`, the bot offers the Telegram profile name and surname for
+    confirmation or lets the customer replace them before sharing a contact.
+  - Remote ordering through `POST /public/orders` requires validated Telegram
+    `initData` for a registered customer with a verified phone. Only delivery
+    orders are accepted; dine-in orders must be created by staff.
+  - Delivery checkout asks for the device location with explicit permission and
+    stores a shareable map URL in the delivery address; manual address entry is
+    still available.
+  - On-site guests use `POST /public/call-waiter` with a room id instead.
+  - Receipts and order tracking are scoped to the authenticated customer.
+- **Consequences:** Every remote order has a real, contactable customer and an
+  honest audit trail. Real SMS OTP is not required; verification depends on
+  running inside Telegram.
+
+## ADR-021: Printable receipts rendered client-side
+- **Context:** Customers and cashiers need a receipt immediately, including on
+  devices without a thermal printer driver.
+- **Decision:** `ReceiptModal` renders an 80 mm-style receipt from the existing
+  order DTO (order number, date, type, items, service fee, total, paid, debt,
+  delivery details) and calls `window.print()`. Dedicated `@media print` CSS
+  hides the app chrome so only the receipt prints. No new receipt endpoint or
+  duplicated totals are introduced; historical snapshots come from the order.
+- **Consequences:** Works on any device/browser, including the Telegram in-app
+  browser, and stays consistent with the cashier desktop receipt format.
+
+## ADR-022: Delivery location capture and saved customer address
+- **Context:** Customers repeatedly type the same address, and Telegram already
+  exposes a reliable location picker. Couriers also need an actionable
+  destination on the first attempt.
+- **Decision:**
+  - `Customer.deliveryAddress` stores the latest address as free text or a
+    Google Maps link (`https://maps.google.com/?q=<lat>,<lng>`).
+  - Bot `/start` and the registration completion immediately ask for a
+    delivery location with a Telegram `request_location` reply keyboard, a
+    manual-text fallback and a skip option. The same prompt is reachable from
+    the customer menu (“📍 Manzilni o‘zgartirish”).
+  - The bot saves the result through the bot-only
+    `PATCH /public/customers/bot` route.
+  - The Mini App prefills the cart address from `Customer.deliveryAddress`
+    (falling back to the last address in `localStorage`) and can append a
+    Google Maps URL from the browser/Telegram geolocation.
+  - `POST /public/orders` persists the submitted address back to the profile.
+  - Staff creating a delivery in the bot use the same location-or-text prompt.
+- **Consequences:** One address field serves bot, Mini App and courier; no
+  separate address book table is needed yet. Customers can always override the
+  prefilled value per order.
+
+## ADR-023: Courier cash collection and cashier handover
+- **Context:** Remote orders are usually paid in cash at the door. Without an
+  explicit reconciliation step, courier cash and order balances can drift.
+- **Decision:**
+  - `Delivery` gains `cashCollectedAmount`, `cashCollectedAt` and
+    `cashHandedOverAt`.
+  - When a courier (or owner) sets `DELIVERED`, they record the cash collected
+    (default: outstanding amount, capped at it; `0` = card/no cash). The order
+    balance is *not* changed at this point.
+  - The cashier or owner confirms receipt with
+    `POST /deliveries/:id/handover` (“To‘lov qilindi”). This records a normal
+    CASH payment (idempotency key `delivery-cash-<deliveryId>`), sets
+    `cashHandedOverAt`, writes `DELIVERY_CASH_HANDED_OVER` and notifies the
+    courier.
+  - Both the bot and the Mini App expose the courier cash prompt and a cashier
+    “Kassa” screen listing pending handovers. Marking `DELIVERED` with cash
+    notifies CASHIER and OWNER.
+  - Handover is rejected when there is no recorded cash or it was already
+    confirmed, so retries cannot double-book revenue.
+- **Consequences:** Cash is visible as “in courier's hands” without inflating
+  paid revenue; the existing payments/audit pipeline remains the single source
+  of truth once the cashier confirms. This also makes courier shortages
+  immediately visible as a delivery with cash recorded but not handed over.
+
+## ADR-024: Owner-managed roles, activation and employee lifecycle
+- **Context:** Staff turnover is frequent, and the owner should not need shell
+  or SQL access to replace a courier or promote a waiter.
+- **Decision:** `PATCH /employees/:id` accepts `role`, `isActive`, name/phone
+  and a new `telegramId`. The Mini App owner tab exposes a role selector and an
+  activate/deactivate toggle per employee; admin-web keeps the full employee
+  form. Guards prevent deactivating the last active OWNER and reserve the
+  owner's Telegram ID.
+- **Consequences:** Role changes apply on the employee's next access-token
+  refresh (access tokens live 15 minutes) or next login, because the role is
+  carried in the JWT. Deactivation blocks token refresh immediately and
+  therefore takes full effect within one access-token lifetime. Historical
+  orders, payments and audit entries keep the original actor references.

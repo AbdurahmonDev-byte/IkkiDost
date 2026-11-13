@@ -24,6 +24,9 @@ export function registerRooms(deps: Deps, bot: import('../state.js').AppBot) {
     if (!ctx.chat) return;
     const session = store.get(ctx.chat.id);
     if (!session) return expired(deps, ctx);
+    if (session.role === 'DELIVERY') {
+      return ctx.reply('🛵 Yetkazib beruvchi xonalar bo‘limidan foydalanmaydi. «Mening yetkazishlarim» bo‘limini oching.');
+    }
     try {
       const rooms = await api.rooms(config, store, ctx.chat.id);
       const kb = new InlineKeyboard();

@@ -7,6 +7,12 @@ export function homeKeyboard(role: BotRole, miniAppUrl: string): InlineKeyboard 
   // Mini App button on top
   kb.webApp('📱 Universal Mini Appni ochish', miniAppUrl).row();
 
+  if (role === 'DELIVERY') {
+    kb.text('🛵 Mening yetkazishlarim', 'm:delivery').row();
+    kb.text('ℹ️ Yordam', 'm:help');
+    return kb;
+  }
+
   if (role === 'OWNER' || role === 'WAITER' || role === 'CASHIER') {
     kb.text('🏠 Xonalar', 'm:rooms');
     kb.text('🛵 Yetkazish', 'm:delivery');
@@ -25,20 +31,43 @@ export function homeKeyboard(role: BotRole, miniAppUrl: string): InlineKeyboard 
   return kb;
 }
 
-/** Customer self-service menu (for any guest / customer) */
-export function customerKeyboard(miniAppUrl: string, roomId?: string, roomName?: string): InlineKeyboard {
+/**
+ * Customer menu. On-site guests may only call a waiter — ordering happens
+ * remotely through the Mini App (delivery only).
+ */
+export function customerKeyboard(miniAppUrl: string, roomId?: string): InlineKeyboard {
   const kb = new InlineKeyboard();
-  const url = roomId ? `${miniAppUrl}?room=${roomId}` : miniAppUrl;
-  const label = roomName ? `🛍 ${roomName} uchun buyurtma berish` : '📱 Taomlar menyusi (Mini App)';
-
-  kb.webApp(label, url).row();
+  kb.webApp('🛵 Uyga yetkazish buyurtmasi', miniAppUrl).row();
 
   if (roomId) {
     kb.text('🔔 Ofitsiant chaqirish', `c:call:${roomId}`).row();
   }
 
-  kb.text('🔐 Xodimlar uchun kirish', 'm:login');
+  kb.text('📝 Ro‘yxatdan o‘tish', 'c:register').row();
   return kb;
+}
+
+/** Shown after a guest registers — straight to the Mini App. */
+export function registeredCustomerKeyboard(miniAppUrl: string): InlineKeyboard {
+  return new InlineKeyboard()
+    .webApp('🛵 Uyga buyurtma berish', miniAppUrl)
+    .row()
+    .text('📍 Manzilni o‘zgartirish', 'c:location')
+    .row()
+    .text('👤 Profilim', 'c:profile');
+}
+
+/** Reply keyboard that asks for a Telegram location, with a manual fallback. */
+export function locationRequestKeyboard() {
+  return {
+    keyboard: [
+      [{ text: '📍 Lokatsiyani yuborish', request_location: true }],
+      [{ text: '✍️ Manzilni qo‘lda yozish' }],
+      [{ text: '⏭ O‘tkazib yuborish' }],
+    ],
+    resize_keyboard: true,
+    one_time_keyboard: true,
+  };
 }
 
 export function backHome(label = '⬅️ Bosh menyu'): InlineKeyboard {
@@ -50,6 +79,7 @@ export const roleLabel: Record<BotRole, string> = {
   WAITER: 'Ofitsiant',
   CHEF: 'Oshpaz',
   CASHIER: 'Kassir',
+  DELIVERY: 'Yetkazib beruvchi',
 };
 
 export function greeting(): string {

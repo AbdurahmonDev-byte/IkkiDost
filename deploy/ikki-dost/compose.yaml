@@ -43,6 +43,10 @@ services:
       SEED_OWNER_PASSWORD: ${SEED_OWNER_PASSWORD:?Set SEED_OWNER_PASSWORD in deploy/ikki-dost/.env}
       SEED_PASSWORD: ${SEED_PASSWORD:?Set SEED_PASSWORD in deploy/ikki-dost/.env}
       SEED_BOT_PASSWORD: ${SEED_BOT_PASSWORD:-}
+      BOT_TOKEN: ${BOT_TOKEN:-}
+      BOT_USERNAME: ${BOT_USERNAME:-ikkidostbot}
+      OWNER_TELEGRAM_IDS: ${OWNER_TELEGRAM_IDS:-}
+      TELEGRAM_AUTH_MAX_AGE_SECONDS: ${TELEGRAM_AUTH_MAX_AGE_SECONDS:-86400}
     volumes:
       - ikki_dost_uploads:/app/apps/api/uploads
     command: >-
@@ -72,6 +76,7 @@ services:
     environment:
       NODE_ENV: production
       BOT_TOKEN: ${BOT_TOKEN:-}
+      BOT_USERNAME: ${BOT_USERNAME:-ikkidostbot}
       API_URL: http://ikki-dost-api:3000/api
       BOT_NOTIFY_INTERVAL_MS: ${BOT_NOTIFY_INTERVAL_MS:-10000}
       BOT_STORE_PATH: /app/apps/bot/data/sessions.json

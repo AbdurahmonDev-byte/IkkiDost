@@ -37,9 +37,9 @@ export class OrdersController {
   }
 
   @Get(':id')
-  @Roles('OWNER', 'WAITER', 'CHEF', 'CASHIER')
-  findOne(@Param('id') id: string): Promise<OrderDto> {
-    return this.orders.findOne(id);
+  @Roles('OWNER', 'WAITER', 'CHEF', 'CASHIER', 'DELIVERY')
+  findOne(@Param('id') id: string, @CurrentUser() actor: RequestUser): Promise<OrderDto> {
+    return this.orders.findOneForActor(id, actor);
   }
 
   @Get(':id/history')

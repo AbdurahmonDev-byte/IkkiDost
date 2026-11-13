@@ -68,7 +68,7 @@ export function startNotificationPoller(deps: Deps, bot: AppBot): () => void {
           try {
             await bot.api.sendMessage(
               chatId,
-              '⚠️ Sessiyangiz muddati tugadi. Xabarnomalarni olish uchun qayta /login qiling.',
+              '⚠️ Sessiyangiz muddati tugadi. Telegram ID orqali qayta kirish uchun /start bosing.',
             );
           } catch {
             // ignore

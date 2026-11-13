@@ -4,6 +4,7 @@ import type {
   AuthTokens,
   AuthUser,
   CategoryDto,
+  CustomerDto,
   DashboardSummaryDto,
   DeliveryDto,
   DeliveryStatus,
@@ -19,6 +20,7 @@ export class ApiError extends Error {
   constructor(
     public statusCode: number,
     message: string,
+    public code?: string,
   ) {
     super(message);
     this.name = 'ApiError';
@@ -28,7 +30,7 @@ export class ApiError extends Error {
 /** Thrown when both the access token and its refresh are dead. */
 export class SessionExpiredError extends Error {
   constructor() {
-    super('Sessiya muddati tugagan. Qayta /login qiling.');
+    super('Sessiya muddati tugagan. Telegram ID ni qayta tekshirish uchun /start bosing.');
     this.name = 'SessionExpiredError';
   }
 }
@@ -39,8 +41,9 @@ async function rawRequest<T>(
   path: string,
   body?: unknown,
   accessToken?: string,
+  extraHeaders?: Record<string, string>,
 ): Promise<T> {
-  const headers: Record<string, string> = {};
+  const headers: Record<string, string> = { ...extraHeaders };
   if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`;
   if (body !== undefined) headers['Content-Type'] = 'application/json';
 
@@ -52,18 +55,25 @@ async function rawRequest<T>(
 
   if (!res.ok) {
     let message = res.statusText;
+    let code: string | undefined;
     try {
-      const payload = (await res.json()) as { message?: string | string[] };
+      const payload = (await res.json()) as { message?: string | string[]; details?: { code?: string } };
       const msg = payload?.message;
       if (Array.isArray(msg)) message = msg.join(', ');
       else if (typeof msg === 'string') message = msg;
+      code = payload?.details?.code;
     } catch {
       // non-JSON error body
     }
-    throw new ApiError(res.status, message);
+    throw new ApiError(res.status, message, code);
   }
   if (res.status === 204) return undefined as T;
   return (await res.json()) as T;
+}
+
+/** Bot-authenticated call — the shared bot token acts as the secret. */
+async function botRequest<T>(config: BotConfig, method: string, path: string, body?: unknown): Promise<T> {
+  return rawRequest<T>(config, method, path, body, undefined, { 'x-bot-secret': config.token });
 }
 
 export async function login(
@@ -72,6 +82,42 @@ export async function login(
   password: string,
 ): Promise<AuthTokens & { user: AuthUser }> {
   return rawRequest(config, 'POST', '/auth/login', { username, password });
+}
+
+/** Staff login by the Telegram ID assigned to the employee by the owner. */
+export async function telegramBotLogin(
+  config: BotConfig,
+  telegramId: string,
+  password?: string,
+): Promise<AuthTokens & { user: AuthUser }> {
+  return botRequest(config, 'POST', '/auth/telegram/bot', { telegramId, password });
+}
+
+export async function registerCustomerBot(
+  config: BotConfig,
+  input: { telegramId: string; telegramUsername?: string | null; firstName: string; lastName: string; phone: string },
+): Promise<{ customer: CustomerDto }> {
+  return botRequest(config, 'POST', '/public/register/bot', input);
+}
+
+export async function lookupCustomerBot(config: BotConfig, telegramId: string): Promise<CustomerDto | null> {
+  const res = await botRequest<{ customer: CustomerDto | null }>(config, 'POST', '/public/customers/lookup', { telegramId });
+  return res.customer;
+}
+
+export async function verifyPhoneBot(
+  config: BotConfig,
+  input: { telegramId: string; phone: string; contactUserId: string },
+): Promise<{ customer: CustomerDto }> {
+  return botRequest(config, 'POST', '/public/verify-phone', input);
+}
+
+/** Bot-only profile patch — used to save the customer's delivery location. */
+export async function updateCustomerBot(
+  config: BotConfig,
+  input: { telegramId: string; deliveryAddress?: string | null; firstName?: string; lastName?: string },
+): Promise<{ customer: CustomerDto }> {
+  return botRequest(config, 'PATCH', '/public/customers/bot', input);
 }
 
 export async function logout(config: BotConfig, session: Session): Promise<void> {
@@ -246,8 +292,22 @@ export const api = {
   kitchenOrders: (c: BotConfig, s: Store, id: number | string) => get<OrderDto[]>(c, s, id, '/orders/kitchen'),
 
   deliveries: (c: BotConfig, s: Store, id: number | string) => get<DeliveryDto[]>(c, s, id, '/deliveries'),
-  updateDeliveryStatus: (c: BotConfig, s: Store, id: number | string, deliveryId: string, status: DeliveryStatus) =>
-    post<DeliveryDto>(c, s, id, `/deliveries/${deliveryId}/status`, { status }),
+  claimDelivery: (c: BotConfig, s: Store, id: number | string, deliveryId: string) =>
+    post<DeliveryDto>(c, s, id, `/deliveries/${deliveryId}/claim`),
+  updateDeliveryStatus: (
+    c: BotConfig,
+    s: Store,
+    id: number | string,
+    deliveryId: string,
+    status: DeliveryStatus,
+    cashCollectedAmount?: number,
+  ) =>
+    post<DeliveryDto>(c, s, id, `/deliveries/${deliveryId}/status`, {
+      status,
+      ...(cashCollectedAmount === undefined ? {} : { cashCollectedAmount }),
+    }),
+  handoverDeliveryCash: (c: BotConfig, s: Store, id: number | string, deliveryId: string) =>
+    post<DeliveryDto>(c, s, id, `/deliveries/${deliveryId}/handover`, {}),
   order: (c: BotConfig, s: Store, id: number | string, orderId: string) => get<OrderDto>(c, s, id, `/orders/${orderId}`),
 
   dashboard: (c: BotConfig, s: Store, id: number | string) => get<DashboardSummaryDto>(c, s, id, '/reports/dashboard'),
