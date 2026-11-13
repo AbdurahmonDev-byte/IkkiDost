@@ -59,8 +59,9 @@ Telegram login body:
 
 Link body (Mini App): `{ "initData": "…", "username": "…", "password": "…" }`.
 Link body (bot): `{ "telegramId": "…", "telegramUsername": "…", "username": "…", "password": "…" }`
-plus `x-bot-secret: <BOT_TOKEN>`. After linking, `/auth/telegram` works without a
-password for all roles except OWNER.
+plus `x-bot-secret: <BOT_TOKEN>`. This route is only for the OWNER bootstrap /
+legacy credential migration; employees are assigned an ID by the owner and log
+in directly with `/auth/telegram` (no password except OWNER).
 
 Bot-only endpoints require `x-bot-secret: <BOT_TOKEN>`; never send that header
 from a browser.

@@ -28,7 +28,7 @@ documented only.
 | 10. Deliverables | Deployment docs, build instructions | ✅ (limitations documented) |
 | 11. Telegram bot | Omni-device staff bot (rooms, orders, kitchen, delivery, stats, alerts) | ✅ code; live run needs `BOT_TOKEN` |
 | 12. Customer Mini App | Telegram Mini App self-service (menu, room/delivery orders, notes, receipts, call waiter) + staff screens | ✅ |
-| 13. Telegram-ID staff auth | Staff login by verified Telegram identity, one-time credential linking, extra OWNER password, bot auto-login | ✅ |
+| 13. Telegram-ID staff auth | Staff login by verified Telegram identity, owner-assigned IDs, extra OWNER password, bot auto-login | ✅ |
 | 14. Delivery role & remote orders | Dedicated DELIVERY role, customer → kitchen → courier workflow, claimable deliveries, delivery-only public orders | ✅ |
 | 15. Registration, receipts & UI | Mandatory name/phone registration via Telegram contact, printable receipts, redesigned Mini App, owner menu/photo management | ✅ |
 | 16. Location, cash handover & roles | Telegram location address capture + saved address, courier cash collection, cashier handover confirmation, owner role/activation management | ✅ |
@@ -140,9 +140,8 @@ schemas), `utils` (integer-UZS money math, service fee, formatting),
 
 ### Telegram bot (`apps/bot`)
 Multi-role staff bot built with grammY on Node.js/TypeScript:
-- Staff login by verified Telegram identity, with one-time username/password
-  linking; the extra OWNER password is requested when needed. Legacy password
-  login remains available.
+- Staff login by verified Telegram identity; the extra OWNER password is
+  requested when needed. Non-owner password login and self-linking are rejected.
 - Role-adapted home menu and commands (`/rooms`, `/kitchen`, `/delivery`, `/newdel`, `/dash`, `/me`, `/help`).
 - Waiter / Owner room sessions: browse rooms, create dine-in orders with people count and menu categories, mark items as served, close sessions with reason when debt override is needed.
 - Kitchen queue for Chefs & Owners: view incoming orders, start preparation (`PREPARING`), mark items `READY`; couriers cannot advance kitchen states.
@@ -180,8 +179,8 @@ Telegram Mini App served by the API at `/` (same origin as `/api`), Vite + React
 - Cart prefills the saved `Customer.deliveryAddress` (or the last local address)
   and still allows manual edits or a mapped geolocation link.
 - Staff mode: Telegram auto-login for OWNER/WAITER/CHEF/CASHIER/DELIVERY with
-  role tabs (rooms, kitchen, delivery, cashier, owner), one-time credential
-  linking and the extra OWNER password.
+  role tabs (rooms, kitchen, delivery, cashier, owner), owner-assigned IDs and
+  the extra OWNER password.
 - Owner screen: revenue/debt stats, add products, upload/replace dish photos,
   add categories, manage the product list, assign Telegram IDs, change an
   employee's role, activate/deactivate staff, and create
@@ -224,8 +223,8 @@ Telegram Mini App served by the API at `/` (same origin as `/api`), Vite + React
 
 ## Next steps for the owner
 
-1. Change the seeded owner password and create real staff accounts, linking each
-   employee's Telegram identity on first login.
+1. Change the seeded owner password and create real staff accounts, assigning
+   each employee's Telegram ID in the owner panel.
 2. Upload real product images and confirm prices/units with the 14 products.
 3. Configure rooms and the service fee policy.
 4. Deploy per `docs/DEPLOYMENT.md`; enable HTTPS, backups, VAPID push.

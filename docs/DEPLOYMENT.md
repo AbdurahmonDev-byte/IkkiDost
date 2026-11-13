@@ -392,7 +392,8 @@ cashier app's API base URL / runtime setting).
 7. Register a customer (first/last name + Telegram contact), place a delivery
    order, verify the kitchen note, tracker and printable e-receipt, then claim
    and deliver it as `kuryer`.
-8. Verify staff bot flows: Telegram auto-login/linking, `/rooms`, `/kitchen`,
+8. Verify staff bot flows: Telegram auto-login (OWNER asks for the extra
+   password), `/rooms`, `/kitchen`,
    `/delivery`, `/newdel`, `/dash`; confirm OWNER asks for the extra password.
 9. Verify that a browser (non-Telegram) session can only browse the menu and
    cannot register or order.
