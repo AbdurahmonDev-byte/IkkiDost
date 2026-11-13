@@ -56,8 +56,8 @@ TELEGRAM_AUTH_MAX_AGE_SECONDS=86400
 
 The API and the bot must share the same `BOT_TOKEN`; the API rejects Mini App
 `initData` and bot-secret requests otherwise.
-`OWNER_TELEGRAM_IDS` is a comma-separated allowlist of owner identities; each
-owner login still requires the OWNER account password.
+`OWNER_TELEGRAM_IDS` is a comma-separated allowlist of owner identities; any
+Telegram account in this list logs in as OWNER without an extra password.
 
 Bot settings live in `apps/bot/.env` (or the Compose environment):
 
@@ -232,8 +232,8 @@ npm run build -w @ikki-dost/mini-app
 - Staff flow: OWNER can create employees (including DELIVERY) and assign
   Telegram IDs in the Mini App owner tab. The Mini App validates Telegram
   `initData` and the bot uses the Telegram sender ID; the assigned employee role
-  selects the staff screen. Non-owner staff do not use passwords. OWNER also
-  enters the account password.
+  selects the staff screen. No staff role uses a password. OWNER opens on the
+  normal customer screen and enters the owner panel through the “Egasi” tab.
 
 Public endpoints used by the Mini App are documented in `docs/API.md` and are
 throttled at the API level.
@@ -392,9 +392,10 @@ cashier app's API base URL / runtime setting).
 7. Register a customer (first/last name + Telegram contact), place a delivery
    order, verify the kitchen note, tracker and printable e-receipt, then claim
    and deliver it as `kuryer`.
-8. Verify staff bot flows: Telegram auto-login (OWNER asks for the extra
-   password), `/rooms`, `/kitchen`,
-   `/delivery`, `/newdel`, `/dash`; confirm OWNER asks for the extra password.
+8. Verify staff bot flows: Telegram auto-login (passwordless for every role),
+   `/rooms`, `/kitchen`, `/delivery`, `/newdel`, `/dash`. Confirm the owner also
+   logs in without a password, opens the Mini App on the customer screen, and
+   reaches the owner panel via the “Egasi” tab.
 9. Verify that a browser (non-Telegram) session can only browse the menu and
    cannot register or order.
 10. Test a cashier payment + reversal and a room close with/without debt.

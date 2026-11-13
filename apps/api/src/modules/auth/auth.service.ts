@@ -49,22 +49,20 @@ export class AuthService {
 
   /**
    * Passwordless staff login from the Telegram Mini App. The initData is
-   * cryptographically validated, then matched to a linked staff User.
-   * OWNER always needs the extra password.
+   * cryptographically validated, then matched to a staff User by Telegram ID.
+   * The owner account is resolved from OWNER_TELEGRAM_IDS.
    */
   async loginWithTelegram(
     initData: string,
-    password?: string,
     meta?: { userAgent?: string; ip?: string },
   ): Promise<AuthTokens & { user: AuthUser }> {
     const tg = validateTelegramInitData(initData, process.env.BOT_TOKEN ?? '');
-    return this.loginTelegramUser(tg, password, meta);
+    return this.loginTelegramUser(tg, meta);
   }
 
   /** Bot-only variant: Telegram identity is already verified by getUpdates. */
   async loginWithTelegramId(
     telegramId: string,
-    password?: string,
     meta?: { userAgent?: string; ip?: string },
   ): Promise<AuthTokens & { user: AuthUser }> {
     const tg: TelegramUser = {
@@ -75,12 +73,11 @@ export class AuthService {
       languageCode: null,
       isPremium: false,
     };
-    return this.loginTelegramUser(tg, password, meta);
+    return this.loginTelegramUser(tg, meta);
   }
 
   private async loginTelegramUser(
     tg: TelegramUser,
-    password?: string,
     meta?: { userAgent?: string; ip?: string },
   ): Promise<AuthTokens & { user: AuthUser }> {
     const ownerTelegramIds = new Set(
@@ -102,22 +99,6 @@ export class AuthService {
       });
     }
 
-    if (user.role === 'OWNER') {
-      if (!password) {
-        throw new UnauthorizedException({
-          message: 'Egasi uchun qo‘shimcha parol kerak',
-          details: { code: 'OWNER_PASSWORD_REQUIRED' },
-        });
-      }
-      const ok = await argon2.verify(user.passwordHash, password).catch(() => false);
-      if (!ok) {
-        throw new UnauthorizedException({
-          message: 'Egasi paroli noto‘g‘ri',
-          details: { code: 'OWNER_PASSWORD_INVALID' },
-        });
-      }
-    }
-
     if (tg.username && tg.username !== user.telegramUsername) {
       await this.prisma.user.update({ where: { id: user.id }, data: { telegramUsername: tg.username } });
     }
@@ -130,7 +111,7 @@ export class AuthService {
   /**
    * One-time account linking: verifies username/password and binds the
    * Telegram identity. After this, Telegram-initData login is passwordless
-   * for staff (OWNER still needs the extra password).
+   * for staff, including the owner (resolved via OWNER_TELEGRAM_IDS).
    */
   async linkTelegram(
     username: string,

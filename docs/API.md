@@ -32,7 +32,7 @@ Content-Type: application/json
 | Method | Path | Auth | Description |
 |---|---|---|---|
 | POST | `/auth/login` | public (10/min) | OWNER bootstrap or backend `bot` actor; staff credentials are rejected |
-| POST | `/auth/telegram` | public (30/min) | Mini App login with signed `initData` (+ OWNER password) |
+| POST | `/auth/telegram` | public (30/min) | Passwordless Mini App login with signed `initData` |
 | POST | `/auth/telegram/bot` | public + `x-bot-secret` (60/min) | Bot auto-login by `telegramId` |
 | POST | `/auth/link-telegram` | public (15/min) | OWNER-only legacy/bootstrap link; employees must be assigned by OWNER |
 | POST | `/auth/refresh` | public (30/min) | Rotate refresh token |
@@ -45,23 +45,23 @@ token revokes the whole token family.
 Telegram login body:
 
 ```json
-{ "initData": "<Telegram.WebApp.initData>", "password": "<owner password, optional>" }
+{ "initData": "<Telegram.WebApp.initData>" }
 ```
 
 `initData` is HMAC-validated with `BOT_TOKEN` and must be newer than
-`TELEGRAM_AUTH_MAX_AGE_SECONDS` (default 86 400). Errors carry a machine-readable
-`details.code`:
+`TELEGRAM_AUTH_MAX_AGE_SECONDS` (default 86 400). The identity is matched to an
+employee account, or to the owner account when it is listed in
+`OWNER_TELEGRAM_IDS`. Every role, including OWNER, logs in without a password.
+Errors carry a machine-readable `details.code`:
 
 - `TELEGRAM_NOT_LINKED` — the Telegram identity is not bound to a staff account;
-  call `/auth/link-telegram` once with username/password.
-- `OWNER_PASSWORD_REQUIRED` / `OWNER_PASSWORD_INVALID` — OWNER must supply the
-  extra account password every time.
+  the owner must assign the ID in the employee manager.
 
 Link body (Mini App): `{ "initData": "…", "username": "…", "password": "…" }`.
 Link body (bot): `{ "telegramId": "…", "telegramUsername": "…", "username": "…", "password": "…" }`
 plus `x-bot-secret: <BOT_TOKEN>`. This route is only for the OWNER bootstrap /
 legacy credential migration; employees are assigned an ID by the owner and log
-in directly with `/auth/telegram` (no password except OWNER).
+in directly with `/auth/telegram` (passwordless for every role).
 
 Bot-only endpoints require `x-bot-secret: <BOT_TOKEN>`; never send that header
 from a browser.
@@ -101,8 +101,8 @@ listed; it is not implicitly added to every route.
 assigns each employee's numeric `telegramId` in the employee manager (also
 available in the Mini App owner tab). The API resolves the employee and role
 from this ID. Non-owner employees cannot log in with username/password or link
-their own ID. OWNER signs in with their assigned Telegram ID and the extra
-account password. `/auth/login` remains available for OWNER bootstrap and the
+their own ID. OWNER signs in with an allowlisted Telegram ID and no extra
+password. `/auth/login` remains available for OWNER bootstrap and the
 dedicated backend `bot` actor only.
 
 `PATCH /employees/:id` lets the owner change any employee's `role`, name/phone,

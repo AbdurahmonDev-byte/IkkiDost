@@ -35,13 +35,13 @@ export class AuthController {
     return this.auth.login(input.username, input.password, { userAgent: req.headers['user-agent'], ip: req.ip });
   }
 
-  /** Passwordless Telegram Mini App login (OWNER requires the extra password). */
+  /** Passwordless Telegram Mini App login (all roles, including OWNER). */
   @Public()
   @Throttle({ default: { limit: 30, ttl: 60_000 } })
   @Post('telegram')
   @UsePipes(new ZodValidationPipe(telegramAuthSchema))
   async telegram(@Body() input: TelegramAuthInput, @Req() req: ReqMeta): Promise<AuthTokens & { user: AuthUser }> {
-    return this.auth.loginWithTelegram(input.initData, input.password, {
+    return this.auth.loginWithTelegram(input.initData, {
       userAgent: req.headers['user-agent'],
       ip: req.ip,
     });
@@ -54,7 +54,7 @@ export class AuthController {
   @UsePipes(new ZodValidationPipe(telegramBotAuthSchema))
   async telegramBot(@Body() input: TelegramBotAuthInput, @Req() req: ReqMeta): Promise<AuthTokens & { user: AuthUser }> {
     if (!isBotSecret(req.headers)) throw new UnauthorizedException('Bot maxfiy kaliti noto‘g‘ri');
-    return this.auth.loginWithTelegramId(input.telegramId, input.password, {
+    return this.auth.loginWithTelegramId(input.telegramId, {
       userAgent: 'telegram-bot',
       ip: req.ip,
     });

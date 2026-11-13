@@ -88,9 +88,8 @@ export async function login(
 export async function telegramBotLogin(
   config: BotConfig,
   telegramId: string,
-  password?: string,
 ): Promise<AuthTokens & { user: AuthUser }> {
-  return botRequest(config, 'POST', '/auth/telegram/bot', { telegramId, password });
+  return botRequest(config, 'POST', '/auth/telegram/bot', { telegramId });
 }
 
 export async function registerCustomerBot(

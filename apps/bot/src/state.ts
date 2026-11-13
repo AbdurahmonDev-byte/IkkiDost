@@ -24,7 +24,6 @@ export interface OrderFlow {
 }
 
 export type Flow =
-  | { kind: 'owner-password' }
   | { kind: 'register-confirm-name'; firstName: string; lastName: string }
   | { kind: 'register-first-name' }
   | { kind: 'register-last-name'; firstName: string }

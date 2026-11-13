@@ -29,10 +29,6 @@ export class ApiError extends Error {
   get needsLink(): boolean {
     return this.code === 'TELEGRAM_NOT_LINKED' || this.code === 'TELEGRAM_INITDATA_MISSING';
   }
-
-  get needsOwnerPassword(): boolean {
-    return this.code === 'OWNER_PASSWORD_REQUIRED' || this.code === 'OWNER_PASSWORD_INVALID';
-  }
 }
 
 function initData(): string {
@@ -136,11 +132,11 @@ export const api = {
       body: JSON.stringify({ username, password }),
     }),
 
-  /** Passwordless Telegram login. OWNER must supply the extra password. */
-  telegramLogin: (password?: string) =>
+  /** Passwordless Telegram login for all staff roles, including the owner. */
+  telegramLogin: () =>
     request<AuthResponse>('/auth/telegram', {
       method: 'POST',
-      body: JSON.stringify({ initData: initData(), password }),
+      body: JSON.stringify({ initData: initData() }),
     }),
 
   refresh: (refreshToken: string) =>

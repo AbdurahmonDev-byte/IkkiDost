@@ -5,7 +5,6 @@ import { handleCloseReason, registerRooms } from './handlers/rooms.js';
 import {
   handleCustomerLocationMessage,
   handleCustomerLocationText,
-  handleOwnerPassword,
   handleRegisterText,
   registerAuth,
 } from './handlers/auth.js';
@@ -82,8 +81,6 @@ async function main() {
     const flow = flows.get(flowKey(ctx.chat.id));
     if (flow) {
       switch (flow.kind) {
-        case 'owner-password':
-          return handleOwnerPassword(deps, ctx, text);
         case 'register-first-name':
         case 'register-last-name':
           return handleRegisterText(deps, ctx, flow, text);

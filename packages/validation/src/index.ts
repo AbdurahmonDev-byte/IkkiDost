@@ -37,15 +37,12 @@ export const telegramInitDataSchema = z.string().min(10).max(8192);
 
 export const telegramAuthSchema = z.object({
   initData: telegramInitDataSchema,
-  /** Required for OWNER accounts (extra password protection). */
-  password: z.string().min(6).max(128).optional(),
 });
 export type TelegramAuthInput = z.infer<typeof telegramAuthSchema>;
 
 /** Bot-only auto-login payload (requires X-Bot-Secret header). */
 export const telegramBotAuthSchema = z.object({
   telegramId: z.string().regex(/^\d{4,20}$/),
-  password: z.string().min(6).max(128).optional(),
 });
 export type TelegramBotAuthInput = z.infer<typeof telegramBotAuthSchema>;
 

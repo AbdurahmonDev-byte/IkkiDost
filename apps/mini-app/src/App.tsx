@@ -12,7 +12,7 @@ import {
   UtensilsCrossed,
   Wallet,
 } from 'lucide-react';
-import { api, ApiError } from './lib/api';
+import { api } from './lib/api';
 import { tg } from './lib/telegram';
 import type {
   CartItem,
@@ -65,7 +65,9 @@ function defaultTab(role: StaffUser['role']): Tab {
   if (role === 'CHEF') return 'kitchen';
   if (role === 'CASHIER') return 'cashier';
   if (role === 'WAITER') return 'waiter';
-  return 'owner';
+  // The owner lands on the normal customer screen and opens the owner panel
+  // only by pressing the "Egasi" tab.
+  return 'customer';
 }
 
 export const App: React.FC = () => {
@@ -87,7 +89,6 @@ export const App: React.FC = () => {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isCallWaiterOpen, setIsCallWaiterOpen] = useState(false);
   const [isStaffLoginOpen, setIsStaffLoginOpen] = useState(false);
-  const [ownerPasswordRequired, setOwnerPasswordRequired] = useState(false);
 
   const [staffUser, setStaffUser] = useState<StaffUser | null>(() => readStaff());
   const [activeTab, setActiveTab] = useState<Tab>(() => {
@@ -149,10 +150,7 @@ export const App: React.FC = () => {
           setStaffUser(user);
           saveStaff(user);
           setActiveTab(defaultTab(user.role));
-        } catch (err) {
-          if (err instanceof ApiError && err.code === 'OWNER_PASSWORD_REQUIRED') {
-            setOwnerPasswordRequired(true);
-          }
+        } catch {
           // TELEGRAM_NOT_LINKED is expected for ordinary customers.
         }
       }
@@ -221,7 +219,6 @@ export const App: React.FC = () => {
   const handleLoginSuccess = (user: StaffUser) => {
     setStaffUser(user);
     saveStaff(user);
-    setOwnerPasswordRequired(false);
     setActiveTab(defaultTab(user.role));
   };
 
@@ -232,7 +229,6 @@ export const App: React.FC = () => {
     setStaffUser(null);
     saveStaff(null);
     setActiveTab('customer');
-    setOwnerPasswordRequired(false);
   };
 
   const handleUpdateCartQty = (productId: string, delta: number) => {
@@ -478,13 +474,9 @@ export const App: React.FC = () => {
       />
 
       <StaffLoginModal
-        isOpen={isStaffLoginOpen || ownerPasswordRequired}
-        onClose={() => {
-          setIsStaffLoginOpen(false);
-          setOwnerPasswordRequired(false);
-        }}
+        isOpen={isStaffLoginOpen}
+        onClose={() => setIsStaffLoginOpen(false)}
         onLoginSuccess={handleLoginSuccess}
-        ownerPasswordRequired={ownerPasswordRequired}
         telegramAvailable={telegramAvailable}
       />
 

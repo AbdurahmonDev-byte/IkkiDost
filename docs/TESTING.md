@@ -45,8 +45,8 @@ delivery and Mini App behavior still require manual verification (see §4).
 
 - Backend integration suite: **51/51 passing**, 1 file, ~4.5 s of test time.
 - Telegram tests cover owner-assigned staff IDs, employee password-login
-  rejection, the OWNER extra password, mandatory phone verification, official
-  customer names, and the delivery-only order rule.
+  rejection, passwordless owner login via the Telegram allowlist, mandatory
+  phone verification, official customer names, and the delivery-only order rule.
 - Location/cash tests cover the bot-saved delivery address and Mini App profile
   prefill, address persistence from `POST /public/orders`, the courier cash
   prompt on `DELIVERED`, the cashier handover recording a CASH payment, the
@@ -55,7 +55,7 @@ delivery and Mini App behavior still require manual verification (see §4).
 - `npm run typecheck`: **passing** for API, bot, mini-app, admin-web and all
   shared packages.
 - API / bot / mini-app / admin-web production builds: **passing**.
-- Mini App production bundle: JS 258.65 kB (72.19 kB gzip), CSS 34.50 kB
+- Mini App production bundle: JS 256.97 kB (71.87 kB gzip), CSS 34.50 kB
   (6.60 kB gzip).
 - Mini App served by the API: `/` → 200 HTML, `/api/health` → 200,
   unknown `/api/*` → 404, SPA fallback → 200.
@@ -134,7 +134,11 @@ cashier cash handover.
 - “Choy keltiring” creates a waiter notification; repeat taps are throttled.
 - Owner assigns staff Telegram IDs in the employee manager / Mini App owner tab.
   Staff `/start` logs in according to the assigned role; employee passwords and
-  self-linking are rejected. OWNER still supplies the extra password.
+  self-linking are rejected. OWNER (via `OWNER_TELEGRAM_IDS`) also logs in
+  without any extra password.
+- Open the Mini App as OWNER: the normal “Menyu” (customer) screen appears
+  first; pressing the “Egasi” tab opens the owner panel without a password
+  prompt.
 - Owner changes an employee's role (e.g. WAITER → CASHIER) and toggles
   activate/deactivate in the owner tab; the change is visible after the access
   token refreshes (≤15 min) or on next login.

@@ -28,10 +28,10 @@ documented only.
 | 10. Deliverables | Deployment docs, build instructions | ✅ (limitations documented) |
 | 11. Telegram bot | Omni-device staff bot (rooms, orders, kitchen, delivery, stats, alerts) | ✅ code; live run needs `BOT_TOKEN` |
 | 12. Customer Mini App | Telegram Mini App self-service (menu, room/delivery orders, notes, receipts, call waiter) + staff screens | ✅ |
-| 13. Telegram-ID staff auth | Staff login by verified Telegram identity, owner-assigned IDs, extra OWNER password, bot auto-login | ✅ |
+| 13. Telegram-ID staff auth | Staff login by verified Telegram identity, owner-assigned IDs, passwordless owner allowlist, bot auto-login | ✅ |
 | 14. Delivery role & remote orders | Dedicated DELIVERY role, customer → kitchen → courier workflow, claimable deliveries, delivery-only public orders | ✅ |
 | 15. Registration, receipts & UI | Mandatory name/phone registration via Telegram contact, printable receipts, redesigned Mini App, owner menu/photo management | ✅ |
-| 16. Location, cash handover & roles | Telegram location address capture + saved address, courier cash collection, cashier handover confirmation, owner role/activation management | ✅ |
+| 16. Location, cash handover & roles | Telegram location address capture + saved address, courier cash collection, cashier handover confirmation, owner role/activation management, passwordless owner login with customer-first screen | ✅ |
 
 Docs: `docs/ARCHITECTURE.md`, `docs/DATABASE.md`, `docs/API.md`,
 `docs/DEPLOYMENT.md`, `docs/TESTING.md`, plus `DECISIONS.md`.
@@ -40,12 +40,13 @@ Docs: `docs/ARCHITECTURE.md`, `docs/DATABASE.md`, `docs/API.md`,
 
 - `npm run typecheck` — passes for all 9 workspaces.
 - Backend: `cd apps/api && npx vitest run` — **51/51 tests pass**, including
-  owner-assigned Telegram IDs, employee password-login rejection, OWNER
-  extra-password protection, verified customer registration and delivery-only
-  public ordering, saved delivery location, and courier cash → cashier handover.
+  owner-assigned Telegram IDs, employee password-login rejection, passwordless
+  owner login via the Telegram allowlist, verified customer registration and
+  delivery-only public ordering, saved delivery location, and courier cash →
+  cashier handover.
 - Builds: `@ikki-dost/api`, `@ikki-dost/bot`, `@ikki-dost/mini-app` and
   `@ikki-dost/admin-web` all pass.
-- Mini App production bundle: JS 258.65 kB (72.19 kB gzip), CSS 34.50 kB
+- Mini App production bundle: JS 256.97 kB (71.87 kB gzip), CSS 34.50 kB
   (6.60 kB gzip).
 - API serves the built Mini App at `/` (HTML 200, `/api/health` 200,
   unknown `/api/*` → 404, SPA fallback → 200).
@@ -72,9 +73,9 @@ Docs: `docs/ARCHITECTURE.md`, `docs/DATABASE.md`, `docs/API.md`,
 - Auth: argon2, JWT access + rotating refresh tokens with family reuse detection,
   login throttling.
 - Staff authenticate only through owner-assigned Telegram IDs; the API resolves
-  the employee role from the ID and rejects non-owner username/password logins.
-  OWNER always supplies the extra password. The rollout migration revokes
-  existing non-owner refresh sessions.
+  the employee role from the ID and rejects employee username/password logins.
+  OWNER is resolved from `OWNER_TELEGRAM_IDS` and also logs in passwordlessly.
+  The rollout migration revokes existing non-owner refresh sessions.
   Bot-only routes are protected by the shared `BOT_TOKEN` secret header.
 - RBAC enforced server-side on every route
   (OWNER/WAITER/CHEF/CASHIER/DELIVERY).
@@ -140,8 +141,9 @@ schemas), `utils` (integer-UZS money math, service fee, formatting),
 
 ### Telegram bot (`apps/bot`)
 Multi-role staff bot built with grammY on Node.js/TypeScript:
-- Staff login by verified Telegram identity; the extra OWNER password is
-  requested when needed. Non-owner password login and self-linking are rejected.
+- Staff login by verified Telegram identity for every role, including the
+  owner allowlist; no password is requested. Non-owner password login and
+  self-linking are rejected.
 - Role-adapted home menu and commands (`/rooms`, `/kitchen`, `/delivery`, `/newdel`, `/dash`, `/me`, `/help`).
 - Waiter / Owner room sessions: browse rooms, create dine-in orders with people count and menu categories, mark items as served, close sessions with reason when debt override is needed.
 - Kitchen queue for Chefs & Owners: view incoming orders, start preparation (`PREPARING`), mark items `READY`; couriers cannot advance kitchen states.
@@ -179,8 +181,9 @@ Telegram Mini App served by the API at `/` (same origin as `/api`), Vite + React
 - Cart prefills the saved `Customer.deliveryAddress` (or the last local address)
   and still allows manual edits or a mapped geolocation link.
 - Staff mode: Telegram auto-login for OWNER/WAITER/CHEF/CASHIER/DELIVERY with
-  role tabs (rooms, kitchen, delivery, cashier, owner), owner-assigned IDs and
-  the extra OWNER password.
+  role tabs (rooms, kitchen, delivery, cashier, owner) and owner-assigned IDs.
+  There is no extra owner password; OWNER opens on the customer screen and
+  enters the owner panel via the “Egasi” tab.
 - Owner screen: revenue/debt stats, add products, upload/replace dish photos,
   add categories, manage the product list, assign Telegram IDs, change an
   employee's role, activate/deactivate staff, and create

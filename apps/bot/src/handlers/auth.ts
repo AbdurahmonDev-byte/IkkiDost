@@ -95,7 +95,7 @@ async function saveCustomerAddress(deps: Deps, ctx: Context, address: string): P
 
 /** Logs staff in when the Telegram ID is assigned to an employee account. */
 async function tryAutoLogin(deps: Deps, ctx: Context): Promise<boolean> {
-  const { config, store, flows } = deps;
+  const { config, store } = deps;
   if (!ctx.chat || !ctx.from) return false;
   try {
     const result = await telegramBotLogin(config, String(ctx.from.id));
@@ -105,14 +105,7 @@ async function tryAutoLogin(deps: Deps, ctx: Context): Promise<boolean> {
       { reply_markup: homeKeyboard(result.user.role, config.miniAppUrl) },
     );
     return true;
-  } catch (error) {
-    if (error instanceof ApiError && error.code === 'OWNER_PASSWORD_REQUIRED') {
-      flows.set(flowKey(ctx.chat.id), { kind: 'owner-password' });
-      await ctx.reply(
-        '🔐 Egasi hisobi aniqlandi.\n\nQo‘shimcha parolni yuboring (xabar yuborilgach o‘chiriladi):',
-      );
-      return true;
-    }
+  } catch {
     // Not linked yet — fall through to guest handling.
     return false;
   }
@@ -511,28 +504,6 @@ export function helpText(role?: string): string {
   if (role === 'OWNER') lines.push('📊 Hisobot — bugungi ko‘rsatkichlar');
   lines.push('', 'To‘lovlar faqat kassa ilovasida yoki egasi tomonidan qabul qilinadi.');
   return lines.join('\n');
-}
-
-/** OWNER extra password after Telegram auto-login. */
-export async function handleOwnerPassword(deps: Deps, ctx: Context, password: string): Promise<void> {
-  if (!ctx.chat || !ctx.from) return;
-  const { config, store, flows } = deps;
-  try {
-    await ctx.deleteMessage();
-  } catch {
-    await ctx.reply('⚠️ Iltimos, parolli xabaringizni o‘zingiz o‘chiring.');
-  }
-  try {
-    const result = await telegramBotLogin(config, String(ctx.from.id), password);
-    startSession(deps, ctx.chat.id, result);
-    await ctx.reply(`✅ Ulandi! ${result.user.fullName} · ${roleLabel[result.user.role]}`, {
-      reply_markup: homeKeyboard(result.user.role, config.miniAppUrl),
-    });
-  } catch (error) {
-    const message = error instanceof ApiError ? error.message : 'Serverga ulanib bo‘lmadi';
-    await ctx.reply(`❌ Parol noto‘g‘ri: ${message}\n\nQayta yuboring yoki /start bosing.`);
-    if (!store.get(ctx.chat.id)) flows.set(flowKey(ctx.chat.id), { kind: 'owner-password' });
-  }
 }
 
 /** Text router handler for the customer registration wizard. */

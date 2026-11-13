@@ -6,7 +6,7 @@ Ikki Do‘st choyxonasi xodimlari uchun yagona Telegram boti. Barcha qurilmalard
 
 - **Yagona backend va bitta DB**: Alohida ma'lumotlar bazasisiz, to‘g‘ridan-to‘g‘ri markaziy NestJS API (`apps/api`) bilan ishlaydi.
 - **To‘liq RBAC (rolga asoslangan kirish)**: Xodimlar o‘z lavozimlariga (`OWNER`, `WAITER`, `CHEF`, `CASHIER`, `DELIVERY`) mos menyu va imkoniyatlarga ega bo‘ladi.
-- **Xavfsiz avtorizatsiya**: Xodimlar egasi biriktirgan Telegram ID orqali parolsiz kiradi; egasi qo‘shimcha parol kiritadi. JWT tokenlar rotatsiyasi va muddati tugaganda yangilanishi avtomatik amalga oshadi.
+- **Xavfsiz avtorizatsiya**: Xodimlar egasi biriktirgan Telegram ID orqali parolsiz kiradi; egasi ham `OWNER_TELEGRAM_IDS` ro‘yxati orqali qo‘shimcha parolsiz kiradi. JWT tokenlar rotatsiyasi va muddati tugaganda yangilanishi avtomatik amalga oshadi.
 - **Xabarnomalar (Notifications)**: Orqa fondagi poller orqali yangi buyurtmalar, tayyor taomlar, kuryer naqd pullari va holat o‘zgarishlari xodimning Telegramiga darhol yuboriladi.
 - **Audit va qoidalar**: To‘lovlar faqat kassa yoki egasi tomonidan boshqariladi; qarzdorlik bilan xona yopish faqat sabab ko‘rsatilganda egasiga ruxsat etiladi (audit jurnalida qayd etiladi).
 

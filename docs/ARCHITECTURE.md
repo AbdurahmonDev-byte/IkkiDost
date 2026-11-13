@@ -34,8 +34,9 @@ Ikki Do‘st choyxonasi — one backend, one PostgreSQL database, multiple clien
   attributed to a dedicated seeded `bot` actor, never a real waiter.
 - **Staff authentication** resolves the employee role from the owner-assigned
   Telegram ID. Mini App `initData` is signature-validated with `BOT_TOKEN`;
-  the bot uses the verified Telegram sender ID. Non-owner username/password
-  login and self-linking are rejected. OWNER also supplies an extra password.
+  the bot uses the verified Telegram sender ID. Username/password login and
+  self-linking are rejected for employees. All roles, including OWNER (resolved
+  through `OWNER_TELEGRAM_IDS`), log in passwordlessly.
 - **Money is always integer UZS.** Quantities are decimal strings (`"0.750"`).
 - **Historical snapshots are immutable.** Order items snapshot product name,
   unit and unit price; orders snapshot the service-fee amount, per-person rate
@@ -111,7 +112,8 @@ GET  /api/auth/me              → current user
 - OWNER assigns each employee's Telegram ID in the employee manager or the
   Mini App owner tab. The role is resolved from that ID; employee password
   login and self-linking are rejected.
-- OWNER always supplies the extra account password (`OWNER_PASSWORD_REQUIRED`).
+- Every role, including OWNER (resolved from `OWNER_TELEGRAM_IDS`), logs in
+  passwordlessly; no extra owner password is requested.
 - Bot-only routes require `x-bot-secret: <BOT_TOKEN>`.
 - Access token: JWT, `type: "access"`, 15-minute TTL, sent as
   `Authorization: Bearer <token>`.
@@ -252,9 +254,10 @@ fallback** if the socket drops (important on unstable mobile networks).
   - customer mode: redesigned menu/search, cart, delivery-only remote orders,
     mandatory registration + phone verification gate, per-item kitchen notes,
     order tracker (5 s polling), printable e-receipt, call-waiter modal;
-  - staff mode: Telegram auto-login (plus one-time link and OWNER password),
-    role tabs for rooms, kitchen, deliveries and owner management (products,
-    photos, categories, stats).
+  - staff mode: Telegram auto-login for every role (plus one-time owner
+    bootstrap link), role tabs for rooms, kitchen, deliveries, cashier and
+    owner management (products, photos, categories, stats). OWNER opens on the
+    normal customer screen and switches to the owner panel via the “Egasi” tab.
 - **Bot** (`apps/bot`): grammY long-polling client. JSON-file session store
   (`apps/bot/data/sessions.json`, gitignored) holds JWT pairs per Telegram chat.
   Inline keyboards map to the REST API; a background poller forwards

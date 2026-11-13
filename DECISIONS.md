@@ -90,13 +90,15 @@
   protected by the `x-bot-secret` header. Non-owner employees cannot receive
   sessions through username/password login or self-link their Telegram ID.
   The Mini App owner tab and admin-web both support ID assignment.
-  - OWNER always supplies the extra account password; the API replies
-    `OWNER_PASSWORD_REQUIRED` until it is provided.
+  - The owner identity is resolved from the `OWNER_TELEGRAM_IDS` allowlist.
+  - Every role, including OWNER, logs in without a password. (The original
+    extra owner password was removed by ADR-025.)
   - `TELEGRAM_AUTH_MAX_AGE_SECONDS` (default 86 400) rejects stale payloads.
   - Usernames that later change in Telegram are refreshed on login.
 - **Consequences:** Employees log in from any Telegram client with no shared
-  passwords. A stolen phone still cannot act as OWNER without the extra
-  password. Existing non-owner refresh sessions are revoked by migration
+  passwords. The owner allowlist must be kept current; anyone who controls an
+  allowlisted Telegram account acts as OWNER. Existing non-owner refresh
+  sessions are revoked by migration
   `20261112180000_enforce_telegram_staff_login` during rollout.
 
 ## ADR-019: Dedicated DELIVERY role and customer → kitchen → courier flow
@@ -205,3 +207,25 @@
   carried in the JWT. Deactivation blocks token refresh immediately and
   therefore takes full effect within one access-token lifetime. Historical
   orders, payments and audit entries keep the original actor references.
+
+## ADR-025: Passwordless owner login and customer-first owner screen
+- **Context:** The owner asked to enter the Mini App like any other staff member
+  and to see the normal customer screen first, opening the owner panel only when
+  the “Egasi” tab is pressed. The extra owner password added friction (and a
+  second password prompt in an already Telegram-authenticated session) without
+  meaningful protection, because the owner identity is already verified by
+  Telegram.
+- **Decision:**
+  - `POST /auth/telegram` and `POST /auth/telegram/bot` no longer accept or
+    require a password. OWNER is resolved from the `OWNER_TELEGRAM_IDS`
+    allowlist and receives the same passwordless flow as every other role.
+  - `OWNER_PASSWORD_REQUIRED` / `OWNER_PASSWORD_INVALID` are removed from the
+    API contracts, bot flows and the Mini App login modal.
+  - The Mini App opens on the `customer` tab after any staff auto-login,
+    including OWNER. The owner panel is reached only through the “Egasi” tab.
+- **Consequences:** One consistent login path for every employee. Security now
+  depends on Telegram account control plus the owner allowlist; removing a
+  Telegram ID from `OWNER_TELEGRAM_IDS` immediately blocks passwordless owner
+  login (existing access tokens expire within 15 minutes). The admin-web login
+  and the seeded owner password remain only as the owner bootstrap/recovery
+  path.

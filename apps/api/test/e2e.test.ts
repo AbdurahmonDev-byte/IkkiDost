@@ -154,27 +154,19 @@ describe('Telegram identity and customer registration', () => {
     );
     expect(assignOwnerTelegram.status).toBe(200);
 
-    const ownerWithoutPassword = await req(ctx, 'POST', '/auth/telegram', { initData: ownerInitData });
-    expect(ownerWithoutPassword.status).toBe(401);
-    expect(ownerWithoutPassword.body.details.code).toBe('OWNER_PASSWORD_REQUIRED');
-
-    const ownerLogin = await req(ctx, 'POST', '/auth/telegram', {
-      initData: ownerInitData,
-      password: 'owner12345',
-    });
+    const ownerLogin = await req(ctx, 'POST', '/auth/telegram', { initData: ownerInitData });
     expect(ownerLogin.status).toBe(201);
     expect(ownerLogin.body.user.role).toBe('OWNER');
 
+    const unassignedTelegram = await req(ctx, 'POST', '/auth/telegram', {
+      initData: telegramInitData('777700099', 'Unknown', 'Staff'),
+    });
+    expect(unassignedTelegram.status).toBe(401);
+    expect(unassignedTelegram.body.details.code).toBe('TELEGRAM_NOT_LINKED');
+
     for (const ownerTelegramId of ['7483287151', '317080284']) {
       const ownerIdentity = telegramInitData(ownerTelegramId, 'Owner', 'Allowlist');
-      const missingPassword = await req(ctx, 'POST', '/auth/telegram', { initData: ownerIdentity });
-      expect(missingPassword.status).toBe(401);
-      expect(missingPassword.body.details.code).toBe('OWNER_PASSWORD_REQUIRED');
-
-      const allowedOwnerLogin = await req(ctx, 'POST', '/auth/telegram', {
-        initData: ownerIdentity,
-        password: 'owner12345',
-      });
+      const allowedOwnerLogin = await req(ctx, 'POST', '/auth/telegram', { initData: ownerIdentity });
       expect(allowedOwnerLogin.status).toBe(201);
       expect(allowedOwnerLogin.body.user.role).toBe('OWNER');
     }
