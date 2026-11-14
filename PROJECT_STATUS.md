@@ -50,14 +50,17 @@ Docs: `docs/ARCHITECTURE.md`, `docs/DATABASE.md`, `docs/API.md`,
   (6.60 kB gzip).
 - API serves the built Mini App at `/` (HTML 200, `/api/health` 200,
   unknown `/api/*` → 404, SPA fallback → 200).
-- Live checks against the production host on 2026-11-11: bot connected to
-  `@ikkidostbot`, Mini App at `https://ikkidost.abitcore.uz`, smoke delivery
-  order created and cancelled, owner login verified. The 2026-11-13 change set
-  is not deployed yet.
+- Live checks against the production host: bot connected to `@ikkidostbot`,
+  Mini App at `https://ikkidost.abitcore.uz`, smoke delivery order created and
+  cancelled, owner login verified. The 2026-11-13 change set (location, cash
+  handover, role management) and the 2026-11-14 passwordless-owner release
+  (commit `d8a2c16`) are deployed; `/api/health` is healthy and the owner
+  allowlist login returned `201` without any password, while an unknown
+  Telegram ID returned `TELEGRAM_NOT_LINKED`.
 - DB migrations `20261112120000_telegram_auth_delivery_customers`,
   `20261112180000_enforce_telegram_staff_login` and
-  `20261113005418_delivery_cash_handover` are applied and seeded locally;
-  production still runs the previous deployment until this change set is rolled out.
+  `20261113005418_delivery_cash_handover` are applied in production and seeded
+  locally; the API container runs `prisma migrate deploy` on every start.
 - Legacy admin-web/chef-web/mobile/cashier-desktop build results from
   2026-11-09 are preserved under `legacy/`.
 

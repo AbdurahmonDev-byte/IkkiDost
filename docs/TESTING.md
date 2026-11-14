@@ -59,6 +59,9 @@ delivery and Mini App behavior still require manual verification (see §4).
   (6.60 kB gzip).
 - Mini App served by the API: `/` → 200 HTML, `/api/health` → 200,
   unknown `/api/*` → 404, SPA fallback → 200.
+- Production deploy on 2026-11-14: API/bot images rebuilt from `d8a2c16`,
+  API healthy, bot connected to `@ikkidostbot`; owner-allowlist login → `201`
+  with no password, unknown Telegram ID → `401 TELEGRAM_NOT_LINKED`.
 - Local DB migrations `20261112120000_telegram_auth_delivery_customers`,
   `20261112180000_enforce_telegram_staff_login` and
   `20261113005418_delivery_cash_handover` applied; seed includes the `kuryer`
