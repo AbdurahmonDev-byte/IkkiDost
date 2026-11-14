@@ -119,6 +119,7 @@ export default function ProductsPage() {
                   </Badge>
                 </div>
                 <p className="mt-2 text-base font-bold text-primary-700">{formatUzs(p.price)}</p>
+                <p className="text-[11px] text-ink-soft">Tannarx {formatUzs(p.costPrice)} · foyda {formatUzs(p.price - p.costPrice)}</p>
                 <div className="mt-2 flex gap-1.5">
                   <Button size="sm" variant="secondary" onClick={() => setEditing(p)}>
                     <Pencil size={13} /> Tahrirlash
@@ -147,6 +148,7 @@ function ProductFormModal({ product, open, onClose }: { product?: ProductDto | n
   const [categoryId, setCategoryId] = useState('');
   const [unit, setUnit] = useState<MeasurementUnit>('PIECE');
   const [price, setPrice] = useState('');
+  const [costPrice, setCostPrice] = useState('');
   const [status, setStatus] = useState<ProductStatus>('ACTIVE');
 
   useEffect(() => {
@@ -155,10 +157,11 @@ function ProductFormModal({ product, open, onClose }: { product?: ProductDto | n
     setCategoryId(product?.categoryId ?? '');
     setUnit(product?.unit ?? 'PIECE');
     setPrice(product ? String(product.price) : '');
+    setCostPrice(product ? String(product.costPrice) : '');
     setStatus(product?.status ?? 'ACTIVE');
   }, [open, product]);
 
-  const current = { name, categoryId, unit, price, status };
+  const current = { name, categoryId, unit, price, costPrice, status };
 
   const mutation = useMutation({
     mutationFn: () => {
@@ -167,6 +170,7 @@ function ProductFormModal({ product, open, onClose }: { product?: ProductDto | n
         categoryId: current.categoryId,
         unit: current.unit,
         price: Number(current.price),
+        costPrice: Number(current.costPrice),
         status: current.status,
       };
       return product ? api.updateProduct(product.id, payload) : api.createProduct(payload);
@@ -212,6 +216,11 @@ function ProductFormModal({ product, open, onClose }: { product?: ProductDto | n
           <Field label="Narx (so‘m)" hint="Butun son — masalan 12000">
             <Input type="number" min={1} value={current.price} onChange={(e) => setPrice(e.target.value)} />
           </Field>
+          <Field label="Tannarx (so‘m)" hint="Mahsulotni sotib olish narxi">
+            <Input type="number" min={0} value={current.costPrice} onChange={(e) => setCostPrice(e.target.value)} />
+          </Field>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2">
           <Field label="Holat">
             <Select value={current.status} onChange={(e) => setStatus(e.target.value as ProductStatus)}>
               {(Object.keys(productStatusLabel) as ProductStatus[]).map((s) => (
@@ -228,7 +237,7 @@ function ProductFormModal({ product, open, onClose }: { product?: ProductDto | n
           </Button>
           <Button
             loading={mutation.isPending}
-            disabled={!current.name.trim() || !current.categoryId || !(Number(current.price) > 0)}
+            disabled={!current.name.trim() || !current.categoryId || !(Number(current.price) > 0) || !Number.isInteger(Number(current.costPrice)) || Number(current.costPrice) < 0}
             onClick={() => mutation.mutate()}
           >
             Saqlash

@@ -20,14 +20,14 @@ export class RoomsController {
   }
 
   @Post()
-  @Roles('OWNER')
+  @Roles('OWNER', 'CASHIER')
   @UsePipes(new ZodValidationPipe(createRoomSchema))
   create(@Body() input: CreateRoomInput, @CurrentUser() actor: RequestUser): Promise<RoomDto> {
     return this.rooms.create(input, actor);
   }
 
   @Patch(':id')
-  @Roles('OWNER')
+  @Roles('OWNER', 'CASHIER')
   @UsePipes(new ZodValidationPipe(updateRoomSchema))
   update(@Param('id') id: string, @Body() input: UpdateRoomInput, @CurrentUser() actor: RequestUser): Promise<RoomDto> {
     return this.rooms.update(id, input, actor);

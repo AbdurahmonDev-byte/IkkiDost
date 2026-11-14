@@ -74,8 +74,9 @@ Indexes: `(roomId, status)`, `status`.
 
 **Category** — `id`, `name` (unique), `sortOrder`, timestamps.
 
-**Product** — `id`, `name`, `categoryId`, `unit`, `price` (integer UZS per
-unit), `status`, timestamps. Indexes: `(categoryId, status)`, `status`.
+**Product** — `id`, `name`, `categoryId`, `unit`, `price` and `costPrice`
+(integer UZS per unit; `costPrice` defaults to 0), `status`, timestamps.
+Indexes: `(categoryId, status)`, `status`.
 Product names are stored exactly as supplied (Uzbek Cyrillic where provided) and
 must never be auto-translated.
 
@@ -97,8 +98,8 @@ Indexes: `(status, type)`, `roomSessionId`, `createdAt`, `roomId`.
 
 **OrderItem** — `id`, `orderId`, `productId?` (nullable so a deleted product
 does not destroy history), snapshots `productName`, `productUnit`,
-`unitPrice`, `quantity` (Decimal 8,3), `lineTotal`, `status`, `note?`,
-timestamps. Indexes: `orderId`, `status`.
+`unitPrice`, `unitCost`, `quantity` (Decimal 8,3), `lineTotal`, `costTotal`,
+`status`, `note?`, timestamps. Indexes: `orderId`, `status`.
 
 **OrderStatusHistory** — append-only transition log.
 `fromStatus?`, `toStatus`, `actorId?`, `note?`, `createdAt`.

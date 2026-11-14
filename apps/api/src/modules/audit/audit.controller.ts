@@ -7,7 +7,7 @@ import { Roles } from '../../common/decorators/roles.decorator';
 @ApiTags('audit-logs')
 @ApiBearerAuth()
 @Controller('audit-logs')
-@Roles('OWNER')
+@Roles('OWNER', 'CASHIER')
 export class AuditController {
   constructor(private audit: AuditService) {}
 

@@ -10,7 +10,7 @@ import { CurrentUser, type RequestUser } from '../../common/decorators/current-u
 @ApiTags('employees')
 @ApiBearerAuth()
 @Controller('employees')
-@Roles('OWNER')
+@Roles('OWNER', 'CASHIER')
 export class EmployeesController {
   constructor(private employees: EmployeesService) {}
 

@@ -189,13 +189,13 @@ function EmployeeFormModal({
           telegramId: telegramId.trim(),
           role,
           canCreateDelivery,
-          ...(role === 'OWNER' && password ? { password } : {}),
+          ...((role === 'OWNER' || role === 'CASHIER') && password ? { password } : {}),
         });
       }
       return api.createEmployee({
         fullName: fullName.trim(),
         username: username.trim(),
-        password: role === 'OWNER' ? password : crypto.randomUUID(),
+        password: role === 'OWNER' || role === 'CASHIER' ? password : crypto.randomUUID(),
         phone: phone.trim() || null,
         telegramId: telegramId.trim(),
         role,
@@ -214,8 +214,8 @@ function EmployeeFormModal({
     fullName.trim().length >= 2 &&
     username.trim().length >= 3 &&
     /^\d{4,20}$/.test(telegramId.trim()) &&
-    (role !== 'OWNER' ||
-      (employee?.role === 'OWNER' ? password === '' || password.length >= 6 : password.length >= 6));
+    (role !== 'OWNER' && role !== 'CASHIER' ||
+      (employee?.role === role ? password === '' || password.length >= 6 : password.length >= 6));
 
   return (
     <Modal open={open} onClose={onClose} title={employee ? 'Xodimni tahrirlash' : 'Yangi xodim'}>
@@ -227,8 +227,8 @@ function EmployeeFormModal({
           <Field label="Tizim nomi">
             <Input value={username} onChange={(e) => setUsername(e.target.value)} autoCapitalize="none" placeholder="ofitsiant2" />
           </Field>
-          {role === 'OWNER' && (
-            <Field label={employee ? 'Yangi ega paroli (ixtiyoriy)' : 'Ega paroli'} hint="Kamida 6 belgi">
+          {(role === 'OWNER' || role === 'CASHIER') && (
+            <Field label={employee ? 'Yangi parol (ixtiyoriy)' : 'Parol'} hint="Kamida 6 belgi">
               <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="new-password" />
             </Field>
           )}

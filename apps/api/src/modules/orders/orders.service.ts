@@ -78,7 +78,7 @@ export class OrdersService {
   }
 
   async create(input: CreateOrderInput, actor: { id: string; fullName: string; role: string; canCreateDelivery: boolean }, customerId?: string): Promise<OrderDto> {
-    if (input.type === 'DELIVERY' && actor.role !== 'OWNER' && !actor.canCreateDelivery) {
+    if (input.type === 'DELIVERY' && actor.role !== 'OWNER' && actor.role !== 'CASHIER' && !actor.canCreateDelivery) {
       throw new ForbiddenException('Yetkazib berish buyurtmasini yaratish uchun ruxsatingiz yo‘q');
     }
 
@@ -99,8 +99,10 @@ export class OrdersService {
           productName: p.name, // snapshot
           productUnit: p.unit, // snapshot
           unitPrice: p.price, // snapshot (integer UZS)
+          unitCost: p.costPrice,
           quantity: i.quantity,
           lineTotal: Math.round(p.price * qty),
+          costTotal: Math.round(p.costPrice * qty),
           note: i.note ?? null,
         };
       });
@@ -198,8 +200,10 @@ export class OrdersService {
             productName: p.name,
             productUnit: p.unit,
             unitPrice: p.price,
+            unitCost: p.costPrice,
             quantity: i.quantity,
             lineTotal: Math.round(p.price * Number(i.quantity)),
+            costTotal: Math.round(p.costPrice * Number(i.quantity)),
             note: i.note ?? null,
           };
         }),
@@ -250,10 +254,10 @@ export class OrdersService {
 
   /** Chef: mark item PREPARING/READY. Waiter (or owner): mark item SERVED. */
   async setItemStatus(orderId: string, itemId: string, input: ItemStatusInput, actor: { id: string; fullName: string; role: string }): Promise<OrderDto> {
-    if (input.status === 'SERVED' && actor.role !== 'WAITER' && actor.role !== 'OWNER') {
+    if (input.status === 'SERVED' && actor.role !== 'WAITER' && actor.role !== 'OWNER' && actor.role !== 'CASHIER') {
       throw new ForbiddenException('Faqat ofitsiant mahsulotni xonaga yetkazilgan deb belgilashi mumkin');
     }
-    if ((input.status === 'PREPARING' || input.status === 'READY') && actor.role !== 'CHEF' && actor.role !== 'OWNER') {
+    if ((input.status === 'PREPARING' || input.status === 'READY') && actor.role !== 'CHEF' && actor.role !== 'OWNER' && actor.role !== 'CASHIER') {
       throw new ForbiddenException('Faqat oshpaz tayyorlash holatini o‘zgartirishi mumkin');
     }
 
@@ -345,7 +349,7 @@ export class OrdersService {
         throw new BadRequestException('To‘lov qilingan buyurtmani bekor qilish uchun avval to‘lovlar qaytarilishi kerak');
       }
       // Only creator or owner can cancel.
-      if (actor.role !== 'OWNER' && order.createdById !== actor.id) {
+      if (actor.role !== 'OWNER' && actor.role !== 'CASHIER' && order.createdById !== actor.id) {
         throw new ForbiddenException('Faqat buyurtmani yaratgan xodim yoki ega bekor qilishi mumkin');
       }
       await tx.orderItem.updateMany({ where: { orderId, status: { not: 'SERVED' } }, data: { status: 'CANCELLED' } });

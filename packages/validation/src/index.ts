@@ -131,6 +131,7 @@ export const createProductSchema = z.object({
   categoryId: z.string().min(1),
   unit: z.nativeEnum(MeasurementUnit),
   price: positiveUzsSchema,
+  costPrice: uzsSchema.default(0),
 });
 export type CreateProductInput = z.infer<typeof createProductSchema>;
 
@@ -139,6 +140,7 @@ export const updateProductSchema = z.object({
   categoryId: z.string().min(1).optional(),
   unit: z.nativeEnum(MeasurementUnit).optional(),
   price: positiveUzsSchema.optional(),
+  costPrice: uzsSchema.optional(),
   status: z.enum(['ACTIVE', 'DISABLED', 'ARCHIVED']).optional(),
 });
 export type UpdateProductInput = z.infer<typeof updateProductSchema>;

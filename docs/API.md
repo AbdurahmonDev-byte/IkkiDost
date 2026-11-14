@@ -31,7 +31,7 @@ Content-Type: application/json
 
 | Method | Path | Auth | Description |
 |---|---|---|---|
-| POST | `/auth/login` | public (10/min) | OWNER bootstrap or backend `bot` actor; staff credentials are rejected |
+| POST | `/auth/login` | public (10/min) | OWNER bootstrap, CASHIER admin access, or backend `bot` actor |
 | POST | `/auth/telegram` | public (30/min) | Passwordless Mini App login with signed `initData` |
 | POST | `/auth/telegram/bot` | public + `x-bot-secret` (60/min) | Bot auto-login by `telegramId` |
 | POST | `/auth/link-telegram` | public (15/min) | OWNER-only legacy/bootstrap link; employees must be assigned by OWNER |
@@ -89,7 +89,7 @@ from a browser.
 Role lists show who may call the route. OWNER is allowed wherever explicitly
 listed; it is not implicitly added to every route.
 
-### Employees (OWNER)
+### Employees (OWNER, CASHIER)
 
 | Method | Path | Body / query |
 |---|---|---|
@@ -100,12 +100,13 @@ listed; it is not implicitly added to every route.
 `role` is one of `OWNER`, `WAITER`, `CHEF`, `CASHIER`, `DELIVERY`. The owner
 assigns each employee's numeric `telegramId` in the employee manager (also
 available in the Mini App owner tab). The API resolves the employee and role
-from this ID. Non-owner employees cannot log in with username/password or link
-their own ID. OWNER signs in with an allowlisted Telegram ID and no extra
-password. `/auth/login` remains available for OWNER bootstrap and the
-dedicated backend `bot` actor only.
+from this ID. WAITER, CHEF and DELIVERY cannot log in with username/password or
+link their own ID. CASHIER may use an owner-configured password for admin-web;
+all roles can still use their assigned Telegram ID. OWNER signs in with an
+allowlisted Telegram ID and no extra password. `/auth/login` is also available
+for OWNER bootstrap and the dedicated backend `bot` actor.
 
-`PATCH /employees/:id` lets the owner change any employee's `role`, name/phone,
+`PATCH /employees/:id` lets the owner or cashier change employee `role`, name/phone,
 or `isActive` flag, and reassign the Telegram ID without deleting history.
 Deactivating the last active OWNER is rejected; a Telegram ID reserved for the
 owner cannot be assigned to another role.
@@ -115,10 +116,10 @@ owner cannot be assigned to another role.
 | Method | Path | Roles | Notes |
 |---|---|---|---|
 | GET | `/rooms` | OWNER, WAITER, CASHIER | includes `activeSession` summary |
-| POST | `/rooms` | OWNER | `{ name, isActive? }` |
-| PATCH | `/rooms/:id` | OWNER | `{ name?, isActive? }` |
+| POST | `/rooms` | OWNER, CASHIER | `{ name, isActive? }` |
+| PATCH | `/rooms/:id` | OWNER, CASHIER | `{ name?, isActive? }` |
 | GET | `/rooms/sessions/:sessionId` | OWNER, WAITER, CASHIER | summary + `orders` + `payments` |
-| POST | `/rooms/sessions/:sessionId/close` | OWNER, CASHIER | `{ overrideReason? }` (OWNER only when debt remains) |
+| POST | `/rooms/sessions/:sessionId/close` | OWNER, CASHIER | `{ overrideReason? }` (reason required when debt remains) |
 
 Session detail response:
 
@@ -135,13 +136,13 @@ Session detail response:
 | Method | Path | Roles | Notes |
 |---|---|---|---|
 | GET | `/categories` | any role | `[{ id, name, sortOrder, productCount? }]` |
-| POST | `/categories` | OWNER | `{ name, sortOrder? }` |
-| PATCH | `/categories/:id` | OWNER | partial |
+| POST | `/categories` | OWNER, CASHIER | `{ name, sortOrder? }` |
+| PATCH | `/categories/:id` | OWNER, CASHIER | partial |
 | GET | `/products` | any role | `?includeArchived=true&categoryId=…` |
-| POST | `/products` | OWNER | `{ name, categoryId, unit, price }` |
-| PATCH | `/products/:id` | OWNER | name/categoryId/unit/price/status |
-| POST | `/products/:id/image` | OWNER | multipart field `image` (JPEG/PNG/WebP ≤ 5 MB) |
-| DELETE | `/products/:id/image` | OWNER | removes stored file + row |
+| POST | `/products` | OWNER, CASHIER | `{ name, categoryId, unit, price, costPrice? }` (`costPrice` defaults to 0) |
+| PATCH | `/products/:id` | OWNER, CASHIER | name/categoryId/unit/price/costPrice/status |
+| POST | `/products/:id/image` | OWNER, CASHIER | multipart field `image` (JPEG/PNG/WebP ≤ 5 MB) |
+| DELETE | `/products/:id/image` | OWNER, CASHIER | removes stored file + row |
 
 Image URLs in responses are relative (`/uploads/…`, `/uploads/thumbs/…`);
 prefix the API origin.
@@ -154,11 +155,11 @@ prefix the API origin.
 | GET | `/orders/kitchen` | CHEF, OWNER | active kitchen queue |
 | GET | `/orders/:id` | any role | |
 | GET | `/orders/:id/history` | any role | status transitions |
-| POST | `/orders` | OWNER, WAITER | create order (dine-in or delivery) |
-| POST | `/orders/:id/items` | OWNER, WAITER | `{ items: [{ productId, quantity, note? }] }` |
-| PATCH | `/orders/:id/items/:itemId` | OWNER, WAITER | `{ quantity?, note? }` |
-| POST | `/orders/:id/items/:itemId/status` | OWNER, WAITER, CHEF | `{ status: "PREPARING" \| "READY" \| "SERVED" }` |
-| POST | `/orders/:id/cancel` | OWNER, WAITER | `{ reason }` |
+| POST | `/orders` | OWNER, WAITER, CASHIER | create order (dine-in or delivery) |
+| POST | `/orders/:id/items` | OWNER, WAITER, CASHIER | `{ items: [{ productId, quantity, note? }] }` |
+| PATCH | `/orders/:id/items/:itemId` | OWNER, WAITER, CASHIER | `{ quantity?, note? }` |
+| POST | `/orders/:id/items/:itemId/status` | OWNER, WAITER, CHEF, CASHIER | `{ status: "PREPARING" \| "READY" \| "SERVED" }` |
+| POST | `/orders/:id/cancel` | OWNER, WAITER, CASHIER | `{ reason }` |
 
 Dine-in body:
 
@@ -197,10 +198,10 @@ Waiter accounts need `canCreateDelivery` to create delivery orders.
 |---|---|---|---|
 | GET | `/deliveries` | OWNER, WAITER, CASHIER, DELIVERY | `?status=` (DELIVERY sees own + claimable) |
 | GET | `/deliveries/:id` | OWNER, WAITER, CASHIER, DELIVERY | |
-| POST | `/deliveries/:id/claim` | OWNER, DELIVERY | claims an unassigned `CONFIRMED`/`PREPARING`/`READY` delivery |
+| POST | `/deliveries/:id/claim` | OWNER, CASHIER, DELIVERY | claims an unassigned `CONFIRMED`/`PREPARING`/`READY` delivery |
 | POST | `/deliveries/:id/status` | OWNER, WAITER, CASHIER, DELIVERY | `{ status, cashCollectedAmount? }` |
 | POST | `/deliveries/:id/handover` | OWNER, CASHIER | `{ methodId?, note? }` — confirms the courier handed over the collected cash |
-| POST | `/deliveries/:id/assign` | OWNER | `{ assignedToId }` |
+| POST | `/deliveries/:id/assign` | OWNER, CASHIER | `{ assignedToId }` |
 
 Allowed transitions:
 `PENDING → CONFIRMED → PREPARING → READY → OUT_FOR_DELIVERY → DELIVERED`;
@@ -241,8 +242,8 @@ Role rules:
 |---|---|---|---|
 | GET | `/payments` | OWNER, CASHIER | `?from=&to=` ISO dates |
 | GET | `/payments/methods` | OWNER, CASHIER, WAITER | |
-| POST | `/payments/methods` | OWNER | `{ name, kind }` |
-| PATCH | `/payments/methods/:id` | OWNER | `{ name?, kind?, isActive? }` |
+| POST | `/payments/methods` | OWNER, CASHIER | `{ name, kind }` |
+| PATCH | `/payments/methods/:id` | OWNER, CASHIER | `{ name?, kind?, isActive? }` |
 | POST | `/payments/order/:orderId` | OWNER, CASHIER | `{ amount, methodId, note?, idempotencyKey? }` |
 | POST | `/payments/session/:sessionId` | OWNER, CASHIER | same |
 | POST | `/payments/:id/reverse` | OWNER, CASHIER | `{ reason }` |
@@ -259,25 +260,29 @@ Role rules:
 |---|---|---|---|
 | GET | `/expenses` | OWNER, CASHIER | `?from=&to=` |
 | POST | `/expenses` | OWNER, CASHIER | `{ title, amount, category?, note?, spentAt? }` |
-| DELETE | `/expenses/:id` | OWNER | |
+| DELETE | `/expenses/:id` | OWNER, CASHIER | |
 
 ### Settings
 
 | Method | Path | Roles | Body |
 |---|---|---|---|
 | GET | `/settings/service-fee` | any role | |
-| PATCH | `/settings/service-fee` | OWNER | `{ enabled?, amountPerPerson?, applyToDineIn?, applyToDelivery?, method? }` |
+| PATCH | `/settings/service-fee` | OWNER, CASHIER | `{ enabled?, amountPerPerson?, applyToDineIn?, applyToDelivery?, method? }` |
 
 Changing the config never modifies existing orders.
 
-### Reports (OWNER)
+### Reports (OWNER, CASHIER)
 
 | Method | Path | Query |
 |---|---|---|
 | GET | `/reports/dashboard` | — |
 | GET | `/reports/summary` | `from`, `to` (ISO dates) |
 
-### Audit (OWNER)
+Report profit is paid revenue minus expenses and sold-item cost snapshots
+(`costOfGoods`). The dashboard also returns today's `todayCostOfGoods` and
+`todayProfit`.
+
+### Audit (OWNER, CASHIER)
 
 | Method | Path | Query |
 |---|---|---|

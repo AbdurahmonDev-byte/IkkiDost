@@ -31,7 +31,7 @@ export class OrdersController {
   }
 
   @Get('kitchen')
-  @Roles('CHEF', 'OWNER')
+  @Roles('CHEF', 'OWNER', 'CASHIER')
   kitchen(): Promise<OrderDto[]> {
     return this.orders.kitchenOrders();
   }
@@ -49,35 +49,35 @@ export class OrdersController {
   }
 
   @Post()
-  @Roles('OWNER', 'WAITER')
+  @Roles('OWNER', 'WAITER', 'CASHIER')
   @UsePipes(new ZodValidationPipe(createOrderSchema))
   create(@Body() input: CreateOrderInput, @CurrentUser() actor: RequestUser): Promise<OrderDto> {
     return this.orders.create(input, actor);
   }
 
   @Post(':id/items')
-  @Roles('OWNER', 'WAITER')
+  @Roles('OWNER', 'WAITER', 'CASHIER')
   @UsePipes(new ZodValidationPipe(addOrderItemsSchema))
   addItems(@Param('id') id: string, @Body() input: AddOrderItemsInput, @CurrentUser() actor: RequestUser): Promise<OrderDto> {
     return this.orders.addItems(id, input, actor);
   }
 
   @Patch(':id/items/:itemId')
-  @Roles('OWNER', 'WAITER')
+  @Roles('OWNER', 'WAITER', 'CASHIER')
   @UsePipes(new ZodValidationPipe(updateOrderItemSchema))
   updateItem(@Param('id') id: string, @Param('itemId') itemId: string, @Body() input: UpdateOrderItemInput, @CurrentUser() actor: RequestUser): Promise<OrderDto> {
     return this.orders.updateItem(id, itemId, input, actor);
   }
 
   @Post(':id/items/:itemId/status')
-  @Roles('OWNER', 'WAITER', 'CHEF')
+  @Roles('OWNER', 'WAITER', 'CHEF', 'CASHIER')
   @UsePipes(new ZodValidationPipe(itemStatusSchema))
   setItemStatus(@Param('id') id: string, @Param('itemId') itemId: string, @Body() input: ItemStatusInput, @CurrentUser() actor: RequestUser): Promise<OrderDto> {
     return this.orders.setItemStatus(id, itemId, input, actor);
   }
 
   @Post(':id/cancel')
-  @Roles('OWNER', 'WAITER')
+  @Roles('OWNER', 'WAITER', 'CASHIER')
   @UsePipes(new ZodValidationPipe(cancelOrderSchema))
   cancel(@Param('id') id: string, @Body() input: CancelOrderInput, @CurrentUser() actor: RequestUser): Promise<OrderDto> {
     return this.orders.cancel(id, input, actor);

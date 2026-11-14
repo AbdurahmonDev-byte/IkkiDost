@@ -34,21 +34,21 @@ export class ProductsController {
   }
 
   @Post()
-  @Roles('OWNER')
+  @Roles('OWNER', 'CASHIER')
   @UsePipes(new ZodValidationPipe(createProductSchema))
   create(@Body() input: CreateProductInput, @CurrentUser() actor: RequestUser): Promise<ProductDto> {
     return this.products.create(input, actor);
   }
 
   @Patch(':id')
-  @Roles('OWNER')
+  @Roles('OWNER', 'CASHIER')
   @UsePipes(new ZodValidationPipe(updateProductSchema))
   update(@Param('id') id: string, @Body() input: UpdateProductInput, @CurrentUser() actor: RequestUser): Promise<ProductDto> {
     return this.products.update(id, input, actor);
   }
 
   @Post(':id/image')
-  @Roles('OWNER')
+  @Roles('OWNER', 'CASHIER')
   @ApiConsumes('multipart/form-data')
   @UseInterceptors(FileInterceptor('image', { limits: { fileSize: 10 * 1024 * 1024 } }))
   uploadImage(@Param('id') id: string, @UploadedFile() file: { buffer: Buffer; mimetype: string } | undefined, @CurrentUser() actor: RequestUser): Promise<ProductDto> {
@@ -57,7 +57,7 @@ export class ProductsController {
   }
 
   @Delete(':id/image')
-  @Roles('OWNER')
+  @Roles('OWNER', 'CASHIER')
   removeImage(@Param('id') id: string, @CurrentUser() actor: RequestUser): Promise<ProductDto> {
     return this.products.removeImage(id, actor);
   }

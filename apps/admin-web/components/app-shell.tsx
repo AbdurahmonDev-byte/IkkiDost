@@ -78,7 +78,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!hydrated) return;
     if (!user) router.replace('/login');
-    else if (user.role !== 'OWNER') router.replace('/login');
+    else if (user.role !== 'OWNER' && user.role !== 'CASHIER') router.replace('/login');
   }, [hydrated, user, router]);
 
   useEffect(() => {

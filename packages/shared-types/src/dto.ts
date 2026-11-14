@@ -96,6 +96,8 @@ export interface ProductDto {
   unit: MeasurementUnit;
   /** Integer UZS per unit. */
   price: Uzs;
+  /** Purchase cost in integer UZS per unit. */
+  costPrice: Uzs;
   status: ProductStatus;
   imageUrl: string | null;
   thumbnailUrl: string | null;
@@ -247,6 +249,8 @@ export interface DashboardSummaryDto {
   activeDineInOrders: number;
   activeDeliveryOrders: number;
   paidToday: Uzs;
+  todayCostOfGoods: Uzs;
+  todayProfit: Uzs;
   unpaidOutstanding: Uzs;
   serviceFeeRevenueToday: Uzs;
   todayExpenses: Uzs;
@@ -260,6 +264,7 @@ export interface ReportDto {
   to: string;
   revenue: Uzs;
   expenses: Uzs;
+  costOfGoods: Uzs;
   profit: Uzs;
   serviceFeeTotal: Uzs;
   orderCount: number;

@@ -49,17 +49,24 @@ export default function DashboardPage() {
     <div>
       <PageHeader title="Boshqaruv paneli" subtitle="Bugungi holat va oxirgi 7 kunlik dinamika" />
 
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
         <StatCard
           label="Bugungi tushum"
           value={formatUzs(data.todayRevenue)}
-          hint={`${data.todayOrderCount} ta buyurtma`}
+          hint={`${data.todayOrderCount} buyurtma · qarz ${formatUzs(data.unpaidOutstanding)}`}
           icon={<TrendingUp size={18} />}
         />
         <StatCard
-          label="Bugun to‘langan"
-          value={formatUzs(data.paidToday)}
-          hint={`Qarz: ${formatUzs(data.unpaidOutstanding)}`}
+          label="Sof foyda"
+          value={formatUzs(data.todayProfit)}
+          hint="Tushum − xarajat − tannarx"
+          icon={<TrendingUp size={18} />}
+          tone={data.todayProfit >= 0 ? 'primary' : 'red'}
+        />
+        <StatCard
+          label="Mahsulot tannarxi"
+          value={formatUzs(data.todayCostOfGoods)}
+          hint="Bugun sotilgan mahsulotlar"
           icon={<Wallet size={18} />}
           tone="blue"
         />

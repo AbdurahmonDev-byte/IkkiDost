@@ -18,7 +18,7 @@
 - **Consequences:** No float money errors; quantity precision preserved.
 
 ## ADR-005: Historical snapshots
-- **Decision:** `OrderItem` stores `productName`, `productUnit`, `unitPrice` (UZS), `lineTotal`. Orders store `serviceFeeAmount` snapshot + `serviceFeePerPerson` snapshot. Later product/setting changes never mutate historical records.
+- **Decision:** `OrderItem` stores `productName`, `productUnit`, `unitPrice`, `unitCost`, `lineTotal` and `costTotal`. Orders store `serviceFeeAmount` snapshot + `serviceFeePerPerson` snapshot. Later product/setting changes never mutate historical records.
 - **Consequences:** Financial history stays accurate; product renames/price changes are safe.
 
 ## ADR-006: AuthN/Z
@@ -229,3 +229,8 @@
   login (existing access tokens expire within 15 minutes). The admin-web login
   and the seeded owner password remain only as the owner bootstrap/recovery
   path.
+
+## ADR-026: Cashier admin access, cost snapshots and payment receipts
+- **Context:** The cashier needs the room/catalog and management tools available to the owner, product-level cost visibility for net profit, and a receipt beside recorded payments.
+- **Decision:** CASHIER receives the OWNER-protected admin/API capabilities and may sign in to admin-web with a password configured by the owner; WAITER, CHEF and DELIVERY retain Telegram-only staff login. Products store integer UZS `costPrice`; each order item snapshots `unitCost` and `costTotal`, and reports subtract cost of goods and expenses from paid revenue. Admin-web payment rows load their linked order/session into an 80 mm printable receipt.
+- **Consequences:** Existing products and order items migrate with cost 0, so historical profit will not include costs unless backfilled. Changing a product's cost only affects future order items. Cashier room closure with debt still requires an audited reason.

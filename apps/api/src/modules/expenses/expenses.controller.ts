@@ -27,7 +27,7 @@ export class ExpensesController {
   }
 
   @Delete(':id')
-  @Roles('OWNER')
+  @Roles('OWNER', 'CASHIER')
   delete(@Param('id') id: string, @CurrentUser() actor: RequestUser): Promise<void> {
     return this.expenses.delete(id, actor);
   }

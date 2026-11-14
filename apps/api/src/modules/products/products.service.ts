@@ -18,6 +18,7 @@ export function mapProduct(p: ProductWithImage): ProductDto {
     categoryName: p.category?.name,
     unit: p.unit,
     price: p.price,
+    costPrice: p.costPrice,
     status: p.status,
     imageUrl: p.image ? `/uploads/${p.image.fileName}` : null,
     thumbnailUrl: p.image ? `/uploads/${p.image.thumbnailName ?? p.image.fileName}` : null,
@@ -61,11 +62,11 @@ export class ProductsService {
     const category = await this.prisma.category.findUnique({ where: { id: input.categoryId } });
     if (!category) throw new NotFoundException('Kategoriya topilmadi');
     const p = await this.prisma.product.create({
-      data: { name: input.name, categoryId: input.categoryId, unit: input.unit, price: input.price },
+      data: { name: input.name, categoryId: input.categoryId, unit: input.unit, price: input.price, costPrice: input.costPrice },
       include: { image: true, category: true },
     });
     await this.audit.log({ actorId: actor.id, actorName: actor.fullName, action: 'PRODUCT_CREATED', entity: 'Product', entityId: p.id, details: { name: p.name, price: p.price } });
-    this.rt.emitToRoles(['OWNER', 'WAITER'], RtEvent.PRODUCT_UPDATED, mapProduct(p));
+    this.rt.emitToRoles(['OWNER', 'WAITER', 'CASHIER'], RtEvent.PRODUCT_UPDATED, mapProduct(p));
     return mapProduct(p);
   }
 
@@ -83,16 +84,21 @@ export class ProductsService {
         categoryId: input.categoryId ?? undefined,
         unit: input.unit ?? undefined,
         price: input.price ?? undefined,
+        costPrice: input.costPrice ?? undefined,
         status: input.status ?? undefined,
       },
       include: { image: true, category: true },
     });
     if (input.price !== undefined && input.price !== p.price) {
       await this.audit.log({ actorId: actor.id, actorName: actor.fullName, action: 'PRODUCT_PRICE_CHANGED', entity: 'Product', entityId: id, details: { from: p.price, to: input.price } });
-    } else if (input.status !== undefined && input.status !== p.status) {
+    }
+    if (input.costPrice !== undefined && input.costPrice !== p.costPrice) {
+      await this.audit.log({ actorId: actor.id, actorName: actor.fullName, action: 'PRODUCT_COST_CHANGED', entity: 'Product', entityId: id, details: { from: p.costPrice, to: input.costPrice } });
+    }
+    if (input.status !== undefined && input.status !== p.status) {
       await this.audit.log({ actorId: actor.id, actorName: actor.fullName, action: 'PRODUCT_STATUS_CHANGED', entity: 'Product', entityId: id, details: { from: p.status, to: input.status } });
     }
-    this.rt.emitToRoles(['OWNER', 'WAITER'], RtEvent.PRODUCT_UPDATED, mapProduct(updated));
+    this.rt.emitToRoles(['OWNER', 'WAITER', 'CASHIER'], RtEvent.PRODUCT_UPDATED, mapProduct(updated));
     return mapProduct(updated);
   }
 
@@ -110,7 +116,7 @@ export class ProductsService {
       });
       await this.images.removeFiles(p.image?.fileName ?? '', p.image?.thumbnailName ?? null);
       await this.audit.log({ actorId: actor.id, actorName: actor.fullName, action: 'PRODUCT_IMAGE_SET', entity: 'Product', entityId: id });
-      this.rt.emitToRoles(['OWNER', 'WAITER'], RtEvent.PRODUCT_UPDATED, mapProduct(updated));
+      this.rt.emitToRoles(['OWNER', 'WAITER', 'CASHIER'], RtEvent.PRODUCT_UPDATED, mapProduct(updated));
       return mapProduct(updated);
     } catch (err) {
       await this.images.removeFiles(stored.fileName, stored.thumbnailName);

@@ -21,7 +21,7 @@ export class SettingsController {
   }
 
   @Patch('service-fee')
-  @Roles('OWNER')
+  @Roles('OWNER', 'CASHIER')
   @UsePipes(new ZodValidationPipe(updateServiceFeeConfigSchema))
   updateServiceFee(@Body() input: UpdateServiceFeeConfigInput, @CurrentUser() actor: RequestUser): Promise<ServiceFeeConfigDto> {
     return this.settings.updateServiceFeeConfig(input, actor);

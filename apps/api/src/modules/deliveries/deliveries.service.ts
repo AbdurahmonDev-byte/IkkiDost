@@ -70,13 +70,13 @@ export class DeliveriesService {
 
   /** Delivery person takes an unassigned ready/preparing delivery. */
   async claim(id: string, actor: Actor): Promise<DeliveryDto> {
-    if (actor.role !== 'DELIVERY' && actor.role !== 'OWNER') {
+    if (actor.role !== 'DELIVERY' && actor.role !== 'OWNER' && actor.role !== 'CASHIER') {
       throw new ForbiddenException('Yetkazishni faqat kuryer yoki ega qabul qiladi');
     }
     const dto = await this.prisma.$transaction(async (tx) => {
       const delivery = await tx.delivery.findUnique({ where: { id } });
       if (!delivery) throw new NotFoundException('Yetkazish topilmadi');
-      if (delivery.assignedToId && delivery.assignedToId !== actor.id && actor.role !== 'OWNER') {
+      if (delivery.assignedToId && delivery.assignedToId !== actor.id && actor.role !== 'OWNER' && actor.role !== 'CASHIER') {
         throw new BadRequestException('Bu yetkazish allaqachon boshqa kuryerga biriktirilgan');
       }
       if (!CLAIMABLE.includes(delivery.status)) {
@@ -110,7 +110,7 @@ export class DeliveriesService {
       if (actor.role === 'DELIVERY' && input.status !== 'OUT_FOR_DELIVERY' && input.status !== 'DELIVERED') {
         throw new ForbiddenException('Kuryer faqat «yo‘lda» va «yetkazildi» holatini o‘rnatadi');
       }
-      if (actor.role !== 'OWNER' && actor.role !== 'DELIVERY' && delivery.assignedToId && delivery.assignedToId !== actor.id) {
+      if (actor.role !== 'OWNER' && actor.role !== 'CASHIER' && actor.role !== 'DELIVERY' && delivery.assignedToId && delivery.assignedToId !== actor.id) {
         throw new BadRequestException('Bu yetkazish sizga biriktirilmagan');
       }
 

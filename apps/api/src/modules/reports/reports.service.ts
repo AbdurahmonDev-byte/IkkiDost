@@ -18,7 +18,7 @@ export class ReportsService {
 
   async dashboard(): Promise<DashboardSummaryDto> {
     const today = startOfDay(new Date());
-    const [todayPayments, todayOrders, activeRooms, activeDineIn, activeDelivery, openSessions, todayFeeOrders, todayExpenses, topProducts, recentActivity, weekPayments, weekExpenses] =
+    const [todayPayments, todayOrders, activeRooms, activeDineIn, activeDelivery, openSessions, todayFeeOrders, todayExpenses, topProducts, recentActivity, weekPayments, weekExpenses, todayCostOfGoods] =
       await Promise.all([
         this.prisma.payment.aggregate({ where: { createdAt: { gte: today }, reversedAt: null }, _sum: { amount: true } }),
         this.prisma.order.count({ where: { createdAt: { gte: today }, status: { not: 'CANCELLED' } } }),
@@ -38,9 +38,15 @@ export class ReportsService {
         this.audit.findAll(10),
         this.prisma.payment.findMany({ where: { createdAt: { gte: new Date(today.getTime() - 6 * 86400_000) }, reversedAt: null }, select: { amount: true, createdAt: true } }),
         this.prisma.expense.findMany({ where: { spentAt: { gte: new Date(today.getTime() - 6 * 86400_000) } }, select: { amount: true, spentAt: true } }),
+        this.prisma.orderItem.aggregate({
+          where: { createdAt: { gte: today }, status: { not: 'CANCELLED' } },
+          _sum: { costTotal: true },
+        }),
       ]);
 
     const paidToday = todayPayments._sum.amount ?? 0;
+    const expenseTotal = todayExpenses._sum.amount ?? 0;
+    const costTotal = todayCostOfGoods._sum.costTotal ?? 0;
     const unpaidOutstanding = openSessions.reduce((s, x) => s + (x.totalAmount - x.paidAmount), 0);
 
     const byDay = new Map<string, { revenue: number; expenses: number }>();
@@ -66,16 +72,18 @@ export class ReportsService {
       activeDineInOrders: activeDineIn,
       activeDeliveryOrders: activeDelivery,
       paidToday,
+      todayCostOfGoods: costTotal,
+      todayProfit: paidToday - expenseTotal - costTotal,
       unpaidOutstanding,
       serviceFeeRevenueToday: todayFeeOrders._sum.serviceFeeAmount ?? 0,
-      todayExpenses: todayExpenses._sum.amount ?? 0,
+      todayExpenses: expenseTotal,
       popularProducts: topProducts.map((p) => ({ productName: p.productName, quantity: String(p._sum.quantity ?? 0), revenue: p._sum.lineTotal ?? 0 })),
       recentActivity,
       revenueByDay: [...byDay.entries()].map(([date, v]) => ({ date, ...v })),
     };
   }
 
-  /** Full financial report for a date range. Profit = revenue − expenses. */
+  /** Full financial report for a date range. Profit = revenue − expenses − product costs. */
   async summary(from: string, to: string): Promise<ReportDto> {
     const fromDate = new Date(from);
     const toDate = new Date(to);
@@ -83,7 +91,7 @@ export class ReportsService {
       throw new Error('Sana formati noto‘g‘ri');
     }
 
-    const [payments, expenses, orders, paymentsByMethod, topProducts, waiterOrders] = await Promise.all([
+    const [payments, expenses, orders, paymentsByMethod, topProducts, waiterOrders, costOfGoods] = await Promise.all([
       this.prisma.payment.aggregate({ where: { createdAt: { gte: fromDate, lte: toDate }, reversedAt: null }, _sum: { amount: true } }),
       this.prisma.expense.aggregate({ where: { spentAt: { gte: fromDate, lte: toDate } }, _sum: { amount: true } }),
       this.prisma.order.findMany({
@@ -109,6 +117,10 @@ export class ReportsService {
         _count: true,
         _sum: { totalAmount: true },
       }),
+      this.prisma.orderItem.aggregate({
+        where: { createdAt: { gte: fromDate, lte: toDate }, status: { not: 'CANCELLED' } },
+        _sum: { costTotal: true },
+      }),
     ]);
 
     const methodIds = paymentsByMethod.map((m) => m.methodId);
@@ -121,6 +133,7 @@ export class ReportsService {
 
     const revenue = payments._sum.amount ?? 0;
     const expenseTotal = expenses._sum.amount ?? 0;
+    const costTotal = costOfGoods._sum.costTotal ?? 0;
 
     function m_id(w: { createdById: string }) {
       return w.createdById;
@@ -131,7 +144,8 @@ export class ReportsService {
       to: toDate.toISOString(),
       revenue,
       expenses: expenseTotal,
-      profit: revenue - expenseTotal,
+      costOfGoods: costTotal,
+      profit: revenue - expenseTotal - costTotal,
       serviceFeeTotal: orders.reduce((s, o) => s + o.serviceFeeAmount, 0),
       orderCount: orders.length,
       dineInRevenue: orders.filter((o) => o.type === 'DINE_IN').reduce((s, o) => s + o.totalAmount, 0),

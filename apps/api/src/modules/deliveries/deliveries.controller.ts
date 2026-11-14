@@ -34,7 +34,7 @@ export class DeliveriesController {
 
   /** A delivery person claims an unassigned delivery. */
   @Post(':id/claim')
-  @Roles('OWNER', 'DELIVERY')
+  @Roles('OWNER', 'CASHIER', 'DELIVERY')
   claim(@Param('id') id: string, @CurrentUser() actor: RequestUser): Promise<DeliveryDto> {
     return this.deliveries.claim(id, actor);
   }
@@ -51,7 +51,7 @@ export class DeliveriesController {
   }
 
   @Post(':id/assign')
-  @Roles('OWNER')
+  @Roles('OWNER', 'CASHIER')
   @UsePipes(new ZodValidationPipe(assignDeliverySchema))
   assign(@Param('id') id: string, @Body() input: AssignDeliveryInput, @CurrentUser() actor: RequestUser): Promise<DeliveryDto> {
     return this.deliveries.assign(id, input, actor);

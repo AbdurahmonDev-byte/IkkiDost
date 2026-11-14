@@ -482,6 +482,8 @@ describe('8-9. Product price change does not alter historical orders', () => {
   let orderId = '';
 
   it('creates order at current price (Чой = 3 000)', async () => {
+    const cost = await req(ctx, 'PATCH', `/products/${productChoy.id}`, { costPrice: 1000 }, ctx.tokens.owner);
+    expect(cost.status).toBe(200);
     const order = await createDineIn(1, [{ productId: productChoy.id, quantity: '2' }]);
     orderId = order.id;
     expect(order.items[0].unitPrice).toBe(3000);
@@ -489,9 +491,14 @@ describe('8-9. Product price change does not alter historical orders', () => {
   });
 
   it('owner changes price to 5 000', async () => {
-    const res = await req(ctx, 'PATCH', `/products/${productChoy.id}`, { price: 5000 }, ctx.tokens.owner);
+    const res = await req(ctx, 'PATCH', `/products/${productChoy.id}`, { price: 5000, costPrice: 2500 }, ctx.tokens.owner);
     expect(res.status).toBe(200);
     expect(res.body.price).toBe(5000);
+  });
+
+  it('profit report keeps the original cost snapshot', async () => {
+    const report = await req(ctx, 'GET', '/reports/summary?from=2026-01-01&to=2026-12-31', undefined, ctx.tokens.owner);
+    expect(report.body.costOfGoods).toBe(2000);
   });
 
   it('historical order totals are unchanged', async () => {
@@ -508,7 +515,7 @@ describe('8-9. Product price change does not alter historical orders', () => {
   });
 
   it('restore original price', async () => {
-    await req(ctx, 'PATCH', `/products/${productChoy.id}`, { price: 3000 }, ctx.tokens.owner);
+    await req(ctx, 'PATCH', `/products/${productChoy.id}`, { price: 3000, costPrice: 0 }, ctx.tokens.owner);
   });
 });
 
@@ -650,15 +657,10 @@ describe('17b. Room closure rules with outstanding balance', () => {
     sessionId = o.body.roomSessionId;
   });
 
-  it('cashier CANNOT close with outstanding balance', async () => {
+  it('cashier override requires a reason', async () => {
     const close = await req(ctx, 'POST', `/rooms/sessions/${sessionId}/close`, {}, ctx.tokens.cashier);
-    expect(close.status).toBe(403);
-  });
-
-  it('owner override requires a reason', async () => {
-    const noReason = await req(ctx, 'POST', `/rooms/sessions/${sessionId}/close`, {}, ctx.tokens.owner);
-    expect(noReason.status).toBe(400);
-    const withReason = await req(ctx, 'POST', `/rooms/sessions/${sessionId}/close`, { overrideReason: 'Mijoz keyin to‘laydi — telefon orqali kelishildi' }, ctx.tokens.owner);
+    expect(close.status).toBe(400);
+    const withReason = await req(ctx, 'POST', `/rooms/sessions/${sessionId}/close`, { overrideReason: 'Mijoz keyin to‘laydi — telefon orqali kelishildi' }, ctx.tokens.cashier);
     expect(withReason.status).toBe(201);
     expect(withReason.body.status).toBe('CLOSED');
   });
@@ -695,9 +697,31 @@ describe('18. Authorization enforcement (backend, not just frontend)', () => {
     expect((await req(ctx, 'PATCH', `/products/${productNon.id}`, { price: 1 }, ctx.tokens.chef)).status).toBe(403);
   });
 
-  it('cashier cannot manage products/rooms/employees', async () => {
-    expect((await req(ctx, 'POST', '/rooms', { name: 'Yaratilmaydigan xona' }, ctx.tokens.cashier)).status).toBe(403);
-    expect((await req(ctx, 'POST', '/products', { name: 'X', categoryId: 'x', unit: 'PIECE', price: 100 }, ctx.tokens.cashier)).status).toBe(403);
+  it('cashier can manage rooms and products', async () => {
+    const employees = await req(ctx, 'GET', '/employees', undefined, ctx.tokens.cashier);
+    expect(employees.status).toBe(200);
+    expect((await req(ctx, 'GET', '/reports/dashboard', undefined, ctx.tokens.cashier)).status).toBe(200);
+    const room = await req(ctx, 'POST', '/rooms', { name: `Kassir xona ${Date.now()}` }, ctx.tokens.cashier);
+    expect(room.status).toBe(201);
+    const categories = await req(ctx, 'GET', '/categories', undefined, ctx.tokens.cashier);
+    const product = await req(ctx, 'POST', '/products', {
+      name: `Kassir mahsulot ${Date.now()}`,
+      categoryId: categories.body[0].id,
+      unit: 'PIECE',
+      price: 1000,
+      costPrice: 300,
+    }, ctx.tokens.cashier);
+    expect(product.status).toBe(201);
+    expect(product.body.costPrice).toBe(300);
+    const updated = await req(ctx, 'PATCH', `/products/${product.body.id}`, { costPrice: 350 }, ctx.tokens.cashier);
+    expect(updated.status).toBe(200);
+    expect(updated.body.costPrice).toBe(350);
+    const cashier = employees.body.find((employee: { username: string }) => employee.username === 'kassir');
+    const passwordUpdate = await req(ctx, 'PATCH', `/employees/${cashier.id}`, { password: 'cashier-login-123' }, ctx.tokens.owner);
+    expect(passwordUpdate.status).toBe(200);
+    const passwordLogin = await req(ctx, 'POST', '/auth/login', { username: 'kassir', password: 'cashier-login-123' });
+    expect(passwordLogin.status).toBe(201);
+    expect((await req(ctx, 'GET', '/reports/dashboard', undefined, passwordLogin.body.accessToken)).status).toBe(200);
   });
 
   it('unauthenticated requests are rejected', async () => {
@@ -777,16 +801,18 @@ describe('Reports & dashboard', () => {
     const res = await req(ctx, 'GET', '/reports/dashboard', undefined, ctx.tokens.owner);
     expect(res.status).toBe(200);
     expect(typeof res.body.todayRevenue).toBe('number');
+    expect(typeof res.body.todayCostOfGoods).toBe('number');
+    expect(typeof res.body.todayProfit).toBe('number');
     expect(typeof res.body.serviceFeeRevenueToday).toBe('number');
     expect(Array.isArray(res.body.revenueByDay)).toBe(true);
   });
 
-  it('summary report distinguishes revenue, expenses and profit', async () => {
+  it('summary report subtracts expenses and product cost from revenue', async () => {
     const exp = await req(ctx, 'POST', '/expenses', { title: 'Test xarajat', amount: 25000, category: 'Test' }, ctx.tokens.owner);
     expect(exp.status).toBe(201);
     const res = await req(ctx, 'GET', '/reports/summary?from=2026-01-01&to=2026-12-31', undefined, ctx.tokens.owner);
     expect(res.status).toBe(200);
-    expect(res.body.profit).toBe(res.body.revenue - res.body.expenses);
+    expect(res.body.profit).toBe(res.body.revenue - res.body.expenses - res.body.costOfGoods);
     expect(res.body.expenses).toBeGreaterThanOrEqual(25000);
     expect(Array.isArray(res.body.paymentsByMethod)).toBe(true);
     expect(Array.isArray(res.body.employeePerformance)).toBe(true);

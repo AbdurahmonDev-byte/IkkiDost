@@ -1,6 +1,8 @@
 # PROJECT STATUS
 
-Last updated: 2026-11-13 — Delivery-address capture (bot location prompt, saved
+Last updated: 2026-11-14 — Cashier admin access, room and catalog management,
+product cost snapshots and net-profit KPIs, plus printable receipts beside
+payment records. Delivery-address capture (bot location prompt, saved
 customer address, Mini App prefill), courier cash collection with cashier
 “To‘lov qilindi” handover, and owner-managed employee roles/activation are
 implemented on top of Telegram-ID staff authentication, the DELIVERY role,
@@ -36,7 +38,14 @@ documented only.
 Docs: `docs/ARCHITECTURE.md`, `docs/DATABASE.md`, `docs/API.md`,
 `docs/DEPLOYMENT.md`, `docs/TESTING.md`, plus `DECISIONS.md`.
 
-## Verification snapshot (2026-11-13)
+## Verification snapshot (2026-11-14)
+
+- `npm run test:api` — **51/51 tests pass**, including cashier room/product
+  management, debt-close reason auditing, and cost-aware profit reporting.
+- API and admin-web TypeScript checks pass after cashier, cost, dashboard and
+  receipt changes; API and admin-web production builds pass.
+
+## Earlier verification snapshot (2026-11-13)
 
 - `npm run typecheck` — passes for all 9 workspaces.
 - Backend: `cd apps/api && npx vitest run` — **51/51 tests pass**, including
@@ -68,7 +77,7 @@ Docs: `docs/ARCHITECTURE.md`, `docs/DATABASE.md`, `docs/API.md`,
 
 ### Backend (`apps/api`)
 - Embedded PostgreSQL bootstrap for dev/tests (`npm run db:start`), Prisma schema
-  plus 5 migrations.
+  plus 6 migrations.
 - Seed: owner/ofitsiant/oshpaz/kassir/kuryer + `bot` self-service actor, 3 rooms,
   4 categories, all 14 specified products with exact names/prices/units,
   Naqd/Karta methods, service fee 4 000 UZS/person enabled for both order
@@ -96,7 +105,7 @@ Docs: `docs/ARCHITECTURE.md`, `docs/DATABASE.md`, `docs/API.md`,
   deactivated.
 - Rooms with a single OPEN session enforced by a row lock; multi-order sessions.
 - Orders: dine-in and delivery, item-level workflow, status history, cancellation,
-  historical price/fee snapshots.
+  historical price/fee/cost snapshots.
 - Delivery workflow with enforced transitions and optional courier assignment;
   DELIVERY staff see their own deliveries plus claimable unassigned ones and may
   only set `OUT_FOR_DELIVERY` / `DELIVERED` (kitchen readiness syncs to READY).
@@ -108,7 +117,9 @@ Docs: `docs/ARCHITECTURE.md`, `docs/DATABASE.md`, `docs/API.md`,
 - Socket.IO `/rt` with JWT auth, role/user rooms, central `RealtimeService`.
 
 ### Admin panel (`apps/admin-web`)
-All 15 owner sections, auth shell, shared UI kit, toasts, charts, CSV export.
+All 15 admin sections for OWNER and CASHIER, auth shell, shared UI kit, toasts,
+charts, CSV export, product cost/margin entry, net-profit KPIs and printable
+payment receipts.
 Production build passes; every route returned 200 in the live preview.
 
 ### Legacy chef kitchen app (`legacy/chef-web`)

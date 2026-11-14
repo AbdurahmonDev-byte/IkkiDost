@@ -19,14 +19,14 @@ export class CategoriesController {
   }
 
   @Post()
-  @Roles('OWNER')
+  @Roles('OWNER', 'CASHIER')
   @UsePipes(new ZodValidationPipe(createCategorySchema))
   create(@Body() input: CreateCategoryInput): Promise<CategoryDto> {
     return this.categories.create(input);
   }
 
   @Patch(':id')
-  @Roles('OWNER')
+  @Roles('OWNER', 'CASHIER')
   @UsePipes(new ZodValidationPipe(updateCategorySchema))
   update(@Param('id') id: string, @Body() input: UpdateCategoryInput): Promise<CategoryDto> {
     return this.categories.update(id, input);

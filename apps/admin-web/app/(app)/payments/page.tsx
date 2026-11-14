@@ -2,8 +2,8 @@
 
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { CreditCard, Plus, RotateCcw, Wallet } from 'lucide-react';
-import type { PaymentDto, PaymentKind } from '@ikki-dost/shared-types';
+import { CreditCard, Plus, Printer, RotateCcw, Wallet } from 'lucide-react';
+import type { OrderDto, PaymentDto, PaymentKind, RoomSessionSummaryDto } from '@ikki-dost/shared-types';
 import { api } from '@/lib/api';
 import {
   Badge,
@@ -24,13 +24,14 @@ import {
   Th,
 } from '@/components/ui';
 import { toast } from '@/components/toast';
-import { formatDateTime, formatUzs, paymentKindLabel, rangeDefault } from '@/lib/format';
+import { formatDateTime, formatQty, formatUzs, paymentKindLabel, rangeDefault } from '@/lib/format';
 
 export default function PaymentsPage() {
   const qc = useQueryClient();
   const [range, setRange] = useState(rangeDefault());
   const [kind, setKind] = useState('');
   const [reverseTarget, setReverseTarget] = useState<PaymentDto | null>(null);
+  const [receiptTarget, setReceiptTarget] = useState<PaymentDto | null>(null);
   const [reason, setReason] = useState('');
   const [methodOpen, setMethodOpen] = useState(false);
 
@@ -128,6 +129,7 @@ export default function PaymentsPage() {
                 <Th>Qabul qilgan</Th>
                 <Th>Izoh</Th>
                 <Th>Holat</Th>
+                <Th>Chek</Th>
                 <Th />
               </tr>
             </thead>
@@ -149,6 +151,15 @@ export default function PaymentsPage() {
                     )}
                   </Td>
                   <Td>
+                    <button
+                      onClick={() => setReceiptTarget(p)}
+                      className="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-medium text-primary-700 hover:bg-primary-50"
+                      title="Chekni ko‘rish va chiqarish"
+                    >
+                      <Printer size={14} /> Chek
+                    </button>
+                  </Td>
+                  <Td>
                     {!p.reversedAt && (
                       <button
                         onClick={() => setReverseTarget(p)}
@@ -165,6 +176,8 @@ export default function PaymentsPage() {
           </Table>
         )}
       </Card>
+
+      <PaymentReceiptModal payment={receiptTarget} onClose={() => setReceiptTarget(null)} />
 
       <Card className="mt-4">
         <CardHeader title="To‘lov usullari" subtitle="Kassir va ofitsiantlar foydalanadi" />
@@ -250,6 +263,90 @@ function PaymentMethodModal({ open, onClose }: { open: boolean; onClose: () => v
           </Button>
         </div>
       </div>
+    </Modal>
+  );
+}
+
+type ReceiptData =
+  | { type: 'order'; order: OrderDto }
+  | { type: 'session'; session: RoomSessionSummaryDto & { orders: OrderDto[]; payments: PaymentDto[] } };
+
+function PaymentReceiptModal({ payment, onClose }: { payment: PaymentDto | null; onClose: () => void }) {
+  const receiptQuery = useQuery<ReceiptData>({
+    queryKey: ['payment-receipt', payment?.id],
+    enabled: !!payment,
+    queryFn: async () => {
+      if (!payment) throw new Error('To‘lov topilmadi');
+      if (payment.orderId) return { type: 'order', order: await api.order(payment.orderId) };
+      if (payment.roomSessionId) return { type: 'session', session: await api.roomSession(payment.roomSessionId) };
+      throw new Error('Chek ma’lumoti topilmadi');
+    },
+  });
+
+  const orders = receiptQuery.data?.type === 'order'
+    ? [receiptQuery.data.order]
+    : receiptQuery.data?.session.orders ?? [];
+  const total = receiptQuery.data?.type === 'order'
+    ? receiptQuery.data.order.totalAmount
+    : receiptQuery.data?.session.totalAmount ?? 0;
+  const paid = receiptQuery.data?.type === 'order'
+    ? receiptQuery.data.order.paidAmount
+    : receiptQuery.data?.session.paidAmount ?? 0;
+  const roomName = orders[0]?.roomName;
+
+  return (
+    <Modal open={!!payment} onClose={onClose} title="To‘lov cheki" wide>
+      {receiptQuery.isLoading ? (
+        <div className="flex justify-center py-10"><Spinner /></div>
+      ) : receiptQuery.error ? (
+        <EmptyState title="Chekni yuklab bo‘lmadi" hint={receiptQuery.error instanceof Error ? receiptQuery.error.message : 'Xatolik yuz berdi'} />
+      ) : payment ? (
+        <div className="space-y-3">
+          <div className="printable-receipt mx-auto max-w-sm rounded-lg border border-line p-5 text-sm text-ink">
+            <header className="border-b border-dashed border-ink/40 pb-3 text-center">
+              <p className="text-base font-bold">Ikki Do‘st Choyxonasi</p>
+              <p className="mt-1 text-xs">To‘lov cheki</p>
+              <p className="mt-1 text-xs">{formatDateTime(payment.createdAt)}</p>
+              {roomName && <p className="mt-1 text-xs">Xona: {roomName}</p>}
+              {orders.length > 0 && <p className="text-xs">Buyurtma: {orders.map((order) => `#${order.orderNumber}`).join(', ')}</p>}
+            </header>
+
+            <div className="space-y-3 py-3">
+              {orders.map((order) => (
+                <section key={order.id}>
+                  {orders.length > 1 && <p className="mb-1 border-b border-dashed border-ink/30 pb-1 text-xs font-semibold">Buyurtma #{order.orderNumber}</p>}
+                  {order.items.filter((item) => item.status !== 'CANCELLED').map((item) => (
+                    <div key={item.id} className="flex justify-between gap-3 py-0.5 text-xs">
+                      <span className="min-w-0">{item.productName} · {formatQty(item.quantity, item.productUnit)} × {formatUzs(item.unitPrice)}</span>
+                      <span className="shrink-0">{formatUzs(item.lineTotal)}</span>
+                    </div>
+                  ))}
+                  {order.serviceFeeAmount > 0 && (
+                    <div className="mt-1 flex justify-between border-t border-dashed border-ink/30 pt-1 text-xs">
+                      <span>Xizmat haqi</span><span>{formatUzs(order.serviceFeeAmount)}</span>
+                    </div>
+                  )}
+                </section>
+              ))}
+            </div>
+
+            <div className="space-y-1 border-t border-dashed border-ink/40 pt-2 text-xs">
+              <div className="flex justify-between font-bold"><span>Jami</span><span>{formatUzs(total)}</span></div>
+              <div className="flex justify-between"><span>To‘langan jami</span><span>{formatUzs(paid)}</span></div>
+              <div className="flex justify-between"><span>Qoldiq</span><span>{formatUzs(Math.max(0, total - paid))}</span></div>
+              <div className="mt-2 flex justify-between border-t border-dashed border-ink/30 pt-2 font-semibold">
+                <span>Ushbu to‘lov · {payment.methodName}</span><span>{formatUzs(payment.amount)}</span>
+              </div>
+              <p className="pt-1 text-center">Kassir: {payment.receivedByName}</p>
+              {payment.reversedAt && <p className="text-center font-semibold">QAYTARILGAN TO‘LOV</p>}
+            </div>
+          </div>
+          <div className="receipt-actions flex justify-end gap-2">
+            <Button variant="secondary" onClick={onClose}>Yopish</Button>
+            <Button onClick={() => window.print()}><Printer size={15} /> Chek chiqarish</Button>
+          </div>
+        </div>
+      ) : null}
     </Modal>
   );
 }

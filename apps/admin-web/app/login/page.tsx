@@ -16,7 +16,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (hydrated && user?.role === 'OWNER') router.replace('/dashboard');
+    if (hydrated && (user?.role === 'OWNER' || user?.role === 'CASHIER')) router.replace('/dashboard');
   }, [hydrated, user, router]);
 
   async function submit(e: React.FormEvent) {
@@ -25,8 +25,8 @@ export default function LoginPage() {
     setLoading(true);
     try {
       const res = await api.login({ username: username.trim(), password });
-      if (res.user.role !== 'OWNER') {
-        setError('Bu panel faqat ega uchun');
+      if (res.user.role !== 'OWNER' && res.user.role !== 'CASHIER') {
+        setError('Bu panel faqat ega va kassir uchun');
         return;
       }
       setSession({ user: res.user, accessToken: res.accessToken, refreshToken: res.refreshToken });
@@ -62,7 +62,7 @@ export default function LoginPage() {
 
         <div className="p-8 sm:p-10">
           <h2 className="text-xl font-semibold">Tizimga kirish</h2>
-          <p className="mt-1 text-sm text-ink-soft">Ega hisobi bilan kiring.</p>
+          <p className="mt-1 text-sm text-ink-soft">Ega yoki kassir hisobi bilan kiring.</p>
 
           <form onSubmit={submit} className="mt-6 space-y-4">
             <div>

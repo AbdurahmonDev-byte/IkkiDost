@@ -25,6 +25,7 @@ export default function ReportsPage() {
       ['Davr', `${data.from} — ${data.to}`],
       ['Tushum', String(data.revenue)],
       ['Xarajat', String(data.expenses)],
+      ['Mahsulot tannarxi', String(data.costOfGoods)],
       ['Foyda', String(data.profit)],
       ['Xizmat haqi', String(data.serviceFeeTotal)],
       ['Buyurtmalar', String(data.orderCount)],
@@ -101,7 +102,7 @@ export default function ReportsPage() {
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <StatCard label="Tushum" value={formatUzs(data.revenue)} hint={`${data.orderCount} ta buyurtma`} icon={<TrendingUp size={18} />} />
             <StatCard label="Xarajat" value={formatUzs(data.expenses)} hint="Davr xarajatlari" icon={<TrendingDown size={18} />} tone="red" />
-            <StatCard label="Foyda" value={formatUzs(data.profit)} hint="Tushum − xarajat" icon={<Wallet size={18} />} tone={data.profit >= 0 ? 'primary' : 'red'} />
+            <StatCard label="Sof foyda" value={formatUzs(data.profit)} hint={`Tushum − xarajat − tannarx (${formatUzs(data.costOfGoods)})`} icon={<Wallet size={18} />} tone={data.profit >= 0 ? 'primary' : 'red'} />
             <StatCard label="Xizmat haqi" value={formatUzs(data.serviceFeeTotal)} hint="Buyurtmalardagi fee" icon={<Wallet size={18} />} tone="amber" />
           </div>
 

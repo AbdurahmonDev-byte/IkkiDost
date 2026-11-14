@@ -35,14 +35,14 @@ export class PaymentsController {
   }
 
   @Post('methods')
-  @Roles('OWNER')
+  @Roles('OWNER', 'CASHIER')
   @UsePipes(new ZodValidationPipe(createPaymentMethodSchema))
   createMethod(@Body() input: CreatePaymentMethodInput, @CurrentUser() actor: RequestUser): Promise<PaymentMethodDto> {
     return this.payments.createMethod(input, actor);
   }
 
   @Patch('methods/:id')
-  @Roles('OWNER')
+  @Roles('OWNER', 'CASHIER')
   @UsePipes(new ZodValidationPipe(updatePaymentMethodSchema))
   updateMethod(@Param('id') id: string, @Body() input: UpdatePaymentMethodInput, @CurrentUser() actor: RequestUser): Promise<PaymentMethodDto> {
     return this.payments.updateMethod(id, input, actor);

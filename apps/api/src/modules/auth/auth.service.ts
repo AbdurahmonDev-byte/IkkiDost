@@ -37,7 +37,7 @@ export class AuthService {
   async login(username: string, password: string, meta?: { userAgent?: string; ip?: string }): Promise<AuthTokens & { user: AuthUser }> {
     const user = await this.validateUser(username, password);
     if (!user) throw new UnauthorizedException('Login yoki parol noto‘g‘ri');
-    if (user.role !== 'OWNER' && user.username !== 'bot') {
+    if (user.role !== 'OWNER' && user.role !== 'CASHIER' && user.username !== 'bot') {
       throw new UnauthorizedException({
         message: 'Xodimlar faqat admin biriktirgan Telegram ID orqali kiradi',
         details: { code: 'TELEGRAM_LOGIN_REQUIRED' },
