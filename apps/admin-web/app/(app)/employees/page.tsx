@@ -228,7 +228,7 @@ function EmployeeFormModal({
             <Input value={username} onChange={(e) => setUsername(e.target.value)} autoCapitalize="none" placeholder="ofitsiant2" />
           </Field>
           {role === 'OWNER' && (
-            <Field label={employee ? 'Yangi egasi paroli (ixtiyoriy)' : 'Egasi paroli'} hint="Kamida 6 belgi">
+            <Field label={employee ? 'Yangi ega paroli (ixtiyoriy)' : 'Ega paroli'} hint="Kamida 6 belgi">
               <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="new-password" />
             </Field>
           )}

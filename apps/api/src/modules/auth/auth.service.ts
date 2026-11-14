@@ -94,7 +94,7 @@ export class AuthService {
       : await this.prisma.user.findUnique({ where: { telegramId: tg.id } });
     if (!user || !user.isActive) {
       throw new UnauthorizedException({
-        message: 'Telegram ID xodimga biriktirilmagan. Egasi admin panelda ID ni biriktirsin.',
+        message: 'Telegram ID xodimga biriktirilmagan. Ega admin panelda ID ni biriktirsin.',
         details: { code: 'TELEGRAM_NOT_LINKED' },
       });
     }
@@ -123,7 +123,7 @@ export class AuthService {
     if (!user || !user.isActive) throw new UnauthorizedException('Login yoki parol noto‘g‘ri');
     if (user.role !== 'OWNER') {
       throw new UnauthorizedException({
-        message: 'Xodim Telegram ID sini faqat egasi admin paneldan biriktiradi',
+        message: 'Xodim Telegram ID sini faqat ega admin paneldan biriktiradi',
         details: { code: 'TELEGRAM_ID_OWNER_ASSIGNMENT_REQUIRED' },
       });
     }

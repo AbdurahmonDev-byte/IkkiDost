@@ -183,7 +183,7 @@ export function registerAuth(deps: Deps, bot: import('../state.js').AppBot) {
 
     await ctx.reply(
       `Telegram ID: ${ctx.from?.id ?? 'aniqlanmadi'}\n` +
-        'Xodim bo‘lsangiz, shu ID ni egasiga yuboring. ID rolingizga biriktirilgach /start bosing.',
+        'Xodim bo‘lsangiz, shu ID ni ega bilan bog‘laning. ID rolingizga biriktirilgach /start bosing.',
     );
     return startRegistration(ctx, {
       firstName: ctx.from?.first_name ?? '',
@@ -242,8 +242,8 @@ export function registerAuth(deps: Deps, bot: import('../state.js').AppBot) {
     const session = store.get(ctx.chat.id);
     if (!session) {
       await ctx.reply(
-        `Xodim bo‘lsangiz, egasiga Telegram ID’ingizni yuboring: ${ctx.from?.id ?? 'aniqlanmadi'}\n` +
-          'Egasi ID ni Xodimlar bo‘limida rolingizga biriktirgach /start bosing.',
+        `Xodim bo‘lsangiz, ega bilan bog‘lanib Telegram ID’ingizni yuboring: ${ctx.from?.id ?? 'aniqlanmadi'}\n` +
+          'Ega ID ni Xodimlar bo‘limida rolingizga biriktirgach /start bosing.',
       );
       return;
     }
@@ -502,7 +502,7 @@ export function helpText(role?: string): string {
   if (role === 'OWNER' || role === 'CHEF') lines.push('👨‍🍳 Oshxona — tayyorlanayotgan taomlar');
   if (role === 'OWNER' || role === 'WAITER') lines.push('➕ Yangi yetkazish — mijoz va buyurtma kiritish');
   if (role === 'OWNER') lines.push('📊 Hisobot — bugungi ko‘rsatkichlar');
-  lines.push('', 'To‘lovlar faqat kassa ilovasida yoki egasi tomonidan qabul qilinadi.');
+  lines.push('', 'To‘lovlar faqat kassa ilovasida yoki ega tomonidan qabul qilinadi.');
   return lines.join('\n');
 }
 

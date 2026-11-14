@@ -75,7 +75,7 @@ export function backHome(label = '⬅️ Bosh menyu'): InlineKeyboard {
 }
 
 export const roleLabel: Record<BotRole, string> = {
-  OWNER: 'Egasi',
+  OWNER: 'Ega',
   WAITER: 'Ofitsiant',
   CHEF: 'Oshpaz',
   CASHIER: 'Kassir',

@@ -28,7 +28,7 @@ export function registerKitchen(deps: Deps, bot: import('../state.js').AppBot) {
     const session = store.get(ctx.chat!.id);
     if (!session) return expired(deps, ctx);
     if (session.role !== 'CHEF' && session.role !== 'OWNER') {
-      await ctx.reply('👨‍🍳 Bu bo‘lim faqat oshpaz va egasi uchun.');
+      await ctx.reply('👨‍🍳 Bu bo‘lim faqat oshpaz va ega uchun.');
       return;
     }
     try {

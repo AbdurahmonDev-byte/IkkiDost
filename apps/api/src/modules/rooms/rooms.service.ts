@@ -114,7 +114,7 @@ export class RoomsService {
       const outstanding = session.totalAmount - session.paidAmount;
       const override = outstanding > 0;
       if (override) {
-        if (actor.role !== 'OWNER') throw new ForbiddenException('Qarzdorlik mavjud — faqat egasi sabab ko‘rsatib yopishi mumkin');
+        if (actor.role !== 'OWNER') throw new ForbiddenException('Qarzdorlik mavjud — faqat ega sabab ko‘rsatib yopishi mumkin');
         if (!input.overrideReason || input.overrideReason.trim().length < 3) {
           throw new BadRequestException('Qarzdorlik bilan yopish uchun sabab kiritilishi shart');
         }

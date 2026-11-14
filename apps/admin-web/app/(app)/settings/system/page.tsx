@@ -7,7 +7,7 @@ import { Badge, Card, CardHeader, PageHeader, Spinner } from '@/components/ui';
 import { formatDateTime, formatUzs } from '@/lib/format';
 
 const ROLE_MATRIX: Array<{ role: string; rights: string[] }> = [
-  { role: 'Egasi (OWNER)', rights: ['Barcha bo‘limlar', 'Narx va sozlamalar', 'Qarz bilan yopish (sabab bilan)', 'Qaytarish va audit'] },
+  { role: 'Ega (OWNER)', rights: ['Barcha bo‘limlar', 'Narx va sozlamalar', 'Qarz bilan yopish (sabab bilan)', 'Qaytarish va audit'] },
   { role: 'Ofitsiant (WAITER)', rights: ['Xonalar va buyurtmalar', 'Mahsulot qo‘shish', 'Buyurtma holati', 'Yetkazish (ruxsat bo‘lsa)'] },
   { role: 'Oshpaz (CHEF)', rights: ['Oshxona ekrani', 'Mahsulotni tayyorlash', 'Tayyor deb belgilash'] },
   { role: 'Kassir (CASHIER)', rights: ['To‘lovlar va qaytarishlar', 'Xarajatlar', 'Sessiyani yopish', 'Yetkazish holati'] },

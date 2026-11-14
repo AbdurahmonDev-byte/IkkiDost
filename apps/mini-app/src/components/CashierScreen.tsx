@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { Banknote, CheckCircle2, Loader2, Phone, RefreshCw, Wallet } from 'lucide-react';
+import { Banknote, CheckCircle2, Loader2, Phone, Wallet } from 'lucide-react';
 import { api } from '../lib/api';
 import { money } from '../lib/format';
 import { tg } from '../lib/telegram';
 import type { DeliveryDto } from '../lib/types';
+import { StaffHeader } from './StaffHeader';
 
 interface Props {
   token: string;
@@ -58,26 +59,14 @@ export const CashierScreen: React.FC<Props> = ({ token }) => {
 
   return (
     <div className="space-y-4 pb-20">
-      <div className="flex items-center justify-between rounded-3xl bg-gradient-to-r from-emerald-700 to-teal-800 p-5 text-white shadow-lg">
-        <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/10">
-            <Wallet className="h-5 w-5" />
-          </div>
-          <div>
-            <h2 className="text-base font-black leading-tight">Kassa · naqd pul</h2>
-            <p className="text-xs text-emerald-100">
-              {pending.length} ta kutilmoqda · {money(pendingTotal)}
-            </p>
-          </div>
-        </div>
-        <button
-          onClick={() => fetchDeliveries()}
-          className="rounded-2xl bg-white/10 p-2.5 active:scale-95 transition-all"
-          title="Yangilash"
-        >
-          <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-        </button>
-      </div>
+      <StaffHeader
+        icon={Wallet}
+        title="Kassa · naqd pul"
+        subtitle={`${pending.length} ta kutilmoqda · ${money(pendingTotal)}`}
+        tone="emerald"
+        onRefresh={() => fetchDeliveries()}
+        loading={loading}
+      />
 
       {error && (
         <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs font-medium text-rose-700">

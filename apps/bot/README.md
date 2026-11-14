@@ -6,9 +6,9 @@ Ikki Do‘st choyxonasi xodimlari uchun yagona Telegram boti. Barcha qurilmalard
 
 - **Yagona backend va bitta DB**: Alohida ma'lumotlar bazasisiz, to‘g‘ridan-to‘g‘ri markaziy NestJS API (`apps/api`) bilan ishlaydi.
 - **To‘liq RBAC (rolga asoslangan kirish)**: Xodimlar o‘z lavozimlariga (`OWNER`, `WAITER`, `CHEF`, `CASHIER`, `DELIVERY`) mos menyu va imkoniyatlarga ega bo‘ladi.
-- **Xavfsiz avtorizatsiya**: Xodimlar egasi biriktirgan Telegram ID orqali parolsiz kiradi; egasi ham `OWNER_TELEGRAM_IDS` ro‘yxati orqali qo‘shimcha parolsiz kiradi. JWT tokenlar rotatsiyasi va muddati tugaganda yangilanishi avtomatik amalga oshadi.
+- **Xavfsiz avtorizatsiya**: Xodimlar ega biriktirgan Telegram ID orqali parolsiz kiradi; ega ham `OWNER_TELEGRAM_IDS` ro‘yxati orqali qo‘shimcha parolsiz kiradi. JWT tokenlar rotatsiyasi va muddati tugaganda yangilanishi avtomatik amalga oshadi.
 - **Xabarnomalar (Notifications)**: Orqa fondagi poller orqali yangi buyurtmalar, tayyor taomlar, kuryer naqd pullari va holat o‘zgarishlari xodimning Telegramiga darhol yuboriladi.
-- **Audit va qoidalar**: To‘lovlar faqat kassa yoki egasi tomonidan boshqariladi; qarzdorlik bilan xona yopish faqat sabab ko‘rsatilganda egasiga ruxsat etiladi (audit jurnalida qayd etiladi).
+- **Audit va qoidalar**: To‘lovlar faqat kassa yoki ega tomonidan boshqariladi; qarzdorlik bilan xona yopish faqat sabab ko‘rsatilganda ega uchun ruxsat etiladi (audit jurnalida qayd etiladi).
 
 ---
 
@@ -16,7 +16,7 @@ Ikki Do‘st choyxonasi xodimlari uchun yagona Telegram boti. Barcha qurilmalard
 
 | Rol | Buyruqlar va imkoniyatlar |
 |---|---|
-| **Egasi (`OWNER`)** | Barcha bo‘limlar: Xonalar, Yetkazish, Oshxona, Hisobot (Dashboard), Qarz bilan yopish override, bildirishnomalar |
+| **Ega (`OWNER`)** | Barcha bo‘limlar: Xonalar, Yetkazish, Oshxona, Hisobot (Dashboard), Qarz bilan yopish override, bildirishnomalar |
 | **Ofitsiant (`WAITER`)** | Xonalar ro‘yxati, xonaga yangi buyurtma ochish / taom qo‘shish, tayyor taomni berildi deb belgilash, yangi yetkazish yaratish |
 | **Oshpaz (`CHEF`)** | Oshxona ekrani (`/kitchen`), buyurtmalarni tayyorlashni boshlash va tayyor deb belgilash |
 | **Kassir (`CASHIER`)** | Xonalar va yetkazishlar holatini, hisob-kitoblarni ko‘rish; kuryer naqd pulini “To‘lov qilindi” bilan tasdiqlash |
@@ -29,14 +29,14 @@ Ikki Do‘st choyxonasi xodimlari uchun yagona Telegram boti. Barcha qurilmalard
 Mijozlar uyga yetkazish buyurtmasini Mini App orqali beradi. Zaldagi mijozlar
 telefondan buyurtma bermaydi; xizmat uchun ofitsiant chaqiradi.
 
-- `/start` — Botni ishga tushirish; staff Telegram ID orqali kiradi, ID biriktirilmagan bo‘lsa egasiga yuboradi; mijozdan yetkazish manzilini so‘raydi (lokatsiya yoki qo‘lda)
+- `/start` — Botni ishga tushirish; staff Telegram ID orqali kiradi, ID biriktirilmagan bo‘lsa ega bilan bog‘lanadi; mijozdan yetkazish manzilini so‘raydi (lokatsiya yoki qo‘lda)
 - `/logout` — Telegram hisobini tizimdan uzish
 - `/menu` — Foydalanuvchi roliga mos bosh menyu
 - `/rooms` — Xonalar ro‘yxati va bandlik holati
-- `/kitchen` — Oshxona buyurtmalari (Oshpaz va Egasi)
-- `/delivery` — Faol yetkazish buyurtmalari ro‘yxati; kuryer naqd pulni qayd etadi, kassir/egasi “To‘lov qilindi” bilan tasdiqlaydi
-- `/newdel` — Yangi yetkazish buyurtmasi yaratish (Ofitsiant va Egasi)
-- `/dash` yoki `/stats` — Bugungi moliyaviy va operatsion hisobot (Faqat egasi)
+- `/kitchen` — Oshxona buyurtmalari (Oshpaz va Ega)
+- `/delivery` — Faol yetkazish buyurtmalari ro‘yxati; kuryer naqd pulni qayd etadi, kassir/ega “To‘lov qilindi” bilan tasdiqlaydi
+- `/newdel` — Yangi yetkazish buyurtmasi yaratish (Ofitsiant va Ega)
+- `/dash` yoki `/stats` — Bugungi moliyaviy va operatsion hisobot (Faqat ega)
 - `/me` — Foydalanuvchi ma'lumotlari va roli
 - `/help` — Yordam va buyruqlar ro‘yxati
 

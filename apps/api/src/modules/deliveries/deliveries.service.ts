@@ -71,7 +71,7 @@ export class DeliveriesService {
   /** Delivery person takes an unassigned ready/preparing delivery. */
   async claim(id: string, actor: Actor): Promise<DeliveryDto> {
     if (actor.role !== 'DELIVERY' && actor.role !== 'OWNER') {
-      throw new ForbiddenException('Yetkazishni faqat kuryer yoki egasi qabul qiladi');
+      throw new ForbiddenException('Yetkazishni faqat kuryer yoki ega qabul qiladi');
     }
     const dto = await this.prisma.$transaction(async (tx) => {
       const delivery = await tx.delivery.findUnique({ where: { id } });

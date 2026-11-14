@@ -20,7 +20,7 @@ export default function LoginPage() {
     try {
       const res = await api.login({ username: username.trim(), password });
       if (res.user.role !== 'CHEF' && res.user.role !== 'OWNER') {
-        setError('Bu ilova faqat oshpaz va egasi uchun');
+        setError('Bu ilova faqat oshpaz va ega uchun');
         return;
       }
       setSession({ user: res.user, accessToken: res.accessToken, refreshToken: res.refreshToken });

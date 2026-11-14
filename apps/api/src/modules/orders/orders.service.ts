@@ -346,7 +346,7 @@ export class OrdersService {
       }
       // Only creator or owner can cancel.
       if (actor.role !== 'OWNER' && order.createdById !== actor.id) {
-        throw new ForbiddenException('Faqat buyurtmani yaratgan xodim yoki egasi bekor qilishi mumkin');
+        throw new ForbiddenException('Faqat buyurtmani yaratgan xodim yoki ega bekor qilishi mumkin');
       }
       await tx.orderItem.updateMany({ where: { orderId, status: { not: 'SERVED' } }, data: { status: 'CANCELLED' } });
       await tx.order.update({ where: { id: orderId }, data: { status: 'CANCELLED', cancelReason: input.reason, cancelledAt: new Date(), totalAmount: 0, itemsTotal: 0 } });

@@ -8,7 +8,6 @@ import {
   Loader2,
   KeyRound,
   Plus,
-  RefreshCw,
   Save,
   Trash2,
   Utensils,
@@ -19,6 +18,7 @@ import { api } from '../lib/api';
 import { money, qty } from '../lib/format';
 import { tg } from '../lib/telegram';
 import type { Category, MeasurementUnit, Product, Role } from '../lib/types';
+import { StaffHeader } from './StaffHeader';
 
 interface Props {
   token: string;
@@ -47,14 +47,49 @@ interface EmployeeAccess {
 }
 
 const roleName: Record<Role, string> = {
-  OWNER: 'Egasi',
+  OWNER: 'Ega',
   WAITER: 'Ofitsiant',
   CHEF: 'Oshpaz',
   CASHIER: 'Kassir',
   DELIVERY: 'Yetkazuvchi',
 };
+const roleHint: Record<Role, string> = {
+  OWNER: 'Barcha bo‘limlar va sozlamalar',
+  WAITER: 'Xonalar va buyurtmalar',
+  CHEF: 'Oshxona navbati',
+  CASHIER: 'To‘lovlar va naqd pul',
+  DELIVERY: 'Yetkazish va mijoz aloqasi',
+};
 const STAFF_ROLES: Role[] = ['WAITER', 'CHEF', 'CASHIER', 'DELIVERY'];
 const ROLE_OPTIONS: Role[] = ['OWNER', ...STAFF_ROLES];
+
+type OwnerSection = 'overview' | 'staff' | 'menu';
+
+const OWNER_SECTIONS: Array<{
+  id: OwnerSection;
+  label: string;
+  hint: string;
+  icon: typeof BarChart3;
+}> = [
+  {
+    id: 'overview',
+    label: 'Hisobot',
+    hint: 'Bugungi savdo, buyurtmalar va qarzdorlik.',
+    icon: BarChart3,
+  },
+  {
+    id: 'staff',
+    label: 'Xodimlar',
+    hint: 'Telegram ID biriktiring, rolini o‘zgartiring yoki faolsizlantiring.',
+    icon: Users,
+  },
+  {
+    id: 'menu',
+    label: 'Menyu',
+    hint: 'Yangi taom, kategoriya va rasmlarni boshqaring.',
+    icon: Utensils,
+  },
+];
 
 const UNITS: MeasurementUnit[] = ['PIECE', 'PORTION', 'KG', 'LITER', 'OTHER'];
 const unitLabel: Record<MeasurementUnit, string> = {
@@ -70,6 +105,7 @@ function parsePrice(value: string): number {
 }
 
 export const OwnerScreen: React.FC<Props> = ({ token, onMenuChanged }) => {
+  const [section, setSection] = useState<OwnerSection>('overview');
   const [stats, setStats] = useState<Stats | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
@@ -315,24 +351,43 @@ export const OwnerScreen: React.FC<Props> = ({ token, onMenuChanged }) => {
 
   return (
     <div className="space-y-4 pb-20">
-      <div className="flex items-center justify-between rounded-3xl bg-gradient-to-r from-purple-700 to-indigo-800 p-5 text-white shadow-lg">
-        <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/10">
-            <BarChart3 className="h-5 w-5" />
-          </div>
-          <div>
-            <h2 className="text-base font-black leading-tight">Egasi paneli</h2>
-            <p className="text-xs text-purple-200">Bugungi ko‘rsatkichlar va menyu</p>
-          </div>
-        </div>
-        <button
-          onClick={() => fetchAll()}
-          className="rounded-2xl bg-white/10 p-2.5 active:scale-95 transition-all"
-          title="Yangilash"
-        >
-          <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-        </button>
+      <StaffHeader
+        icon={BarChart3}
+        eyebrow="Ega paneli"
+        title="Boshqaruv markazi"
+        subtitle="Xodimlar, menyu va bugungi ko‘rsatkichlar"
+        tone="purple"
+        onRefresh={() => fetchAll()}
+        loading={loading}
+      />
+
+      <div className="no-scrollbar -mx-1 flex gap-1.5 overflow-x-auto rounded-2xl border border-stone-200/80 bg-white p-1.5 text-xs font-bold shadow-sm">
+        {OWNER_SECTIONS.map((item) => {
+          const Icon = item.icon;
+          const active = section === item.id;
+          return (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => {
+                tg.selection();
+                setSection(item.id);
+              }}
+              className={`flex flex-1 shrink-0 items-center justify-center gap-1.5 rounded-xl px-3 py-2.5 transition-all ${
+                active
+                  ? 'bg-stone-900 text-white shadow-md'
+                  : 'text-stone-600 hover:bg-stone-100 hover:text-stone-900'
+              }`}
+            >
+              <Icon className="h-3.5 w-3.5" />
+              {item.label}
+            </button>
+          );
+        })}
       </div>
+      <p className="px-1 text-[11px] font-medium leading-relaxed text-stone-500">
+        {OWNER_SECTIONS.find((item) => item.id === section)?.hint}
+      </p>
 
       {notice && (
         <div className="flex items-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-xs font-bold text-emerald-800">
@@ -346,108 +401,143 @@ export const OwnerScreen: React.FC<Props> = ({ token, onMenuChanged }) => {
       )}
 
       {/* Stats */}
-      <div className="grid grid-cols-2 gap-3">
-        {[
-          { label: 'Bugungi savdo', value: stats ? money(stats.todayRevenue) : '—', accent: true },
-          { label: 'Buyurtmalar', value: stats ? `${stats.todayOrderCount} ta` : '—' },
-          { label: 'Faol xonalar', value: stats ? `${stats.activeRooms} ta` : '—' },
-          { label: 'Yetkazishlar', value: stats ? `${stats.activeDeliveryOrders} ta` : '—' },
-          {
-            label: 'To‘langan',
-            value: stats ? money(stats.paidToday) : '—',
-          },
-          {
-            label: 'Qarzdorlik',
-            value: stats ? money(stats.unpaidOutstanding) : '—',
-          },
-        ].map((card) => (
-          <div
-            key={card.label}
-            className={`rounded-2xl border p-3.5 shadow-sm ${
-              card.accent
-                ? 'border-brand-200 bg-brand-50'
-                : 'border-stone-200/80 bg-white'
-            }`}
-          >
-            <p className="text-[11px] font-semibold text-stone-500">{card.label}</p>
-            <p className="mt-1 text-base font-black text-stone-900">{card.value}</p>
-          </div>
-        ))}
-      </div>
+      {section === 'overview' && (
+        <div className="grid grid-cols-2 gap-3">
+          {[
+            { label: 'Bugungi savdo', value: stats ? money(stats.todayRevenue) : '—', accent: true },
+            { label: 'Buyurtmalar', value: stats ? `${stats.todayOrderCount} ta` : '—' },
+            { label: 'Faol xonalar', value: stats ? `${stats.activeRooms} ta` : '—' },
+            { label: 'Yetkazishlar', value: stats ? `${stats.activeDeliveryOrders} ta` : '—' },
+            {
+              label: 'To‘langan',
+              value: stats ? money(stats.paidToday) : '—',
+            },
+            {
+              label: 'Qarzdorlik',
+              value: stats ? money(stats.unpaidOutstanding) : '—',
+            },
+          ].map((card) => (
+            <div
+              key={card.label}
+              className={`rounded-2xl border p-3.5 shadow-sm ${
+                card.accent
+                  ? 'border-brand-200 bg-brand-50'
+                  : 'border-stone-200/80 bg-white'
+              }`}
+            >
+              <p className="text-[11px] font-semibold text-stone-500">{card.label}</p>
+              <p className="mt-1 text-base font-black text-stone-900">{card.value}</p>
+            </div>
+          ))}
+        </div>
+      )}
 
-      <section className="rounded-3xl border border-stone-200/80 bg-white p-4 shadow-sm">
+      {section === 'staff' && (
+        <section className="rounded-3xl border border-stone-200/80 bg-white p-4 shadow-sm">
         <div className="mb-3 flex items-center gap-2">
           <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-sky-100 text-sky-800">
             <Users className="h-5 w-5" />
           </div>
           <div>
-            <h3 className="text-sm font-black text-stone-900">Xodimlarning Telegram ID lari</h3>
-            <p className="text-[11px] text-stone-500">ID rolni aniqlaydi; xodimlar parol bilan kirmaydi.</p>
+            <h3 className="text-sm font-black text-stone-900">Xodimlar va rollar</h3>
+            <p className="text-[11px] text-stone-500">
+              Telegram ID rolni aniqlaydi. Xodimlar parolsiz, ID orqali kiradi.
+            </p>
           </div>
         </div>
-        <form onSubmit={createEmployee} className="mb-2 grid gap-2 border-b border-stone-100 pb-4 sm:grid-cols-2">
-          <input
-            value={newEmployeeName}
-            onChange={(event) => setNewEmployeeName(event.target.value)}
-            placeholder="Xodim ism-familiyasi"
-            aria-label="Xodim ism-familiyasi"
-            className="w-full rounded-xl border border-stone-200 bg-stone-50 px-3 py-2.5 text-xs font-semibold outline-none focus:border-sky-400"
-          />
-          <input
-            value={newEmployeeTelegramId}
-            onChange={(event) => setNewEmployeeTelegramId(event.target.value.replace(/\D/g, ''))}
-            inputMode="numeric"
-            placeholder="Telegram ID"
-            aria-label="Yangi xodim Telegram ID"
-            className="w-full rounded-xl border border-stone-200 bg-stone-50 px-3 py-2.5 text-xs font-semibold outline-none focus:border-sky-400"
-          />
-          <input
-            value={newEmployeePhone}
-            onChange={(event) => setNewEmployeePhone(event.target.value)}
-            inputMode="tel"
-            placeholder="Telefon (ixtiyoriy)"
-            aria-label="Xodim telefoni"
-            className="w-full rounded-xl border border-stone-200 bg-stone-50 px-3 py-2.5 text-xs font-semibold outline-none focus:border-sky-400"
-          />
-          <div className="flex gap-2">
+        <div className="mb-4 grid gap-1.5 rounded-2xl bg-stone-50 p-3 text-[10px] leading-relaxed text-stone-600 sm:grid-cols-2">
+          {STAFF_ROLES.map((role) => (
+            <p key={role}>
+              <span className="font-black text-stone-800">{roleName[role]}</span> — {roleHint[role]}
+            </p>
+          ))}
+        </div>
+        <form onSubmit={createEmployee} className="mb-4 grid gap-2 border-b border-stone-100 pb-4 sm:grid-cols-2">
+          <label className="space-y-1">
+            <span className="px-1 text-[10px] font-bold uppercase tracking-wide text-stone-400">
+              Ism-familiya
+            </span>
+            <input
+              value={newEmployeeName}
+              onChange={(event) => setNewEmployeeName(event.target.value)}
+              placeholder="Masalan: Ali Valiyev"
+              aria-label="Xodim ism-familiyasi"
+              className="w-full rounded-xl border border-stone-200 bg-stone-50 px-3 py-2.5 text-xs font-semibold outline-none focus:border-sky-400 focus:bg-white"
+            />
+          </label>
+          <label className="space-y-1">
+            <span className="px-1 text-[10px] font-bold uppercase tracking-wide text-stone-400">
+              Telegram ID
+            </span>
+            <input
+              value={newEmployeeTelegramId}
+              onChange={(event) => setNewEmployeeTelegramId(event.target.value.replace(/\D/g, ''))}
+              inputMode="numeric"
+              placeholder="Masalan: 123456789"
+              aria-label="Yangi xodim Telegram ID"
+              className="w-full rounded-xl border border-stone-200 bg-stone-50 px-3 py-2.5 text-xs font-semibold outline-none focus:border-sky-400 focus:bg-white"
+            />
+          </label>
+          <label className="space-y-1">
+            <span className="px-1 text-[10px] font-bold uppercase tracking-wide text-stone-400">
+              Telefon (ixtiyoriy)
+            </span>
+            <input
+              value={newEmployeePhone}
+              onChange={(event) => setNewEmployeePhone(event.target.value)}
+              inputMode="tel"
+              placeholder="+998 90 123 45 67"
+              aria-label="Xodim telefoni"
+              className="w-full rounded-xl border border-stone-200 bg-stone-50 px-3 py-2.5 text-xs font-semibold outline-none focus:border-sky-400 focus:bg-white"
+            />
+          </label>
+          <label className="space-y-1">
+            <span className="px-1 text-[10px] font-bold uppercase tracking-wide text-stone-400">
+              Rol
+            </span>
             <select
               value={newEmployeeRole}
               onChange={(event) => setNewEmployeeRole(event.target.value as Role)}
               aria-label="Xodim roli"
-              className="min-w-0 flex-1 rounded-xl border border-stone-200 bg-stone-50 px-3 py-2.5 text-xs font-semibold outline-none focus:border-sky-400"
+              className="w-full rounded-xl border border-stone-200 bg-stone-50 px-3 py-2.5 text-xs font-semibold outline-none focus:border-sky-400 focus:bg-white"
             >
               {STAFF_ROLES.map((role) => <option key={role} value={role}>{roleName[role]}</option>)}
             </select>
-            <button
-              type="submit"
-              disabled={busy === 'employee-create' || newEmployeeName.trim().length < 2 || !/^\d{4,20}$/.test(newEmployeeTelegramId)}
-              className="flex items-center justify-center gap-1.5 rounded-xl bg-sky-800 px-3 py-2 text-xs font-bold text-white disabled:opacity-40"
-            >
-              {busy === 'employee-create' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-              Qo‘shish
-            </button>
-          </div>
+          </label>
+          <button
+            type="submit"
+            disabled={busy === 'employee-create' || newEmployeeName.trim().length < 2 || !/^\d{4,20}$/.test(newEmployeeTelegramId)}
+            className="flex items-center justify-center gap-1.5 rounded-xl bg-sky-800 px-3 py-3 text-xs font-bold text-white shadow-sm disabled:opacity-40 sm:col-span-2"
+          >
+            {busy === 'employee-create' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+            Xodim qo‘shish
+          </button>
         </form>
-        <div className="divide-y divide-stone-100">
+        <div className="space-y-2">
           {employees.map((employee) => (
             <div
               key={employee.id}
-              className={`space-y-2 py-3 ${employee.isActive ? '' : 'opacity-60'}`}
+              className={`rounded-2xl border border-stone-200/80 bg-stone-50/60 p-3 ${employee.isActive ? '' : 'opacity-60'}`}
             >
               <div className="flex items-center justify-between gap-2">
-                <div className="min-w-0">
-                  <p className="truncate text-xs font-bold text-stone-900">{employee.fullName}</p>
-                  <p className="text-[10px] text-stone-500">
-                    {roleName[employee.role]}
-                    {!employee.isActive ? ' · Faolsiz' : ''}
-                  </p>
+                <div className="flex min-w-0 items-center gap-2">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-stone-900 text-[11px] font-black text-white">
+                    {employee.fullName.slice(0, 1).toUpperCase()}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="truncate text-xs font-bold text-stone-900">{employee.fullName}</p>
+                    <p className="text-[10px] text-stone-500">
+                      {roleName[employee.role]} · {roleHint[employee.role]}
+                      {!employee.isActive ? ' · Faolsiz' : ''}
+                    </p>
+                  </div>
                 </div>
                 <button
                   type="button"
                   onClick={() => patchEmployee(employee, { isActive: !employee.isActive })}
                   disabled={busy === `emp-${employee.id}`}
                   title={employee.isActive ? 'Faolsizlantirish' : 'Faollashtirish'}
-                  className={`flex items-center gap-1 rounded-lg px-2 py-1.5 text-[10px] font-bold disabled:opacity-40 ${
+                  className={`flex shrink-0 items-center gap-1 rounded-lg px-2 py-1.5 text-[10px] font-bold disabled:opacity-40 ${
                     employee.isActive
                       ? 'bg-rose-50 text-rose-700'
                       : 'bg-emerald-50 text-emerald-700'
@@ -461,28 +551,34 @@ export const OwnerScreen: React.FC<Props> = ({ token, onMenuChanged }) => {
                   {employee.isActive ? 'Faolsizlantirish' : 'Faollashtirish'}
                 </button>
               </div>
-              <div className="flex items-center gap-1.5">
-                <select
-                  value={employee.role}
-                  onChange={(event) =>
-                    patchEmployee(employee, { role: event.target.value as Role })
-                  }
-                  disabled={busy === `emp-${employee.id}`}
-                  aria-label={`${employee.fullName} roli`}
-                  className="rounded-lg border border-stone-200 bg-stone-50 px-2 py-2 text-xs font-semibold text-stone-800 outline-none focus:border-sky-400 disabled:opacity-50"
-                >
-                  {ROLE_OPTIONS.map((role) => (
-                    <option key={role} value={role}>{roleName[role]}</option>
-                  ))}
-                </select>
-                <input
-                  value={telegramIds[employee.id] ?? ''}
-                  onChange={(event) => setTelegramIds((rows) => ({ ...rows, [employee.id]: event.target.value.replace(/\D/g, '') }))}
-                  inputMode="numeric"
-                  aria-label={`${employee.fullName} Telegram ID`}
-                  placeholder="Telegram ID"
-                  className="min-w-0 flex-1 rounded-lg border border-stone-200 bg-stone-50 px-2 py-2 text-xs font-semibold text-stone-800 outline-none focus:border-sky-400"
-                />
+              <div className="mt-2 grid grid-cols-[minmax(0,110px)_1fr_auto] items-end gap-1.5">
+                <label className="space-y-1">
+                  <span className="px-1 text-[9px] font-bold uppercase tracking-wide text-stone-400">Rol</span>
+                  <select
+                    value={employee.role}
+                    onChange={(event) =>
+                      patchEmployee(employee, { role: event.target.value as Role })
+                    }
+                    disabled={busy === `emp-${employee.id}`}
+                    aria-label={`${employee.fullName} roli`}
+                    className="w-full rounded-lg border border-stone-200 bg-white px-2 py-2 text-xs font-semibold text-stone-800 outline-none focus:border-sky-400 disabled:opacity-50"
+                  >
+                    {ROLE_OPTIONS.map((role) => (
+                      <option key={role} value={role}>{roleName[role]}</option>
+                    ))}
+                  </select>
+                </label>
+                <label className="space-y-1">
+                  <span className="px-1 text-[9px] font-bold uppercase tracking-wide text-stone-400">Telegram ID</span>
+                  <input
+                    value={telegramIds[employee.id] ?? ''}
+                    onChange={(event) => setTelegramIds((rows) => ({ ...rows, [employee.id]: event.target.value.replace(/\D/g, '') }))}
+                    inputMode="numeric"
+                    aria-label={`${employee.fullName} Telegram ID`}
+                    placeholder="Telegram ID"
+                    className="w-full rounded-lg border border-stone-200 bg-white px-2 py-2 text-xs font-semibold text-stone-800 outline-none focus:border-sky-400"
+                  />
+                </label>
                 <button
                   type="button"
                   onClick={() => assignTelegramId(employee)}
@@ -499,12 +595,15 @@ export const OwnerScreen: React.FC<Props> = ({ token, onMenuChanged }) => {
             <p className="py-4 text-xs text-stone-500">Faol xodim topilmadi.</p>
           )}
         </div>
-        <p className="mt-2 flex items-start gap-1.5 border-t border-stone-100 pt-3 text-[10px] leading-relaxed text-stone-500">
+        <p className="mt-3 flex items-start gap-1.5 border-t border-stone-100 pt-3 text-[10px] leading-relaxed text-stone-500">
           <KeyRound className="mt-0.5 h-3 w-3 shrink-0" /> Xodim botda /start bosganda ID si chiqadi. ID’ni shu yerga kiriting;
           keyin u qayta /start bossa, roli bo‘yicha avtomatik kiradi.
         </p>
-      </section>
+        </section>
+      )}
 
+      {section === 'menu' && (
+        <>
       {/* Add product */}
       <div className="rounded-3xl border border-stone-200/80 bg-white p-4 shadow-sm">
         <div className="mb-3 flex items-center gap-2">
@@ -679,8 +778,10 @@ export const OwnerScreen: React.FC<Props> = ({ token, onMenuChanged }) => {
           ))
         )}
       </div>
+        </>
+      )}
 
-      {stats && stats.popularProducts.length > 0 && (
+      {section === 'overview' && stats && stats.popularProducts.length > 0 && (
         <div className="rounded-3xl border border-stone-200/80 bg-white p-4 shadow-sm">
           <h3 className="mb-2 text-xs font-black uppercase tracking-wider text-stone-400">
             Eng ko‘p sotilganlar

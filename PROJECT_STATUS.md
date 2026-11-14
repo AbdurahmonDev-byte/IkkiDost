@@ -186,7 +186,7 @@ Telegram Mini App served by the API at `/` (same origin as `/api`), Vite + React
 - Staff mode: Telegram auto-login for OWNER/WAITER/CHEF/CASHIER/DELIVERY with
   role tabs (rooms, kitchen, delivery, cashier, owner) and owner-assigned IDs.
   There is no extra owner password; OWNER opens on the customer screen and
-  enters the owner panel via the “Egasi” tab.
+  enters the owner panel via the “Ega” tab.
 - Owner screen: revenue/debt stats, add products, upload/replace dish photos,
   add categories, manage the product list, assign Telegram IDs, change an
   employee's role, activate/deactivate staff, and create

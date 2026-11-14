@@ -5,13 +5,13 @@ import {
   Clock,
   Flame,
   Loader2,
-  RefreshCw,
   UtensilsCrossed,
 } from 'lucide-react';
 import { api } from '../lib/api';
 import { qty } from '../lib/format';
 import { tg } from '../lib/telegram';
 import type { OrderDto } from '../lib/types';
+import { StaffHeader } from './StaffHeader';
 
 interface Props {
   token: string;
@@ -58,26 +58,14 @@ export const KitchenScreen: React.FC<Props> = ({ token }) => {
 
   return (
     <div className="space-y-4 pb-20">
-      {/* Kitchen Top Bar */}
-      <div className="flex items-center justify-between bg-stone-900 text-white p-4 rounded-2xl shadow-lg">
-        <div className="flex items-center gap-2.5">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-600 text-white">
-            <ChefHat className="h-6 w-6" />
-          </div>
-          <div>
-            <h2 className="font-extrabold text-base tracking-wide">Oshxona (Povar ekrani)</h2>
-            <p className="text-xs text-stone-400">
-              {orders.length} ta faol buyurtma navbatda
-            </p>
-          </div>
-        </div>
-        <button
-          onClick={fetchOrders}
-          className="rounded-xl bg-stone-800 p-2 text-stone-300 hover:bg-stone-700 active:rotate-180 transition-all"
-        >
-          <RefreshCw className="h-4 w-4" />
-        </button>
-      </div>
+      <StaffHeader
+        icon={ChefHat}
+        title="Oshxona navbati"
+        subtitle={`${orders.length} ta faol buyurtma · har 4 soniyada yangilanadi`}
+        tone="orange"
+        onRefresh={fetchOrders}
+        loading={loading}
+      />
 
       {loading && orders.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 text-stone-400">

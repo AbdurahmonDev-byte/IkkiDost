@@ -29,7 +29,7 @@ async function main() {
     });
   }
 
-  const owner = await upsertUser('owner', OWNER_PASSWORD, 'Choyxona egasi', 'OWNER');
+  const owner = await upsertUser('owner', OWNER_PASSWORD, 'Choyxona rahbari', 'OWNER');
   await upsertUser('ofitsiant', DEV_PASSWORD, 'Ofitsiant Olim', 'WAITER', true);
   await upsertUser('oshpaz', DEV_PASSWORD, 'Oshpaz Jasur', 'CHEF');
   await upsertUser('kassir', DEV_PASSWORD, 'Kassir Dilnoza', 'CASHIER');

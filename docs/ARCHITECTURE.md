@@ -257,7 +257,7 @@ fallback** if the socket drops (important on unstable mobile networks).
   - staff mode: Telegram auto-login for every role (plus one-time owner
     bootstrap link), role tabs for rooms, kitchen, deliveries, cashier and
     owner management (products, photos, categories, stats). OWNER opens on the
-    normal customer screen and switches to the owner panel via the “Egasi” tab.
+    normal customer screen and switches to the owner panel via the “Ega” tab.
 - **Bot** (`apps/bot`): grammY long-polling client. JSON-file session store
   (`apps/bot/data/sessions.json`, gitignored) holds JWT pairs per Telegram chat.
   Inline keyboards map to the REST API; a background poller forwards

@@ -137,7 +137,7 @@ export class PublicService {
   /** Bot-only: shared Telegram contact confirmed phone ownership. */
   async verifyPhone(telegramId: string, phone: string, contactUserId: string): Promise<CustomerDto> {
     if (telegramId !== contactUserId) {
-      throw new ForbiddenException('Telegram kontakt egasi mos emas');
+      throw new ForbiddenException('Telegram kontakt mos emas');
     }
     const existing = await this.prisma.customer.findUnique({ where: { telegramId } });
     if (!existing) throw new NotFoundException('Mijoz topilmadi — avval ro‘yxatdan o‘ting');

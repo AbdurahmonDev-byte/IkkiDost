@@ -14,7 +14,7 @@ export function registerDashboard(deps: Deps, bot: import('../state.js').AppBot)
     const session = store.get(ctx.chat.id);
     if (!session) return expired(deps, ctx);
     if (session.role !== 'OWNER') {
-      const msg = '❌ Hisobot bo‘limi faqat choyxona egasi (OWNER) uchun ochiq.';
+      const msg = '❌ Hisobot bo‘limi faqat ega (OWNER) uchun ochiq.';
       if (edit) await ctx.editMessageText(msg, { reply_markup: backHome() });
       else await ctx.reply(msg, { reply_markup: backHome() });
       return;

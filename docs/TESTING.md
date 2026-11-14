@@ -140,7 +140,7 @@ cashier cash handover.
   self-linking are rejected. OWNER (via `OWNER_TELEGRAM_IDS`) also logs in
   without any extra password.
 - Open the Mini App as OWNER: the normal “Menyu” (customer) screen appears
-  first; pressing the “Egasi” tab opens the owner panel without a password
+  first; pressing the “Ega” tab opens the owner panel without a password
   prompt.
 - Owner changes an employee's role (e.g. WAITER → CASHIER) and toggles
   activate/deactivate in the owner tab; the change is visible after the access

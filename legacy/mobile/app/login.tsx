@@ -36,8 +36,8 @@ export default function LoginScreen() {
     try {
       const result = await api.login({ username: username.trim(), password });
       if (!isMobileRole(result.user.role)) {
-        toast.error('Ruxsat yo‘q', 'Bu ilova faqat egasi va ofitsiant uchun.');
-        setError('Bu ilova faqat egasi (OWNER) va ofitsiant (WAITER) uchun.');
+        toast.error('Ruxsat yo‘q', 'Bu ilova faqat ega va ofitsiant uchun.');
+        setError('Bu ilova faqat ega (OWNER) va ofitsiant (WAITER) uchun.');
         return;
       }
       setSession({ user: result.user, tokens: { accessToken: result.accessToken, refreshToken: result.refreshToken } });

@@ -64,7 +64,7 @@ export function rangeDefault(): { from: string; to: string } {
 }
 
 export const roleLabel: Record<Role, string> = {
-  OWNER: 'Egasi',
+  OWNER: 'Ega',
   WAITER: 'Ofitsiant',
   CHEF: 'Oshpaz',
   CASHIER: 'Kassir',

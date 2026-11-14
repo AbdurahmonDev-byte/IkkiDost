@@ -14,8 +14,8 @@ export default function OwnerScreen() {
   if (user?.role !== 'OWNER') {
     return (
       <Screen>
-        <AppBar title="Egasi" />
-        <EmptyState icon="🔒" title="Ruxsat yo‘q" message="Bu bo‘lim faqat egasi uchun." />
+        <AppBar title="Ega" />
+        <EmptyState icon="🔒" title="Ruxsat yo‘q" message="Bu bo‘lim faqat ega uchun." />
       </Screen>
     );
   }

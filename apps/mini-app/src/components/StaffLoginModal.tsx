@@ -84,8 +84,8 @@ export const StaffLoginModal: React.FC<Props> = ({
             <div className="rounded-2xl border border-sky-200 bg-sky-50 p-4 text-sm text-sky-950">
               <p className="font-bold">Xodimlar parol bilan kirmaydi</p>
               <p className="mt-1 text-xs leading-relaxed">
-                Telegram ID’ingiz: <strong>{tg.user?.id ?? 'aniqlanmadi'}</strong>. Agar egasi sizning ID’ingizni
-                ro‘yxatga biriktirgan bo‘lsa, ilova avtomatik kiradi. “Egasi” tabini tanlaganda owner paneli
+                Telegram ID’ingiz: <strong>{tg.user?.id ?? 'aniqlanmadi'}</strong>. Agar ega sizning ID’ingizni
+                ro‘yxatga biriktirgan bo‘lsa, ilova avtomatik kiradi. “Ega” tabini tanlaganda ega paneli
                 ochiladi, qo‘shimcha parol so‘ralmaydi.
               </p>
             </div>

@@ -52,7 +52,7 @@ export default function AppLayout() {
         <Tabs.Screen
           name="owner"
           options={{
-            title: 'Egasi',
+            title: 'Ega',
             tabBarIcon: ({ focused }) => <TabIcon glyph="📊" focused={focused} />,
           }}
         />

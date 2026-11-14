@@ -26,7 +26,7 @@ export default function LoginPage() {
     try {
       const res = await api.login({ username: username.trim(), password });
       if (res.user.role !== 'OWNER') {
-        setError('Bu panel faqat restoran egasi uchun');
+        setError('Bu panel faqat ega uchun');
         return;
       }
       setSession({ user: res.user, accessToken: res.accessToken, refreshToken: res.refreshToken });
@@ -62,7 +62,7 @@ export default function LoginPage() {
 
         <div className="p-8 sm:p-10">
           <h2 className="text-xl font-semibold">Tizimga kirish</h2>
-          <p className="mt-1 text-sm text-ink-soft">Egasi hisobi bilan kiring.</p>
+          <p className="mt-1 text-sm text-ink-soft">Ega hisobi bilan kiring.</p>
 
           <form onSubmit={submit} className="mt-6 space-y-4">
             <div>

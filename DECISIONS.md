@@ -211,7 +211,7 @@
 ## ADR-025: Passwordless owner login and customer-first owner screen
 - **Context:** The owner asked to enter the Mini App like any other staff member
   and to see the normal customer screen first, opening the owner panel only when
-  the “Egasi” tab is pressed. The extra owner password added friction (and a
+  the “Ega” tab is pressed. The extra owner password added friction (and a
   second password prompt in an already Telegram-authenticated session) without
   meaningful protection, because the owner identity is already verified by
   Telegram.
@@ -222,7 +222,7 @@
   - `OWNER_PASSWORD_REQUIRED` / `OWNER_PASSWORD_INVALID` are removed from the
     API contracts, bot flows and the Mini App login modal.
   - The Mini App opens on the `customer` tab after any staff auto-login,
-    including OWNER. The owner panel is reached only through the “Egasi” tab.
+    including OWNER. The owner panel is reached only through the “Ega” tab.
 - **Consequences:** One consistent login path for every employee. Security now
   depends on Telegram account control plus the owner allowlist; removing a
   Telegram ID from `OWNER_TELEGRAM_IDS` immediately blocks passwordless owner

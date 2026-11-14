@@ -4,7 +4,6 @@ import {
   Loader2,
   Plus,
   ReceiptText,
-  RefreshCw,
   Users,
   UtensilsCrossed,
 } from 'lucide-react';
@@ -12,6 +11,7 @@ import { api } from '../lib/api';
 import { money, orderStatusLabel, statusColor } from '../lib/format';
 import { tg } from '../lib/telegram';
 import type { OrderDto, Room } from '../lib/types';
+import { StaffHeader } from './StaffHeader';
 
 interface Props {
   token: string;
@@ -54,26 +54,14 @@ export const WaiterScreen: React.FC<Props> = ({ token, onSelectRoomForOrder, onS
 
   return (
     <div className="space-y-4 pb-20">
-      <div className="flex items-center justify-between rounded-3xl bg-gradient-to-r from-amber-600 to-orange-700 p-5 text-white shadow-lg">
-        <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/10">
-            <UtensilsCrossed className="h-5 w-5" />
-          </div>
-          <div>
-            <h2 className="text-base font-black leading-tight">Ofitsiant</h2>
-            <p className="text-xs text-amber-100">
-              {rooms.filter((r) => r.isOccupied).length} band · {orders.length} faol buyurtma
-            </p>
-          </div>
-        </div>
-        <button
-          onClick={() => fetchData()}
-          className="rounded-2xl bg-white/10 p-2.5 active:scale-95 transition-all"
-          title="Yangilash"
-        >
-          <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-        </button>
-      </div>
+      <StaffHeader
+        icon={UtensilsCrossed}
+        title="Ofitsiant paneli"
+        subtitle={`${rooms.filter((r) => r.isOccupied).length} band xona · ${orders.length} faol buyurtma`}
+        tone="orange"
+        onRefresh={() => fetchData()}
+        loading={loading}
+      />
 
       <div>
         <h3 className="mb-2 px-1 text-xs font-black uppercase tracking-wider text-stone-400">

@@ -5,7 +5,6 @@ import {
   MapPin,
   PackageCheck,
   Phone,
-  RefreshCw,
   Truck,
 } from 'lucide-react';
 import { api } from '../lib/api';
@@ -18,6 +17,7 @@ import {
 } from '../lib/format';
 import { tg } from '../lib/telegram';
 import type { DeliveryDto } from '../lib/types';
+import { StaffHeader } from './StaffHeader';
 
 interface Props {
   token: string;
@@ -260,24 +260,14 @@ export const DeliveryScreen: React.FC<Props> = ({ token, userId }) => {
 
   return (
     <div className="space-y-4 pb-20">
-      <div className="flex items-center justify-between rounded-3xl bg-gradient-to-r from-slate-900 to-slate-800 p-5 text-white shadow-lg">
-        <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/10">
-            <Truck className="h-5 w-5" />
-          </div>
-          <div>
-            <h2 className="text-base font-black leading-tight">Yetkazib berish</h2>
-            <p className="text-xs text-slate-300">{active.length} ta faol buyurtma</p>
-          </div>
-        </div>
-        <button
-          onClick={() => fetchDeliveries()}
-          className="rounded-2xl bg-white/10 p-2.5 active:scale-95 transition-all"
-          title="Yangilash"
-        >
-          <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-        </button>
-      </div>
+      <StaffHeader
+        icon={Truck}
+        title="Yetkazib berish"
+        subtitle={`${active.length} ta faol buyurtma · qabul qiling va naqd pulni kiriting`}
+        tone="sky"
+        onRefresh={() => fetchDeliveries()}
+        loading={loading}
+      />
 
       {error && (
         <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs font-medium text-rose-700">

@@ -324,7 +324,7 @@ function SessionModal({ sessionId, onClose }: { sessionId: string | null; onClos
         onConfirm={() => closeMutation.mutate()}
       >
         {hasDebt && (
-          <Field label="Egasi izohi (majburiy)">
+          <Field label="Ega izohi (majburiy)">
             <Textarea value={overrideReason} onChange={(e) => setOverrideReason(e.target.value)} placeholder="Nima uchun qarz bilan yopilmoqda?" />
           </Field>
         )}

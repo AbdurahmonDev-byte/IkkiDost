@@ -233,7 +233,7 @@ npm run build -w @ikki-dost/mini-app
   Telegram IDs in the Mini App owner tab. The Mini App validates Telegram
   `initData` and the bot uses the Telegram sender ID; the assigned employee role
   selects the staff screen. No staff role uses a password. OWNER opens on the
-  normal customer screen and enters the owner panel through the “Egasi” tab.
+  normal customer screen and enters the owner panel through the “Ega” tab.
 
 Public endpoints used by the Mini App are documented in `docs/API.md` and are
 throttled at the API level.
@@ -395,7 +395,7 @@ cashier app's API base URL / runtime setting).
 8. Verify staff bot flows: Telegram auto-login (passwordless for every role),
    `/rooms`, `/kitchen`, `/delivery`, `/newdel`, `/dash`. Confirm the owner also
    logs in without a password, opens the Mini App on the customer screen, and
-   reaches the owner panel via the “Egasi” tab.
+   reaches the owner panel via the “Ega” tab.
 9. Verify that a browser (non-Telegram) session can only browse the menu and
    cannot register or order.
 10. Test a cashier payment + reversal and a room close with/without debt.

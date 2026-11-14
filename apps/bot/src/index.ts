@@ -139,7 +139,7 @@ async function main() {
       { command: 'kitchen', description: 'Oshxona navbati' },
       { command: 'delivery', description: 'Yetkazish buyurtmalari' },
       { command: 'newdel', description: 'Yangi yetkazish yaratish' },
-      { command: 'dash', description: 'Bugungi hisobot (egasi)' },
+      { command: 'dash', description: 'Bugungi hisobot (ega)' },
       { command: 'me', description: 'Profil va rol' },
       { command: 'register', description: 'Mijoz sifatida ro‘yxatdan o‘tish' },
       { command: 'profile', description: 'Mijoz profili' },

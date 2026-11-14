@@ -49,7 +49,7 @@ export class EmployeesService {
     const existing = await this.prisma.user.findUnique({ where: { username: input.username } });
     if (existing) throw new ConflictException('Bu login band');
     if (input.role !== 'OWNER' && isReservedOwnerTelegramId(input.telegramId)) {
-      throw new BadRequestException('Bu Telegram ID egasi uchun band');
+      throw new BadRequestException('Bu Telegram ID ega hisobiga biriktirilgan');
     }
     if (input.telegramId) {
       const linked = await this.prisma.user.findUnique({ where: { telegramId: input.telegramId } });
@@ -78,7 +78,7 @@ export class EmployeesService {
     const targetRole = input.role ?? user.role;
     const targetTelegramId = input.telegramId === undefined ? user.telegramId : input.telegramId;
     if (targetRole !== 'OWNER' && isReservedOwnerTelegramId(targetTelegramId)) {
-      throw new BadRequestException('Bu Telegram ID egasi uchun band');
+      throw new BadRequestException('Bu Telegram ID ega hisobiga biriktirilgan');
     }
     if (input.username && input.username !== user.username) {
       const taken = await this.prisma.user.findUnique({ where: { username: input.username } });

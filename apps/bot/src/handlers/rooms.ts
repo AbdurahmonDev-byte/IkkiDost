@@ -36,7 +36,7 @@ export function registerRooms(deps: Deps, bot: import('../state.js').AppBot) {
       kb.text('🔄 Yangilash', 'm:rooms').row().text('⬅️ Bosh menyu', 'm:home');
       const text = rooms.length
         ? '🏠 Xonalar\n\nBand xonani tanlang yoki bo‘sh xonaga buyurtma oching:'
-        : '🏠 Xonalar topilmadi. Egasi admin panelda qo‘shishi mumkin.';
+        : '🏠 Xonalar topilmadi. Ega admin panelda qo‘shishi mumkin.';
       if (edit) await ctx.editMessageText(text, { reply_markup: kb });
       else await ctx.reply(text, { reply_markup: kb });
     } catch (error) {
@@ -165,7 +165,7 @@ export function registerRooms(deps: Deps, bot: import('../state.js').AppBot) {
       }
       if (detail.outstandingAmount > 0 && session.role !== 'OWNER') {
         await ctx.answerCallbackQuery({
-          text: `Qarz ${money(detail.outstandingAmount)}. Faqat egasi yopishi mumkin.`,
+          text: `Qarz ${money(detail.outstandingAmount)}. Faqat ega yopishi mumkin.`,
           show_alert: true,
         });
         return;

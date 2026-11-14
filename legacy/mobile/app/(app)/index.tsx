@@ -92,7 +92,7 @@ export default function RoomsScreen() {
           action={<Button label="Qayta urinish" onPress={() => void roomsQuery.refetch()} />}
         />
       ) : rooms.length === 0 ? (
-        <EmptyState icon="🏠" title="Xonalar yo‘q" message="Egasi admin panelda xonalarni qo‘shishi mumkin." />
+        <EmptyState icon="🏠" title="Xonalar yo‘q" message="Ega admin panelda xonalarni qo‘shishi mumkin." />
       ) : (
         rooms.map((room) => (
           <RoomCard key={room.id} room={room} onPress={() => router.push(`/room/${room.id}`)} />

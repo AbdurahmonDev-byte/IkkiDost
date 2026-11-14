@@ -3,6 +3,7 @@ import {
   ChefHat,
   Crown,
   DoorOpen,
+  Info,
   Loader2,
   Lock,
   LogOut,
@@ -42,6 +43,23 @@ const LAST_ORDER_KEY = 'ikki_dost_last_order';
 
 type Tab = 'customer' | 'waiter' | 'kitchen' | 'delivery' | 'cashier' | 'owner';
 
+const roleLabel: Record<StaffUser['role'], string> = {
+  OWNER: 'Ega',
+  WAITER: 'Ofitsiant',
+  CHEF: 'Oshpaz',
+  CASHIER: 'Kassir',
+  DELIVERY: 'Kuryer',
+};
+
+const tabHint: Record<Tab, string> = {
+  customer: 'Mijoz oynasi: menyu, savat va buyurtma berish.',
+  waiter: 'Xonalar va faol buyurtmalar. Yangi buyurtma uchun xonani tanlang.',
+  kitchen: 'Navbatdagi taomlar. “Boshlash” va “Tayyor” orqali holatni yangilang.',
+  delivery: 'Yetkazishlar. Buyurtmani qabul qiling, yo‘lga chiqing va naqd pulni kiriting.',
+  cashier: 'Kuryer topshirgan naqd pulni tekshirib, “To‘lov qilindi” bilan tasdiqlang.',
+  owner: 'Xodimlar, menyu va bugungi hisobotlar — hammasi shu yerda.',
+};
+
 function readStaff(): StaffUser | null {
   try {
     const raw = localStorage.getItem(STAFF_KEY);
@@ -66,7 +84,7 @@ function defaultTab(role: StaffUser['role']): Tab {
   if (role === 'CASHIER') return 'cashier';
   if (role === 'WAITER') return 'waiter';
   // The owner lands on the normal customer screen and opens the owner panel
-  // only by pressing the "Egasi" tab.
+  // only by pressing the "Ega" tab.
   return 'customer';
 }
 
@@ -210,7 +228,7 @@ export const App: React.FC = () => {
       list.push({ id: 'cashier', label: 'Kassa', icon: Wallet });
     }
     if (role === 'OWNER') {
-      list.push({ id: 'owner', label: 'Egasi', icon: Crown });
+      list.push({ id: 'owner', label: 'Ega', icon: Crown });
     }
     list.unshift({ id: 'customer', label: 'Menyu', icon: UtensilsCrossed });
     return list;
@@ -319,7 +337,7 @@ export const App: React.FC = () => {
                   {staffUser.fullName}
                 </p>
                 <p className="text-[9px] font-bold uppercase tracking-wide text-stone-400">
-                  {staffUser.role}
+                  {roleLabel[staffUser.role]}
                 </p>
               </div>
             </div>
@@ -344,27 +362,39 @@ export const App: React.FC = () => {
 
       {/* Staff tabs */}
       {staffUser && tabs.length > 0 && (
-        <nav className="no-scrollbar -mx-1 mb-4 flex gap-1.5 overflow-x-auto rounded-2xl bg-stone-200/70 p-1.5 text-xs font-bold">
-          {tabs.map((tab) => {
-            const Icon = tab.icon;
-            const active = activeTab === tab.id;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => {
-                  tg.selection();
-                  setActiveTab(tab.id);
-                }}
-                className={`flex shrink-0 items-center gap-1.5 rounded-xl px-3 py-2 transition-all ${
-                  active ? 'bg-white text-stone-900 shadow-sm' : 'text-stone-600 hover:text-stone-900'
-                }`}
-              >
-                <Icon className="h-3.5 w-3.5" />
-                {tab.label}
-              </button>
-            );
-          })}
-        </nav>
+        <>
+          <nav className="no-scrollbar -mx-1 flex gap-1.5 overflow-x-auto rounded-2xl border border-stone-200/80 bg-white p-1.5 text-xs font-bold shadow-sm">
+            {tabs.map((tab) => {
+              const Icon = tab.icon;
+              const active = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => {
+                    tg.selection();
+                    setActiveTab(tab.id);
+                  }}
+                  className={`flex shrink-0 items-center gap-1.5 rounded-xl px-3 py-2 transition-all ${
+                    active
+                      ? 'bg-stone-900 text-white shadow-md'
+                      : 'text-stone-600 hover:bg-stone-100 hover:text-stone-900'
+                  }`}
+                >
+                  <Icon className="h-3.5 w-3.5" />
+                  {tab.label}
+                </button>
+              );
+            })}
+          </nav>
+          <div className="mb-4 mt-2 flex items-start gap-2 rounded-2xl border border-brand-100 bg-brand-50/80 px-3 py-2 text-[11px] font-medium leading-relaxed text-brand-900">
+            <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-brand-600" />
+            <span>
+              {staffUser.role === 'OWNER' && activeTab === 'customer'
+                ? 'Ega rejimidasiz. “Ega” tabidan xodimlar, menyu va hisobotlarni boshqaring.'
+                : tabHint[activeTab]}
+            </span>
+          </div>
+        </>
       )}
 
       {error && (

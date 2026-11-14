@@ -72,7 +72,7 @@ function Login() {
     try {
       const res = await api.login({ username: username.trim(), password });
       if (res.user.role !== 'CASHIER' && res.user.role !== 'OWNER') {
-        setError('Bu dastur faqat kassir va egasi uchun');
+        setError('Bu dastur faqat kassir va ega uchun');
         return;
       }
       setSession({ user: res.user, accessToken: res.accessToken, refreshToken: res.refreshToken });
@@ -105,7 +105,7 @@ function Login() {
 
         <form onSubmit={submit} className="p-8">
           <h2 className="text-xl font-semibold">Kirish</h2>
-          <p className="mt-1 text-sm text-ink-soft">Kassir yoki egasi hisobi.</p>
+          <p className="mt-1 text-sm text-ink-soft">Kassir yoki ega hisobi.</p>
           <div className="mt-5 space-y-3">
             <Field label="Login">
               <Input value={username} onChange={(e) => setUsername(e.target.value)} autoCapitalize="none" required />
@@ -460,7 +460,7 @@ function Cashier({ onLogout }: { onLogout: () => void }) {
 
       <Modal open={closeOverride} onClose={() => setCloseOverride(false)} title="Qarz bilan yopish">
         <p className="text-sm text-ink-soft">
-          Sessiyada qarz bor. Faqat egasi sabab kiritib yopishi mumkin. Sabab audit jurnaliga yoziladi.
+          Sessiyada qarz bor. Faqat ega sabab kiritib yopishi mumkin. Sabab audit jurnaliga yoziladi.
         </p>
         <div className="mt-3">
           <Field label="Sabab (majburiy)">
@@ -554,7 +554,7 @@ function SessionView({
 
       {session.outstandingAmount > 0 && userRole !== 'OWNER' && (
         <p className="border-b border-amber-200 bg-amber-50 px-5 py-2 text-xs text-amber-800">
-          Qarz mavjud — yopish uchun avval to‘liq to‘lov qiling yoki egasi sabab bilan yopsin.
+          Qarz mavjud — yopish uchun avval to‘liq to‘lov qiling yoki ega sabab bilan yopsin.
         </p>
       )}
 

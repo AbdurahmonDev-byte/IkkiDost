@@ -324,7 +324,7 @@ export default function RoomScreen() {
 
           {!isOwner ? (
             <Txt variant="caption" tone="faint" style={{ marginTop: 12, textAlign: 'center' }}>
-              Hisobni yopish kassir yoki egasi tomonidan amalga oshiriladi.
+              Hisobni yopish kassir yoki ega tomonidan amalga oshiriladi.
             </Txt>
           ) : null}
         </>
@@ -358,7 +358,7 @@ export default function RoomScreen() {
       <PromptDialog
         visible={closeOpen}
         title="Qarz bilan yopish"
-        message={`Qarz: ${money(session?.outstandingAmount ?? 0)}. Faqat egasi sabab ko‘rsatib yopishi mumkin.`}
+        message={`Qarz: ${money(session?.outstandingAmount ?? 0)}. Faqat ega sabab ko‘rsatib yopishi mumkin.`}
         placeholder="Sabab (kamida 3 ta belgi)…"
         value={closeReason}
         onChangeText={setCloseReason}

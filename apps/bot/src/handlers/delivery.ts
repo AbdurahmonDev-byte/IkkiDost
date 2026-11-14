@@ -293,7 +293,7 @@ export function registerDelivery(deps: Deps, bot: import('../state.js').AppBot) 
     if (!session) return expired(deps, ctx);
     if (session.role !== 'OWNER' && session.role !== 'WAITER') {
       if (edit) return ctx.answerCallbackQuery({ text: 'Ruxsat yo‘q', show_alert: true });
-      return ctx.reply('🛵 Yangi yetkazishni faqat ofitsiant va egasi yaratadi.');
+      return ctx.reply('🛵 Yangi yetkazishni faqat ofitsiant va ega yaratadi.');
     }
     flows.set(flowKey(ctx.chat.id), { kind: 'delivery-name', actor: 'staff' });
     const text = '🛵 Yangi yetkazish\n\n1/3 — Mijoz ismini yozing:';
