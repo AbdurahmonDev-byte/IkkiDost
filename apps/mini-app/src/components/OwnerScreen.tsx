@@ -1,15 +1,19 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
   BarChart3,
+  Banknote,
   Camera,
   CheckCircle2,
+  DoorOpen,
   FolderPlus,
   ImagePlus,
   Loader2,
   KeyRound,
   Plus,
   Save,
+  ShoppingBag,
   Trash2,
+  Truck,
   Utensils,
   Users,
   Power,
@@ -361,7 +365,7 @@ export const OwnerScreen: React.FC<Props> = ({ token, onMenuChanged }) => {
         loading={loading}
       />
 
-      <div className="no-scrollbar -mx-1 flex gap-1.5 overflow-x-auto rounded-2xl border border-stone-200/80 bg-white p-1.5 text-xs font-bold shadow-sm">
+      <div className="grid grid-cols-3 gap-1.5 rounded-[24px] border border-stone-200/60 bg-white/80 p-1.5 shadow-sm backdrop-blur">
         {OWNER_SECTIONS.map((item) => {
           const Icon = item.icon;
           const active = section === item.id;
@@ -373,21 +377,22 @@ export const OwnerScreen: React.FC<Props> = ({ token, onMenuChanged }) => {
                 tg.selection();
                 setSection(item.id);
               }}
-              className={`flex flex-1 shrink-0 items-center justify-center gap-1.5 rounded-xl px-3 py-2.5 transition-all ${
+              className={`tap flex flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2.5 text-[11px] font-bold ${
                 active
-                  ? 'bg-stone-900 text-white shadow-md'
-                  : 'text-stone-600 hover:bg-stone-100 hover:text-stone-900'
+                  ? 'bg-gradient-to-br from-violet-500 to-purple-700 text-white shadow-lg shadow-violet-600/25'
+                  : 'text-stone-500 hover:bg-stone-100 hover:text-stone-900'
               }`}
             >
-              <Icon className="h-3.5 w-3.5" />
+              <Icon className="h-4 w-4" />
               {item.label}
             </button>
           );
         })}
       </div>
-      <p className="px-1 text-[11px] font-medium leading-relaxed text-stone-500">
-        {OWNER_SECTIONS.find((item) => item.id === section)?.hint}
-      </p>
+      <div className="flex items-start gap-2 rounded-2xl border border-violet-100 bg-violet-50/70 px-3 py-2.5 text-[11px] font-medium leading-relaxed text-violet-900">
+        <BarChart3 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-violet-500" />
+        <span>{OWNER_SECTIONS.find((item) => item.id === section)?.hint}</span>
+      </div>
 
       {notice && (
         <div className="flex items-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-xs font-bold text-emerald-800">
@@ -402,104 +407,133 @@ export const OwnerScreen: React.FC<Props> = ({ token, onMenuChanged }) => {
 
       {/* Stats */}
       {section === 'overview' && (
-        <div className="grid grid-cols-2 gap-3">
-          {[
-            { label: 'Bugungi savdo', value: stats ? money(stats.todayRevenue) : '—', accent: true },
-            { label: 'Buyurtmalar', value: stats ? `${stats.todayOrderCount} ta` : '—' },
-            { label: 'Faol xonalar', value: stats ? `${stats.activeRooms} ta` : '—' },
-            { label: 'Yetkazishlar', value: stats ? `${stats.activeDeliveryOrders} ta` : '—' },
-            {
-              label: 'To‘langan',
-              value: stats ? money(stats.paidToday) : '—',
-            },
-            {
-              label: 'Qarzdorlik',
-              value: stats ? money(stats.unpaidOutstanding) : '—',
-            },
-          ].map((card) => (
-            <div
-              key={card.label}
-              className={`rounded-2xl border p-3.5 shadow-sm ${
-                card.accent
-                  ? 'border-brand-200 bg-brand-50'
-                  : 'border-stone-200/80 bg-white'
-              }`}
-            >
-              <p className="text-[11px] font-semibold text-stone-500">{card.label}</p>
-              <p className="mt-1 text-base font-black text-stone-900">{card.value}</p>
+        <div className="space-y-3 animate-rise">
+          <div className="relative overflow-hidden rounded-[28px] bg-gradient-to-br from-brand-600 via-brand-700 to-[#5a341c] p-5 text-white shadow-xl shadow-brand-900/25">
+            <div className="pointer-events-none absolute -right-10 -top-12 h-36 w-36 rounded-full border border-white/15" />
+            <div className="pointer-events-none absolute -right-2 -bottom-16 h-32 w-32 rounded-full bg-white/5 blur-xl" />
+            <div className="relative">
+              <p className="text-[10px] font-black uppercase tracking-[0.18em] text-brand-100">
+                Bugungi savdo
+              </p>
+              <p className="mt-1 text-[30px] font-black leading-none tracking-tight">
+                {stats ? money(stats.todayRevenue) : '—'}
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2 text-[10.5px] font-bold">
+                <span className="rounded-full bg-white/15 px-2.5 py-1 backdrop-blur">
+                  {stats ? `${stats.todayOrderCount} buyurtma` : '—'}
+                </span>
+                <span className="rounded-full bg-white/15 px-2.5 py-1 backdrop-blur">
+                  To‘langan: {stats ? money(stats.paidToday) : '—'}
+                </span>
+              </div>
             </div>
-          ))}
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            {[
+              {
+                label: 'Buyurtmalar',
+                value: stats ? `${stats.todayOrderCount} ta` : '—',
+                icon: ShoppingBag,
+                tile: 'bg-sky-50 text-sky-600',
+              },
+              {
+                label: 'Faol xonalar',
+                value: stats ? `${stats.activeRooms} ta` : '—',
+                icon: DoorOpen,
+                tile: 'bg-amber-50 text-amber-600',
+              },
+              {
+                label: 'Yetkazishlar',
+                value: stats ? `${stats.activeDeliveryOrders} ta` : '—',
+                icon: Truck,
+                tile: 'bg-indigo-50 text-indigo-600',
+              },
+              {
+                label: 'Qarzdorlik',
+                value: stats ? money(stats.unpaidOutstanding) : '—',
+                icon: Banknote,
+                tile: 'bg-rose-50 text-rose-600',
+              },
+            ].map((card) => {
+              const Icon = card.icon;
+              return (
+                <div key={card.label} className="surface p-3.5">
+                  <div className={`flex h-9 w-9 items-center justify-center rounded-xl ${card.tile}`}>
+                    <Icon className="h-4 w-4" />
+                  </div>
+                  <p className="mt-2.5 text-[10.5px] font-bold text-stone-400">{card.label}</p>
+                  <p className="mt-0.5 text-[17px] font-black leading-tight text-stone-900">
+                    {card.value}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
 
       {section === 'staff' && (
-        <section className="rounded-3xl border border-stone-200/80 bg-white p-4 shadow-sm">
-        <div className="mb-3 flex items-center gap-2">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-sky-100 text-sky-800">
+        <section className="surface p-4 animate-rise">
+        <div className="mb-3 flex items-start gap-2.5">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-sky-500 to-indigo-600 text-white shadow-lg shadow-sky-600/25">
             <Users className="h-5 w-5" />
           </div>
           <div>
             <h3 className="text-sm font-black text-stone-900">Xodimlar va rollar</h3>
-            <p className="text-[11px] text-stone-500">
+            <p className="mt-0.5 text-[11px] leading-relaxed text-stone-500">
               Telegram ID rolni aniqlaydi. Xodimlar parolsiz, ID orqali kiradi.
             </p>
           </div>
         </div>
-        <div className="mb-4 grid gap-1.5 rounded-2xl bg-stone-50 p-3 text-[10px] leading-relaxed text-stone-600 sm:grid-cols-2">
+        <div className="mb-4 grid grid-cols-2 gap-1.5 rounded-2xl bg-stone-50 p-2.5">
           {STAFF_ROLES.map((role) => (
-            <p key={role}>
-              <span className="font-black text-stone-800">{roleName[role]}</span> — {roleHint[role]}
-            </p>
+            <div key={role} className="rounded-xl bg-white/80 px-2.5 py-2">
+              <p className="text-[10.5px] font-black text-stone-800">{roleName[role]}</p>
+              <p className="text-[9.5px] font-medium leading-tight text-stone-400">{roleHint[role]}</p>
+            </div>
           ))}
         </div>
-        <form onSubmit={createEmployee} className="mb-4 grid gap-2 border-b border-stone-100 pb-4 sm:grid-cols-2">
+        <form onSubmit={createEmployee} className="mb-4 grid gap-2.5 border-b border-stone-100 pb-4 sm:grid-cols-2">
           <label className="space-y-1">
-            <span className="px-1 text-[10px] font-bold uppercase tracking-wide text-stone-400">
-              Ism-familiya
-            </span>
+            <span className="label-mini">Ism-familiya</span>
             <input
               value={newEmployeeName}
               onChange={(event) => setNewEmployeeName(event.target.value)}
               placeholder="Masalan: Ali Valiyev"
               aria-label="Xodim ism-familiyasi"
-              className="w-full rounded-xl border border-stone-200 bg-stone-50 px-3 py-2.5 text-xs font-semibold outline-none focus:border-sky-400 focus:bg-white"
+              className="field-mini"
             />
           </label>
           <label className="space-y-1">
-            <span className="px-1 text-[10px] font-bold uppercase tracking-wide text-stone-400">
-              Telegram ID
-            </span>
+            <span className="label-mini">Telegram ID</span>
             <input
               value={newEmployeeTelegramId}
               onChange={(event) => setNewEmployeeTelegramId(event.target.value.replace(/\D/g, ''))}
               inputMode="numeric"
               placeholder="Masalan: 123456789"
               aria-label="Yangi xodim Telegram ID"
-              className="w-full rounded-xl border border-stone-200 bg-stone-50 px-3 py-2.5 text-xs font-semibold outline-none focus:border-sky-400 focus:bg-white"
+              className="field-mini"
             />
           </label>
           <label className="space-y-1">
-            <span className="px-1 text-[10px] font-bold uppercase tracking-wide text-stone-400">
-              Telefon (ixtiyoriy)
-            </span>
+            <span className="label-mini">Telefon (ixtiyoriy)</span>
             <input
               value={newEmployeePhone}
               onChange={(event) => setNewEmployeePhone(event.target.value)}
               inputMode="tel"
               placeholder="+998 90 123 45 67"
               aria-label="Xodim telefoni"
-              className="w-full rounded-xl border border-stone-200 bg-stone-50 px-3 py-2.5 text-xs font-semibold outline-none focus:border-sky-400 focus:bg-white"
+              className="field-mini"
             />
           </label>
           <label className="space-y-1">
-            <span className="px-1 text-[10px] font-bold uppercase tracking-wide text-stone-400">
-              Rol
-            </span>
+            <span className="label-mini">Rol</span>
             <select
               value={newEmployeeRole}
               onChange={(event) => setNewEmployeeRole(event.target.value as Role)}
               aria-label="Xodim roli"
-              className="w-full rounded-xl border border-stone-200 bg-stone-50 px-3 py-2.5 text-xs font-semibold outline-none focus:border-sky-400 focus:bg-white"
+              className="field-mini"
             >
               {STAFF_ROLES.map((role) => <option key={role} value={role}>{roleName[role]}</option>)}
             </select>
@@ -507,53 +541,71 @@ export const OwnerScreen: React.FC<Props> = ({ token, onMenuChanged }) => {
           <button
             type="submit"
             disabled={busy === 'employee-create' || newEmployeeName.trim().length < 2 || !/^\d{4,20}$/.test(newEmployeeTelegramId)}
-            className="flex items-center justify-center gap-1.5 rounded-xl bg-sky-800 px-3 py-3 text-xs font-bold text-white shadow-sm disabled:opacity-40 sm:col-span-2"
+            className="btn-primary py-3 text-xs disabled:opacity-40 sm:col-span-2"
           >
             {busy === 'employee-create' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
             Xodim qo‘shish
           </button>
         </form>
-        <div className="space-y-2">
+        <div className="space-y-2.5">
           {employees.map((employee) => (
             <div
               key={employee.id}
-              className={`rounded-2xl border border-stone-200/80 bg-stone-50/60 p-3 ${employee.isActive ? '' : 'opacity-60'}`}
+              className={`rounded-2xl border border-stone-200/70 bg-stone-50/60 p-3.5 ${
+                employee.isActive ? '' : 'opacity-60'
+              }`}
             >
               <div className="flex items-center justify-between gap-2">
-                <div className="flex min-w-0 items-center gap-2">
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-stone-900 text-[11px] font-black text-white">
+                <div className="flex min-w-0 items-center gap-2.5">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-stone-800 to-stone-950 text-[11px] font-black text-white">
                     {employee.fullName.slice(0, 1).toUpperCase()}
                   </div>
                   <div className="min-w-0">
-                    <p className="truncate text-xs font-bold text-stone-900">{employee.fullName}</p>
-                    <p className="text-[10px] text-stone-500">
+                    <p className="truncate text-xs font-black text-stone-900">{employee.fullName}</p>
+                    <p className="truncate text-[10px] font-medium text-stone-500">
                       {roleName[employee.role]} · {roleHint[employee.role]}
-                      {!employee.isActive ? ' · Faolsiz' : ''}
                     </p>
                   </div>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => patchEmployee(employee, { isActive: !employee.isActive })}
-                  disabled={busy === `emp-${employee.id}`}
-                  title={employee.isActive ? 'Faolsizlantirish' : 'Faollashtirish'}
-                  className={`flex shrink-0 items-center gap-1 rounded-lg px-2 py-1.5 text-[10px] font-bold disabled:opacity-40 ${
-                    employee.isActive
-                      ? 'bg-rose-50 text-rose-700'
-                      : 'bg-emerald-50 text-emerald-700'
-                  }`}
-                >
-                  {busy === `emp-${employee.id}` ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  ) : (
-                    <Power className="h-3.5 w-3.5" />
-                  )}
-                  {employee.isActive ? 'Faolsizlantirish' : 'Faollashtirish'}
-                </button>
+                <div className="flex shrink-0 items-center gap-1.5">
+                  <span
+                    className={`chip ${
+                      employee.isActive
+                        ? 'bg-emerald-100 text-emerald-700'
+                        : 'bg-stone-200 text-stone-500'
+                    }`}
+                  >
+                    <span
+                      className={`h-1.5 w-1.5 rounded-full ${
+                        employee.isActive ? 'bg-emerald-500' : 'bg-stone-400'
+                      }`}
+                    />
+                    {employee.isActive ? 'Faol' : 'Faolsiz'}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => patchEmployee(employee, { isActive: !employee.isActive })}
+                    disabled={busy === `emp-${employee.id}`}
+                    title={employee.isActive ? 'Faolsizlantirish' : 'Faollashtirish'}
+                    className={`tap flex h-8 w-8 items-center justify-center rounded-xl disabled:opacity-40 ${
+                      employee.isActive
+                        ? 'bg-rose-50 text-rose-600'
+                        : 'bg-emerald-50 text-emerald-600'
+                    }`}
+                  >
+                    {busy === `emp-${employee.id}` ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Power className="h-3.5 w-3.5" />
+                    )}
+                  </button>
+                </div>
               </div>
-              <div className="mt-2 grid grid-cols-[minmax(0,110px)_1fr_auto] items-end gap-1.5">
+              <div className="mt-3 grid grid-cols-[minmax(0,108px)_1fr_auto] items-end gap-1.5">
                 <label className="space-y-1">
-                  <span className="px-1 text-[9px] font-bold uppercase tracking-wide text-stone-400">Rol</span>
+                  <span className="px-1 text-[9px] font-bold uppercase tracking-wide text-stone-400">
+                    Rol
+                  </span>
                   <select
                     value={employee.role}
                     onChange={(event) =>
@@ -561,7 +613,7 @@ export const OwnerScreen: React.FC<Props> = ({ token, onMenuChanged }) => {
                     }
                     disabled={busy === `emp-${employee.id}`}
                     aria-label={`${employee.fullName} roli`}
-                    className="w-full rounded-lg border border-stone-200 bg-white px-2 py-2 text-xs font-semibold text-stone-800 outline-none focus:border-sky-400 disabled:opacity-50"
+                    className="w-full rounded-lg border border-stone-200 bg-white px-2 py-2 text-[11px] font-bold text-stone-800 outline-none focus:border-brand-400 disabled:opacity-50"
                   >
                     {ROLE_OPTIONS.map((role) => (
                       <option key={role} value={role}>{roleName[role]}</option>
@@ -569,14 +621,16 @@ export const OwnerScreen: React.FC<Props> = ({ token, onMenuChanged }) => {
                   </select>
                 </label>
                 <label className="space-y-1">
-                  <span className="px-1 text-[9px] font-bold uppercase tracking-wide text-stone-400">Telegram ID</span>
+                  <span className="px-1 text-[9px] font-bold uppercase tracking-wide text-stone-400">
+                    Telegram ID
+                  </span>
                   <input
                     value={telegramIds[employee.id] ?? ''}
                     onChange={(event) => setTelegramIds((rows) => ({ ...rows, [employee.id]: event.target.value.replace(/\D/g, '') }))}
                     inputMode="numeric"
                     aria-label={`${employee.fullName} Telegram ID`}
                     placeholder="Telegram ID"
-                    className="w-full rounded-lg border border-stone-200 bg-white px-2 py-2 text-xs font-semibold text-stone-800 outline-none focus:border-sky-400"
+                    className="w-full rounded-lg border border-stone-200 bg-white px-2 py-2 text-[11px] font-semibold text-stone-800 outline-none focus:border-brand-400"
                   />
                 </label>
                 <button
@@ -584,7 +638,7 @@ export const OwnerScreen: React.FC<Props> = ({ token, onMenuChanged }) => {
                   onClick={() => assignTelegramId(employee)}
                   disabled={busy === `tg-${employee.id}` || !/^\d{4,20}$/.test(telegramIds[employee.id] ?? '')}
                   title="Telegram ID ni saqlash"
-                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-stone-900 text-white disabled:opacity-40"
+                  className="tap flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-stone-900 text-white disabled:opacity-40"
                 >
                   {busy === `tg-${employee.id}` ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                 </button>
@@ -592,7 +646,7 @@ export const OwnerScreen: React.FC<Props> = ({ token, onMenuChanged }) => {
             </div>
           ))}
           {employees.length === 0 && !loading && (
-            <p className="py-4 text-xs text-stone-500">Faol xodim topilmadi.</p>
+            <p className="py-4 text-center text-xs font-semibold text-stone-500">Faol xodim topilmadi.</p>
           )}
         </div>
         <p className="mt-3 flex items-start gap-1.5 border-t border-stone-100 pt-3 text-[10px] leading-relaxed text-stone-500">
@@ -605,14 +659,16 @@ export const OwnerScreen: React.FC<Props> = ({ token, onMenuChanged }) => {
       {section === 'menu' && (
         <>
       {/* Add product */}
-      <div className="rounded-3xl border border-stone-200/80 bg-white p-4 shadow-sm">
-        <div className="mb-3 flex items-center gap-2">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-100 text-brand-700">
+      <div className="surface p-4 animate-rise">
+        <div className="mb-3 flex items-start gap-2.5">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-500 to-brand-700 text-white shadow-lg shadow-brand-600/25">
             <ImagePlus className="h-5 w-5" />
           </div>
           <div>
             <h3 className="text-sm font-black text-stone-900">Yangi taom qo‘shish</h3>
-            <p className="text-[11px] text-stone-500">Nomi, narxi va rasmni kiriting</p>
+            <p className="mt-0.5 text-[11px] leading-relaxed text-stone-500">
+              Nomi, narxi va rasmni kiriting
+            </p>
           </div>
         </div>
 
@@ -621,13 +677,13 @@ export const OwnerScreen: React.FC<Props> = ({ token, onMenuChanged }) => {
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="Taom nomi (masalan: Osh)"
-            className="w-full rounded-xl border border-stone-200 bg-stone-50 px-3 py-2.5 text-sm font-semibold outline-none focus:border-brand-400 focus:bg-white"
+            className="field"
           />
           <div className="grid grid-cols-2 gap-2">
             <select
               value={categoryId}
               onChange={(e) => setCategoryId(e.target.value)}
-              className="w-full rounded-xl border border-stone-200 bg-stone-50 px-3 py-2.5 text-sm font-semibold outline-none focus:border-brand-400 focus:bg-white"
+              className="field"
             >
               <option value="">Kategoriya</option>
               {categories.map((c) => (
@@ -639,7 +695,7 @@ export const OwnerScreen: React.FC<Props> = ({ token, onMenuChanged }) => {
             <select
               value={unit}
               onChange={(e) => setUnit(e.target.value as MeasurementUnit)}
-              className="w-full rounded-xl border border-stone-200 bg-stone-50 px-3 py-2.5 text-sm font-semibold outline-none focus:border-brand-400 focus:bg-white"
+              className="field"
             >
               {UNITS.map((u) => (
                 <option key={u} value={u}>
@@ -653,10 +709,10 @@ export const OwnerScreen: React.FC<Props> = ({ token, onMenuChanged }) => {
             onChange={(e) => setPrice(e.target.value)}
             placeholder="Narxi (so‘m)"
             inputMode="numeric"
-            className="w-full rounded-xl border border-stone-200 bg-stone-50 px-3 py-2.5 text-sm font-semibold outline-none focus:border-brand-400 focus:bg-white"
+            className="field"
           />
-          <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-dashed border-stone-300 bg-stone-50 px-3 py-2.5 text-xs font-semibold text-stone-500">
-            <Camera className="h-4 w-4" />
+          <label className="tap flex cursor-pointer items-center gap-2 rounded-2xl border border-dashed border-stone-300 bg-stone-50/80 px-3.5 py-3 text-xs font-semibold text-stone-500 hover:border-brand-300 hover:bg-brand-50/40">
+            <Camera className="h-4 w-4 text-brand-500" />
             <span className="truncate">{imageFile ? imageFile.name : 'Taom rasmi (ixtiyoriy)'}</span>
             <input
               ref={fileRef}
@@ -669,7 +725,7 @@ export const OwnerScreen: React.FC<Props> = ({ token, onMenuChanged }) => {
           <button
             type="submit"
             disabled={busy === 'create'}
-            className="flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 py-3 text-sm font-bold text-white shadow-md shadow-brand-600/25 disabled:opacity-50 active:scale-[0.98] transition-all"
+            className="btn-primary w-full py-3 text-sm disabled:opacity-50"
           >
             {busy === 'create' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
             Taom qo‘shish
@@ -681,12 +737,12 @@ export const OwnerScreen: React.FC<Props> = ({ token, onMenuChanged }) => {
             value={newCategory}
             onChange={(e) => setNewCategory(e.target.value)}
             placeholder="Yangi kategoriya"
-            className="min-w-0 flex-1 rounded-xl border border-stone-200 bg-stone-50 px-3 py-2 text-xs font-semibold outline-none focus:border-brand-400 focus:bg-white"
+            className="field-mini min-w-0 flex-1"
           />
           <button
             type="submit"
             disabled={busy === 'cat'}
-            className="flex items-center gap-1 rounded-xl bg-stone-900 px-3 py-2 text-xs font-bold text-white disabled:opacity-50"
+            className="tap flex items-center gap-1 rounded-xl bg-stone-900 px-3 py-2 text-xs font-bold text-white disabled:opacity-50"
           >
             {busy === 'cat' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FolderPlus className="h-3.5 w-3.5" />}
             Qo‘shish
@@ -695,24 +751,24 @@ export const OwnerScreen: React.FC<Props> = ({ token, onMenuChanged }) => {
       </div>
 
       {/* Products */}
-      <div className="space-y-2">
+      <div className="space-y-2.5">
         <div className="flex items-center justify-between px-1">
-          <h3 className="text-xs font-black uppercase tracking-wider text-stone-400">
-            Menyu ({products.length})
-          </h3>
+          <h3 className="section-kicker">Menyu</h3>
+          <span className="text-[10px] font-bold text-stone-400">{products.length} ta taom</span>
         </div>
 
         {loading && products.length === 0 ? (
-          <div className="flex items-center justify-center gap-2 py-10 text-stone-400">
-            <Loader2 className="h-5 w-5 animate-spin" /> <span className="text-xs">Yuklanmoqda...</span>
+          <div className="surface flex items-center justify-center gap-2 py-12 text-stone-400">
+            <Loader2 className="h-5 w-5 animate-spin text-brand-500" />
+            <span className="text-xs font-semibold">Yuklanmoqda...</span>
           </div>
         ) : (
           products.map((product) => (
             <div
               key={product.id}
-              className="flex items-center gap-3 rounded-2xl border border-stone-200/80 bg-white p-3 shadow-sm"
+              className="surface flex items-center gap-3 p-3"
             >
-              <div className="h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-stone-100">
+              <div className="h-16 w-16 shrink-0 overflow-hidden rounded-2xl bg-stone-100">
                 {product.thumbnailUrl || product.imageUrl ? (
                   <img
                     src={product.thumbnailUrl || product.imageUrl || ''}
@@ -720,26 +776,30 @@ export const OwnerScreen: React.FC<Props> = ({ token, onMenuChanged }) => {
                     className="h-full w-full object-cover"
                   />
                 ) : (
-                  <div className="flex h-full w-full items-center justify-center">
-                    <Utensils className="h-5 w-5 text-stone-300" />
+                  <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-brand-50 to-stone-100">
+                    <Utensils className="h-5 w-5 text-brand-300" />
                   </div>
                 )}
               </div>
 
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-1.5">
-                  <p className="truncate text-sm font-bold text-stone-900">{product.name}</p>
-                  {product.status !== 'ACTIVE' && (
-                    <span className="rounded bg-stone-100 px-1.5 py-0.5 text-[9px] font-black uppercase text-stone-500">
-                      o‘chiq
-                    </span>
-                  )}
+                  <p className="truncate text-[13px] font-black text-stone-900">{product.name}</p>
+                  <span
+                    className={`chip shrink-0 ${
+                      product.status === 'ACTIVE'
+                        ? 'bg-emerald-100 text-emerald-700'
+                        : 'bg-stone-100 text-stone-500'
+                    }`}
+                  >
+                    {product.status === 'ACTIVE' ? 'Faol' : 'O‘chiq'}
+                  </span>
                 </div>
-                <p className="text-[11px] text-stone-500">
+                <p className="mt-0.5 text-[11px] font-semibold text-stone-500">
                   {money(product.price)} · {qty(1, product.unit)}
                 </p>
-                <div className="mt-1 flex gap-1.5">
-                  <label className="inline-flex cursor-pointer items-center gap-1 rounded-lg bg-sky-50 px-2 py-1 text-[10px] font-bold text-sky-700">
+                <div className="mt-1.5 flex flex-wrap gap-1.5">
+                  <label className="tap inline-flex cursor-pointer items-center gap-1 rounded-lg bg-sky-50 px-2 py-1 text-[10px] font-bold text-sky-700 hover:bg-sky-100">
                     {busy === `img-${product.id}` ? (
                       <Loader2 className="h-3 w-3 animate-spin" />
                     ) : (
@@ -760,7 +820,7 @@ export const OwnerScreen: React.FC<Props> = ({ token, onMenuChanged }) => {
                   {(product.imageUrl || product.thumbnailUrl) && (
                     <button
                       onClick={() => removePhoto(product)}
-                      className="rounded-lg bg-stone-100 px-2 py-1 text-[10px] font-bold text-stone-500"
+                      className="tap rounded-lg bg-stone-100 px-2 py-1 text-[10px] font-bold text-stone-500 hover:bg-rose-50 hover:text-rose-600"
                     >
                       <Trash2 className="h-3 w-3" />
                     </button>
@@ -768,7 +828,7 @@ export const OwnerScreen: React.FC<Props> = ({ token, onMenuChanged }) => {
                   <button
                     onClick={() => toggleStatus(product)}
                     disabled={busy === `st-${product.id}`}
-                    className="rounded-lg bg-stone-100 px-2 py-1 text-[10px] font-bold text-stone-600 disabled:opacity-50"
+                    className="tap rounded-lg bg-stone-100 px-2 py-1 text-[10px] font-bold text-stone-600 disabled:opacity-50"
                   >
                     {product.status === 'ACTIVE' ? 'O‘chirish' : 'Yoqish'}
                   </button>
@@ -782,15 +842,26 @@ export const OwnerScreen: React.FC<Props> = ({ token, onMenuChanged }) => {
       )}
 
       {section === 'overview' && stats && stats.popularProducts.length > 0 && (
-        <div className="rounded-3xl border border-stone-200/80 bg-white p-4 shadow-sm">
-          <h3 className="mb-2 text-xs font-black uppercase tracking-wider text-stone-400">
-            Eng ko‘p sotilganlar
-          </h3>
+        <div className="surface p-4 animate-rise">
+          <div className="mb-2.5 flex items-center justify-between px-0.5">
+            <h3 className="section-kicker">Eng ko‘p sotilganlar</h3>
+            <span className="chip bg-brand-50 text-brand-700">TOP 5</span>
+          </div>
           <div className="space-y-1.5">
-            {stats.popularProducts.slice(0, 5).map((p) => (
-              <div key={p.productName} className="flex items-center justify-between text-xs">
-                <span className="truncate font-semibold text-stone-700">{p.productName}</span>
-                <span className="shrink-0 font-black text-stone-900">{money(p.revenue)}</span>
+            {stats.popularProducts.slice(0, 5).map((p, index) => (
+              <div
+                key={p.productName}
+                className="flex items-center gap-2.5 rounded-xl bg-stone-50/80 px-2.5 py-2"
+              >
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-white text-[10px] font-black text-brand-600 shadow-sm">
+                  {index + 1}
+                </span>
+                <span className="min-w-0 flex-1 truncate text-xs font-semibold text-stone-700">
+                  {p.productName}
+                </span>
+                <span className="shrink-0 text-xs font-black text-stone-900">
+                  {money(p.revenue)}
+                </span>
               </div>
             ))}
           </div>

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Bell, CheckCircle2, Loader2, X } from 'lucide-react';
+import { Bell, CheckCircle2, Loader2, Sparkles, X } from 'lucide-react';
 import { api } from '../lib/api';
 import { tg } from '../lib/telegram';
 import type { Room } from '../lib/types';
@@ -60,42 +60,56 @@ export const CallWaiterModal: React.FC<Props> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-0 backdrop-blur-sm animate-in fade-in duration-200 sm:items-center sm:p-4">
-      <div className="w-full max-w-md rounded-t-3xl bg-white p-5 shadow-2xl transition-all sm:rounded-3xl">
-        <div className="flex items-center justify-between border-b border-stone-100 pb-3">
-          <div className="flex items-center gap-2">
-            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-amber-100 text-amber-700">
-              <Bell className="h-5 w-5" />
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-stone-950/50 p-0 backdrop-blur-sm sm:items-center sm:p-4">
+      <div className="w-full max-w-md overflow-hidden rounded-t-[30px] bg-[#fffdfa] shadow-2xl animate-rise sm:rounded-[30px]">
+        <div className="sheet-grabber sm:hidden" />
+
+        <div className="relative overflow-hidden border-b border-stone-100 px-4 pb-4 pt-3">
+          <div className="pointer-events-none absolute -right-10 -top-16 h-36 w-36 rounded-full bg-amber-200/60 blur-2xl" />
+          <div className="relative flex items-center justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-3">
+              <div className="icon-tile bg-gradient-to-br from-amber-400 to-orange-600 text-white shadow-lg shadow-orange-500/30">
+                <Bell className="h-5 w-5" />
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5">
+                  <Sparkles className="h-3 w-3 text-amber-500" />
+                  <p className="text-[9px] font-black uppercase tracking-[0.18em] text-amber-600">
+                    Xizmat
+                  </p>
+                </div>
+                <h3 className="truncate text-[17px] font-black leading-tight text-stone-900">
+                  Ofitsiant chaqirish
+                </h3>
+                <p className="truncate text-[11.5px] font-medium text-stone-500">
+                  {room ? `🏠 ${room.name}` : 'Xonangizni tanlang'}
+                </p>
+              </div>
             </div>
-            <div>
-              <h3 className="text-lg font-black text-stone-900">Ofitsiant chaqirish</h3>
-              <p className="text-xs text-stone-500">
-                {room ? `🏠 ${room.name}` : 'Xonangizni tanlang'}
-              </p>
-            </div>
+            <button
+              onClick={onClose}
+              className="tap shrink-0 rounded-2xl border border-stone-200/80 bg-white p-2.5 text-stone-400 shadow-sm hover:text-stone-700"
+              aria-label="Yopish"
+            >
+              <X className="h-4 w-4" />
+            </button>
           </div>
-          <button
-            onClick={onClose}
-            className="rounded-full p-2 text-stone-400 transition-colors hover:bg-stone-100"
-          >
-            <X className="h-5 w-5" />
-          </button>
         </div>
 
         {success ? (
-          <div className="animate-in zoom-in-95 py-8 text-center duration-200">
-            <CheckCircle2 className="mx-auto mb-3 h-16 w-16 text-emerald-500" />
-            <h4 className="text-xl font-black text-stone-900">Ofitsiant chaqirildi!</h4>
-            <p className="mt-1 text-sm text-stone-500">
+          <div className="flex flex-col items-center px-6 py-12 text-center">
+            <div className="flex h-16 w-16 items-center justify-center rounded-3xl bg-emerald-50">
+              <CheckCircle2 className="h-9 w-9 text-emerald-500" />
+            </div>
+            <h4 className="mt-3 text-lg font-black text-stone-900">Ofitsiant chaqirildi!</h4>
+            <p className="mt-1 text-[12.5px] leading-relaxed text-stone-500">
               Xodimlarimiz tez orada xonangizga kelishadi.
             </p>
           </div>
         ) : (
-          <div className="space-y-4 pt-4">
+          <div className="space-y-4 p-4 pb-safe">
             <div>
-              <label className="mb-1.5 block text-xs font-bold text-stone-600">
-                Qaysi xonadasiz?
-              </label>
+              <p className="label-mini">Qaysi xonadasiz?</p>
               <div className="grid grid-cols-3 gap-1.5">
                 {rooms.map((r) => (
                   <button
@@ -105,31 +119,31 @@ export const CallWaiterModal: React.FC<Props> = ({
                       onSelectRoom(r);
                       tg.selection();
                     }}
-                    className={`rounded-xl border px-2 py-2 text-[11px] font-bold transition-all active:scale-95 ${
+                    className={`tap rounded-xl px-2 py-2.5 text-[11px] font-bold ${
                       room?.id === r.id
-                        ? 'border-amber-400 bg-amber-100 text-amber-900'
-                        : 'border-stone-200 bg-white text-stone-600 hover:bg-stone-50'
+                        ? 'bg-gradient-to-br from-amber-500 to-orange-600 text-white shadow-md shadow-orange-500/25'
+                        : 'border border-stone-200/80 bg-white text-stone-600 shadow-sm hover:bg-stone-50'
                     }`}
                   >
                     {r.name}
                   </button>
                 ))}
                 {rooms.length === 0 && (
-                  <p className="col-span-3 text-xs text-stone-400">Xonalar yuklanmadi</p>
+                  <p className="col-span-3 rounded-xl bg-stone-50 px-3 py-2 text-[11px] font-medium text-stone-400">
+                    Xonalar yuklanmadi
+                  </p>
                 )}
               </div>
             </div>
 
             <div>
-              <label className="mb-1 block text-xs font-bold text-stone-600">
-                Qo‘shimcha iltimos (ixtiyoriy):
-              </label>
+              <p className="label-mini">Qo‘shimcha iltimos (ixtiyoriy)</p>
               <input
                 type="text"
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
                 placeholder="Masalan: Choy olib keling, hisob..."
-                className="w-full rounded-2xl border border-stone-200 px-4 py-3 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+                className="field"
               />
             </div>
 
@@ -139,29 +153,26 @@ export const CallWaiterModal: React.FC<Props> = ({
                   key={tag}
                   type="button"
                   onClick={() => setNote((prev) => (prev ? `${prev}, ${tag}` : tag))}
-                  className="rounded-xl bg-stone-100 px-3 py-1.5 text-xs font-medium text-stone-700 transition-all hover:bg-stone-200 active:scale-95"
+                  className="tap rounded-xl bg-stone-100 px-2.5 py-1.5 text-[11px] font-bold text-stone-600 hover:bg-brand-50 hover:text-brand-700"
                 >
                   + {tag}
                 </button>
               ))}
             </div>
 
-            {error && <p className="text-xs font-medium text-rose-600">{error}</p>}
+            {error && (
+              <p className="rounded-xl bg-rose-50 px-3 py-2 text-[11.5px] font-semibold text-rose-700">
+                {error}
+              </p>
+            )}
 
             <button
               onClick={handleCall}
               disabled={loading || !room}
-              className="flex w-full items-center justify-center gap-2 rounded-2xl bg-brand-600 py-3.5 text-sm font-bold text-white shadow-lg shadow-brand-600/30 transition-all active:scale-[0.98] disabled:opacity-50"
+              className="btn-primary w-full py-3.5 disabled:opacity-50"
             >
-              {loading ? (
-                <>
-                  <Loader2 className="h-5 w-5 animate-spin" /> Yuborilmoqda...
-                </>
-              ) : (
-                <>
-                  <Bell className="h-5 w-5" /> Ofitsiantni chaqirish
-                </>
-              )}
+              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Bell className="h-4 w-4" />}
+              {loading ? 'Yuborilmoqda...' : 'Ofitsiantni chaqirish'}
             </button>
           </div>
         )}

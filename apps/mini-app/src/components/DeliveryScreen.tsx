@@ -97,39 +97,43 @@ export const DeliveryScreen: React.FC<Props> = ({ token, userId }) => {
     const busy = actingId === d.id;
 
     return (
-      <div
-        key={d.id}
-        className="overflow-hidden rounded-3xl border border-stone-200/80 bg-white shadow-sm"
-      >
+      <div key={d.id} className="surface overflow-hidden">
         <div className="flex items-center justify-between gap-2 border-b border-stone-100 bg-stone-50/70 px-4 py-3">
-          <div>
-            <p className="text-sm font-black text-stone-900">Buyurtma #{d.orderNumber}</p>
-            <p className="text-[11px] text-stone-500">{d.items.length} ta mahsulot</p>
+          <div className="flex min-w-0 items-center gap-2.5">
+            <span className="flex h-9 min-w-9 items-center justify-center rounded-xl bg-sky-100 px-1.5 text-xs font-black text-sky-800">
+              #{d.orderNumber}
+            </span>
+            <div className="min-w-0">
+              <p className="truncate text-[13px] font-black text-stone-900">Buyurtma</p>
+              <p className="text-[10.5px] font-medium text-stone-400">{d.items.length} ta mahsulot</p>
+            </div>
           </div>
           <span
-            className={`rounded-full border px-2.5 py-1 text-[10px] font-black uppercase ${deliveryStatusColor[d.status]}`}
+            className={`chip shrink-0 border ${deliveryStatusColor[d.status]}`}
           >
             {deliveryStatusLabel[d.status]}
           </span>
         </div>
 
         <div className="space-y-3 p-4">
-          <div className="flex items-start gap-2">
-            <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-brand-600" />
+          <div className="flex items-start gap-2.5">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-600">
+              <MapPin className="h-4 w-4" />
+            </span>
             <div className="min-w-0">
-              <p className="text-sm font-bold text-stone-900">{d.customerName}</p>
-              <p className="text-xs text-stone-500">{d.address}</p>
+              <p className="text-[13px] font-black text-stone-900">{d.customerName}</p>
+              <p className="mt-0.5 text-[11.5px] leading-relaxed text-stone-500">{d.address}</p>
             </div>
           </div>
 
           <a
             href={`tel:${d.customerPhone}`}
-            className="flex items-center gap-2 rounded-2xl bg-sky-50 px-3 py-2 text-xs font-bold text-sky-800"
+            className="tap flex items-center gap-2 rounded-2xl bg-sky-50 px-3 py-2.5 text-xs font-bold text-sky-800 ring-1 ring-sky-100"
           >
             <Phone className="h-3.5 w-3.5" /> {d.customerPhone}
           </a>
 
-          <div className="space-y-1 rounded-2xl bg-stone-50 p-3 text-xs text-stone-600">
+          <div className="surface-inset space-y-1.5 p-3 text-[11.5px] text-stone-600">
             {d.items.slice(0, 4).map((i) => (
               <div key={i.id} className="flex justify-between gap-2">
                 <span className="truncate">
@@ -139,43 +143,47 @@ export const DeliveryScreen: React.FC<Props> = ({ token, userId }) => {
               </div>
             ))}
             {d.items.length > 4 && (
-              <p className="text-[11px] text-stone-400">+{d.items.length - 4} ta yana</p>
+              <p className="text-[10.5px] text-stone-400">+{d.items.length - 4} ta yana</p>
             )}
-            <div className="flex justify-between border-t border-stone-200 pt-1 font-bold text-stone-900">
+            <div className="flex justify-between border-t border-stone-200/70 pt-1.5 text-xs font-black text-stone-900">
               <span>Jami</span>
               <span>{money(d.totalAmount)}</span>
             </div>
             {d.paidAmount > 0 && (
-              <div className="flex justify-between text-[11px] text-emerald-700">
+              <div className="flex justify-between text-[10.5px] font-semibold text-emerald-700">
                 <span>To‘langan</span>
                 <span>{money(d.paidAmount)}</span>
               </div>
             )}
             {d.outstandingAmount > 0 && (
-              <div className="flex justify-between text-[11px] font-semibold text-amber-700">
+              <div className="flex justify-between text-[10.5px] font-semibold text-amber-700">
                 <span>Qoldiq</span>
                 <span>{money(d.outstandingAmount)}</span>
               </div>
             )}
             {d.cashCollectedAmount != null && (
-              <div className="flex justify-between text-[11px] text-stone-600">
+              <div className="flex justify-between text-[10.5px] text-stone-600">
                 <span>Naqd (kuryer)</span>
                 <span>
                   {money(d.cashCollectedAmount)}
-                  {d.cashHandedOverAt ? ' ✅ kassada' : ' ⏳'}
+                  {d.cashHandedOverAt ? ' · kassada' : ' · kutilmoqda'}
                 </span>
               </div>
             )}
           </div>
 
-          {d.note && <p className="text-xs italic text-stone-500">✍️ {d.note}</p>}
+          {d.note && (
+            <p className="rounded-xl bg-amber-50 px-3 py-2 text-[11px] italic text-amber-800">
+              {d.note}
+            </p>
+          )}
 
           <div className="flex flex-wrap gap-2">
             {claimable && (
               <button
                 onClick={() => claim(d)}
                 disabled={busy}
-                className="flex flex-1 items-center justify-center gap-1.5 rounded-2xl bg-brand-600 py-2.5 text-xs font-bold text-white shadow-sm active:scale-[0.98] disabled:opacity-50 transition-all"
+                className="btn-primary flex-1 py-2.5 text-xs"
               >
                 {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <PackageCheck className="h-4 w-4" />}
                 Qabul qilish
@@ -185,7 +193,7 @@ export const DeliveryScreen: React.FC<Props> = ({ token, userId }) => {
               <button
                 onClick={() => advance(d, 'OUT_FOR_DELIVERY')}
                 disabled={busy}
-                className="flex flex-1 items-center justify-center gap-1.5 rounded-2xl bg-indigo-600 py-2.5 text-xs font-bold text-white shadow-sm active:scale-[0.98] disabled:opacity-50 transition-all"
+                className="btn-primary flex-1 py-2.5 text-xs"
               >
                 {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Truck className="h-4 w-4" />}
                 Yo‘lga chiqdim
@@ -195,22 +203,24 @@ export const DeliveryScreen: React.FC<Props> = ({ token, userId }) => {
               <button
                 onClick={() => openCash(d)}
                 disabled={busy}
-                className="flex flex-1 items-center justify-center gap-1.5 rounded-2xl bg-emerald-600 py-2.5 text-xs font-bold text-white shadow-sm active:scale-[0.98] disabled:opacity-50 transition-all"
+                className="btn-primary flex-1 py-2.5 text-xs"
               >
                 {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
                 Yetkazildi
               </button>
             )}
             {!claimable && !mine && d.assignedToId && (
-              <p className="text-[11px] text-stone-400">{d.assignedToName || 'Boshqa kuryerga'} biriktirilgan</p>
+              <p className="text-[11px] font-medium text-stone-400">
+                {d.assignedToName || 'Boshqa kuryerga'} biriktirilgan
+              </p>
             )}
           </div>
 
           {cashFor?.id === d.id && (
-            <div className="rounded-2xl border-2 border-emerald-200 bg-emerald-50 p-3">
+            <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-3.5">
               <p className="text-xs font-black text-emerald-900">Mijozdan olingan naqd pul</p>
-              <p className="mb-2 text-[11px] text-emerald-700">
-                Qoldiq: {money(d.outstandingAmount)} · kamida 0, ko‘pi bilan qoldiq
+              <p className="mb-2 text-[10.5px] text-emerald-700">
+                Qoldiq: {money(d.outstandingAmount)} · 0 dan qoldiqgacha kiriting
               </p>
               <input
                 type="number"
@@ -219,7 +229,7 @@ export const DeliveryScreen: React.FC<Props> = ({ token, userId }) => {
                 inputMode="numeric"
                 value={cashAmount}
                 onChange={(e) => setCashAmount(e.target.value.replace(/[^\d]/g, ''))}
-                className="w-full rounded-xl border border-emerald-200 bg-white px-3 py-2 text-sm font-bold text-stone-900 outline-none focus:border-emerald-500"
+                className="w-full rounded-xl border border-emerald-200 bg-white px-3 py-2.5 text-sm font-bold text-stone-900 outline-none focus:border-emerald-500"
                 placeholder="0"
               />
               <div className="mt-2 flex flex-wrap gap-2">
@@ -232,7 +242,7 @@ export const DeliveryScreen: React.FC<Props> = ({ token, userId }) => {
                     )
                   }
                   disabled={busy}
-                  className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-emerald-600 py-2 text-xs font-bold text-white active:scale-[0.98] disabled:opacity-50 transition-all"
+                  className="tap flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-emerald-600 py-2.5 text-xs font-bold text-white disabled:opacity-50"
                 >
                   {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
                   Tasdiqlash
@@ -240,13 +250,13 @@ export const DeliveryScreen: React.FC<Props> = ({ token, userId }) => {
                 <button
                   onClick={() => advance(d, 'DELIVERED', 0)}
                   disabled={busy}
-                  className="rounded-xl bg-white px-3 py-2 text-xs font-bold text-emerald-800 active:scale-[0.98] disabled:opacity-50 transition-all"
+                  className="tap rounded-xl bg-white px-3 py-2.5 text-xs font-bold text-emerald-800 disabled:opacity-50"
                 >
                   Naqdsiz
                 </button>
                 <button
                   onClick={() => setCashFor(null)}
-                  className="rounded-xl px-3 py-2 text-xs font-bold text-stone-500"
+                  className="tap rounded-xl px-3 py-2.5 text-xs font-bold text-stone-500"
                 >
                   Bekor
                 </button>
@@ -263,7 +273,7 @@ export const DeliveryScreen: React.FC<Props> = ({ token, userId }) => {
       <StaffHeader
         icon={Truck}
         title="Yetkazib berish"
-        subtitle={`${active.length} ta faol buyurtma · qabul qiling va naqd pulni kiriting`}
+        subtitle={`${active.length} ta faol buyurtma · naqd pulni kiriting`}
         tone="sky"
         onRefresh={() => fetchDeliveries()}
         loading={loading}
@@ -276,14 +286,16 @@ export const DeliveryScreen: React.FC<Props> = ({ token, userId }) => {
       )}
 
       {loading && active.length === 0 ? (
-        <div className="flex flex-col items-center gap-2 py-16 text-stone-400">
-          <Loader2 className="h-6 w-6 animate-spin" />
-          <p className="text-xs">Yuklanmoqda...</p>
+        <div className="surface flex flex-col items-center gap-2 py-16 text-stone-400">
+          <Loader2 className="h-6 w-6 animate-spin text-brand-500" />
+          <p className="text-xs font-semibold">Yuklanmoqda...</p>
         </div>
       ) : active.length === 0 ? (
-        <div className="rounded-3xl border border-dashed border-stone-300 bg-white/60 px-4 py-14 text-center">
-          <Truck className="mx-auto h-10 w-10 text-stone-300" />
-          <p className="mt-3 text-sm font-bold text-stone-600">Hozircha faol yetkazish yo‘q</p>
+        <div className="surface flex flex-col items-center px-4 py-14 text-center">
+          <div className="flex h-16 w-16 items-center justify-center rounded-3xl bg-sky-50">
+            <Truck className="h-7 w-7 text-sky-400" />
+          </div>
+          <p className="mt-3 text-sm font-black text-stone-700">Hozircha faol yetkazish yo‘q</p>
           <p className="mt-1 text-xs text-stone-400">Yangi buyurtmalar avtomatik paydo bo‘ladi.</p>
         </div>
       ) : (
@@ -292,9 +304,7 @@ export const DeliveryScreen: React.FC<Props> = ({ token, userId }) => {
 
       {done.length > 0 && (
         <div className="space-y-2">
-          <h3 className="px-1 text-xs font-black uppercase tracking-wider text-stone-400">
-            Yakunlangan
-          </h3>
+          <h3 className="section-kicker px-1">Yakunlangan</h3>
           <div className="space-y-3 opacity-80">{done.map(renderCard)}</div>
         </div>
       )}

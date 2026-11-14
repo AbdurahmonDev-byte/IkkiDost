@@ -9,7 +9,6 @@ import {
   LogOut,
   ReceiptText,
   Truck,
-  UserRound,
   UtensilsCrossed,
   Wallet,
 } from 'lucide-react';
@@ -296,12 +295,13 @@ export const App: React.FC = () => {
 
   if (booting) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-stone-50 text-stone-500">
-        <div className="flex h-14 w-14 items-center justify-center rounded-3xl bg-brand-600 text-2xl text-white shadow-lg shadow-brand-600/30">
+      <div className="app-shell flex min-h-screen flex-col items-center justify-center gap-4 text-stone-500">
+        <div className="relative flex h-16 w-16 items-center justify-center rounded-[22px] bg-gradient-to-br from-brand-500 to-brand-700 text-3xl shadow-xl shadow-brand-600/30">
           🫖
+          <span className="absolute inset-0 rounded-[22px] ring-1 ring-inset ring-white/25" />
         </div>
-        <div className="flex items-center gap-2 text-xs font-semibold">
-          <Loader2 className="h-4 w-4 animate-spin" /> Yuklanmoqda...
+        <div className="flex items-center gap-2 rounded-full bg-white/80 px-4 py-2 text-xs font-bold text-stone-600 shadow-sm">
+          <Loader2 className="h-4 w-4 animate-spin text-brand-600" /> Yuklanmoqda...
         </div>
       </div>
     );
@@ -315,102 +315,113 @@ export const App: React.FC = () => {
     (!customer || !customer.phoneVerified);
 
   return (
-    <div className="mx-auto min-h-screen max-w-xl px-4 pb-6 pt-4">
-      {/* Brand header */}
-      <header className="mb-3 flex items-center justify-between border-b border-stone-200/80 pb-3">
-        <div className="flex items-center gap-2">
-          <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-brand-600 text-lg font-black text-white shadow-md shadow-brand-600/30">
-            🫖
-          </div>
-          <div>
-            <h1 className="text-base font-black leading-tight text-stone-900">Ikki Do‘st</h1>
-            <p className="text-[11px] font-semibold text-brand-700">Choyxonasi</p>
-          </div>
-        </div>
-
-        {staffUser ? (
-          <div className="flex items-center gap-1.5">
-            <div className="flex items-center gap-1.5 rounded-2xl bg-stone-900 px-2.5 py-1.5 text-white">
-              <UserRound className="h-3.5 w-3.5 text-stone-300" />
-              <div className="leading-tight">
-                <p className="max-w-[110px] truncate text-[11px] font-black">
-                  {staffUser.fullName}
-                </p>
-                <p className="text-[9px] font-bold uppercase tracking-wide text-stone-400">
-                  {roleLabel[staffUser.role]}
+    <div className="app-shell">
+      <div className="mx-auto min-h-screen max-w-xl px-4 pb-10 pt-3">
+        {/* Brand header */}
+        <header className="sticky top-0 z-30 -mx-4 mb-4 border-b border-stone-200/50 bg-[#fdf9f2]/85 px-4 py-3 backdrop-blur-xl">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2.5">
+              <div className="relative flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-500 to-brand-700 text-xl shadow-lg shadow-brand-600/30">
+                <span>🫖</span>
+                <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-[#fdf9f2] bg-emerald-500" />
+              </div>
+              <div>
+                <h1 className="text-[17px] font-black leading-tight tracking-tight text-stone-900">
+                  Ikki Do‘st
+                </h1>
+                <p className="text-[9.5px] font-black uppercase tracking-[0.18em] text-brand-600">
+                  Choyxonasi
                 </p>
               </div>
             </div>
-            <button
-              onClick={handleLogout}
-              className="rounded-xl p-1.5 text-stone-400 transition-colors hover:bg-stone-100 hover:text-rose-600"
-              title="Chiqish"
-            >
-              <LogOut className="h-4 w-4" />
-            </button>
-          </div>
-        ) : (
-          <button
-            onClick={() => setIsStaffLoginOpen(true)}
-            className="flex items-center gap-1.5 rounded-2xl bg-stone-100 px-3 py-1.5 text-xs font-bold text-stone-700 transition-all hover:bg-stone-200 active:scale-95"
-          >
-            <Lock className="h-3.5 w-3.5" />
-            <span>Xodimlar</span>
-          </button>
-        )}
-      </header>
 
-      {/* Staff tabs */}
-      {staffUser && tabs.length > 0 && (
-        <>
-          <nav className="no-scrollbar -mx-1 flex gap-1.5 overflow-x-auto rounded-2xl border border-stone-200/80 bg-white p-1.5 text-xs font-bold shadow-sm">
-            {tabs.map((tab) => {
-              const Icon = tab.icon;
-              const active = activeTab === tab.id;
-              return (
+            {staffUser ? (
+              <div className="flex items-center gap-1">
+                <div className="flex items-center gap-2 rounded-2xl border border-stone-200/70 bg-white/90 py-1.5 pl-1.5 pr-3 shadow-sm">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-stone-800 to-stone-950 text-[11px] font-black text-white">
+                    {staffUser.fullName.slice(0, 1).toUpperCase()}
+                  </div>
+                  <div className="leading-tight">
+                    <p className="max-w-[96px] truncate text-[11px] font-black text-stone-900">
+                      {staffUser.fullName}
+                    </p>
+                    <p className="text-[9px] font-bold uppercase tracking-wide text-brand-600">
+                      {roleLabel[staffUser.role]}
+                    </p>
+                  </div>
+                </div>
                 <button
-                  key={tab.id}
-                  onClick={() => {
-                    tg.selection();
-                    setActiveTab(tab.id);
-                  }}
-                  className={`flex shrink-0 items-center gap-1.5 rounded-xl px-3 py-2 transition-all ${
-                    active
-                      ? 'bg-stone-900 text-white shadow-md'
-                      : 'text-stone-600 hover:bg-stone-100 hover:text-stone-900'
-                  }`}
+                  onClick={handleLogout}
+                  className="tap rounded-xl p-2 text-stone-400 transition-colors hover:bg-white hover:text-rose-600"
+                  title="Chiqish"
                 >
-                  <Icon className="h-3.5 w-3.5" />
-                  {tab.label}
+                  <LogOut className="h-4 w-4" />
                 </button>
-              );
-            })}
-          </nav>
-          <div className="mb-4 mt-2 flex items-start gap-2 rounded-2xl border border-brand-100 bg-brand-50/80 px-3 py-2 text-[11px] font-medium leading-relaxed text-brand-900">
-            <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-brand-600" />
-            <span>
-              {staffUser.role === 'OWNER' && activeTab === 'customer'
-                ? 'Ega rejimidasiz. “Ega” tabidan xodimlar, menyu va hisobotlarni boshqaring.'
-                : tabHint[activeTab]}
-            </span>
+              </div>
+            ) : (
+              <button
+                onClick={() => setIsStaffLoginOpen(true)}
+                className="tap flex items-center gap-1.5 rounded-2xl border border-stone-200/80 bg-white/90 px-3 py-2 text-xs font-bold text-stone-700 shadow-sm hover:bg-white"
+              >
+                <Lock className="h-3.5 w-3.5 text-brand-600" />
+                <span>Xodimlar</span>
+              </button>
+            )}
           </div>
-        </>
-      )}
+        </header>
 
-      {error && (
-        <div className="mb-3 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-xs font-medium text-rose-700">
-          {error}
-        </div>
-      )}
+        {/* Staff tabs */}
+        {staffUser && tabs.length > 0 && (
+          <div className="mb-4 space-y-2">
+            <nav className="no-scrollbar -mx-1 flex gap-1.5 overflow-x-auto px-1 py-0.5">
+              {tabs.map((tab) => {
+                const Icon = tab.icon;
+                const active = activeTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => {
+                      tg.selection();
+                      setActiveTab(tab.id);
+                    }}
+                    className={`tap flex shrink-0 items-center gap-1.5 rounded-2xl px-3.5 py-2.5 text-xs font-bold ${
+                      active
+                        ? 'bg-gradient-to-br from-brand-500 to-brand-700 text-white shadow-lg shadow-brand-600/25'
+                        : 'border border-stone-200/70 bg-white/80 text-stone-600 shadow-sm hover:bg-white hover:text-stone-900'
+                    }`}
+                  >
+                    <Icon className="h-3.5 w-3.5" />
+                    {tab.label}
+                  </button>
+                );
+              })}
+            </nav>
+            <div className="flex items-start gap-2 rounded-2xl border border-brand-200/60 bg-brand-50/70 px-3 py-2.5 text-[11px] font-medium leading-relaxed text-brand-900">
+              <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-brand-600" />
+              <span>
+                {staffUser.role === 'OWNER' && activeTab === 'customer'
+                  ? 'Ega rejimidasiz. “Ega” tabidan xodimlar, menyu va hisobotlarni boshqaring.'
+                  : tabHint[activeTab]}
+              </span>
+            </div>
+          </div>
+        )}
 
-      {!telegramAvailable && activeTab === 'customer' && (
-        <div className="mb-3 rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3 text-xs font-medium text-sky-800">
-          Buyurtma berish uchun Mini App’ni Telegram orqali oching. Brauzerda faqat menyuni
-          ko‘rish mumkin.
-        </div>
-      )}
+        {error && (
+          <div className="mb-3 flex items-start gap-2 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs font-medium text-rose-700">
+            <Info className="mt-0.5 h-4 w-4 shrink-0" />
+            <span>{error}</span>
+          </div>
+        )}
 
-      <main>
+        {!telegramAvailable && activeTab === 'customer' && (
+          <div className="mb-3 rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3 text-xs font-medium text-sky-800">
+            Buyurtma berish uchun Mini App’ni Telegram orqali oching. Brauzerda faqat menyuni
+            ko‘rish mumkin.
+          </div>
+        )}
+
+        <main>
         {activeTab === 'customer' &&
           (registrationNeeded ? (
             <RegistrationScreen
@@ -516,12 +527,13 @@ export const App: React.FC = () => {
       {customer && activeOrder && !staffUser && (
         <button
           onClick={() => setReceiptOrder(activeOrder)}
-          className="fixed bottom-24 right-4 z-30 flex h-11 w-11 items-center justify-center rounded-full bg-stone-900 text-white shadow-xl active:scale-95 transition-all"
+          className="tap fixed bottom-24 right-4 z-30 flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-500 to-brand-700 text-white shadow-xl shadow-brand-700/30"
           title="Elektron chek"
         >
           <ReceiptText className="h-5 w-5" />
         </button>
       )}
+      </div>
     </div>
   );
 };
