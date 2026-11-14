@@ -17,7 +17,6 @@ export const StaffLoginModal: React.FC<Props> = ({
   onLoginSuccess,
   telegramAvailable = false,
 }) => {
-  const [ownerBootstrap, setOwnerBootstrap] = useState(false);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -25,7 +24,6 @@ export const StaffLoginModal: React.FC<Props> = ({
 
   useEffect(() => {
     if (isOpen) {
-      setOwnerBootstrap(false);
       setError(null);
     }
   }, [isOpen]);
@@ -69,12 +67,10 @@ export const StaffLoginModal: React.FC<Props> = ({
             </div>
             <div>
               <h3 className="text-sm font-black">
-                {telegramAvailable && !ownerBootstrap ? 'Telegram ID orqali kirish' : 'Egasi kirishi'}
+                {telegramAvailable ? 'Telegram ID orqali kirish' : 'Xodimlar kirishi'}
               </h3>
               <p className="text-[11px] text-stone-400">
-                {telegramAvailable && !ownerBootstrap
-                  ? 'Xodim ID sini egasi biriktiradi'
-                  : 'Faqat egasi uchun'}
+                {telegramAvailable ? 'Telegram orqali avtomatik kirish' : 'Login va parol'}
               </p>
             </div>
           </div>
@@ -83,23 +79,17 @@ export const StaffLoginModal: React.FC<Props> = ({
           </button>
         </div>
 
-        {telegramAvailable && !ownerBootstrap ? (
+        {telegramAvailable ? (
           <div className="space-y-3 p-4">
             <div className="rounded-2xl border border-sky-200 bg-sky-50 p-4 text-sm text-sky-950">
               <p className="font-bold">Xodimlar parol bilan kirmaydi</p>
               <p className="mt-1 text-xs leading-relaxed">
-                Telegram ID’ingiz: <strong>{tg.user?.id ?? 'aniqlanmadi'}</strong>. Shu ID’ni egasiga yuboring;
-                owner uni Xodimlar bo‘limida rolingizga biriktirgach, ilovani qayta oching.
+                Telegram ID’ingiz: <strong>{tg.user?.id ?? 'aniqlanmadi'}</strong>. Agar egasi sizning ID’ingizni
+                ro‘yxatga biriktirgan bo‘lsa, ilova avtomatik kiradi. “Egasi” tabini tanlaganda owner paneli
+                ochiladi, qo‘shimcha parol so‘ralmaydi.
               </p>
             </div>
-            <button
-              type="button"
-              onClick={() => setOwnerBootstrap(true)}
-              className="w-full rounded-2xl bg-stone-900 py-3 text-sm font-bold text-white"
-            >
-              Egasi uchun birinchi sozlash
-            </button>
-            <button type="button" onClick={onClose} className="w-full py-2 text-xs font-bold text-stone-500">
+            <button type="button" onClick={onClose} className="w-full rounded-2xl bg-stone-900 py-3 text-sm font-bold text-white">
               Yopish
             </button>
           </div>
@@ -111,11 +101,6 @@ export const StaffLoginModal: React.FC<Props> = ({
             }}
             className="space-y-3 p-4"
           >
-            {telegramAvailable && (
-              <p className="rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-900">
-                Bu faqat egasi hisobini birinchi marta sozlash uchun. Xodimlar Telegram ID orqali kiradi.
-              </p>
-            )}
             <div className="flex items-center gap-2 rounded-2xl border border-stone-200 bg-stone-50 px-3.5 py-3 focus-within:border-brand-400 focus-within:bg-white">
               <User className="h-4 w-4 text-stone-400" />
               <input
