@@ -19,6 +19,7 @@ import { menuImageFor } from '../lib/menuImages';
 import { tg } from '../lib/telegram';
 import type { Category, DeliveryDto, MeasurementUnit, OrderDto, PaymentDto, PaymentMethod, Product, Room } from '../lib/types';
 import { StaffHeader } from './StaffHeader';
+import { WeeklyFinanceChart, type FinanceDay } from './WeeklyFinanceChart';
 
 type CashierView = 'overview' | 'orders' | 'rooms' | 'menu' | 'payments' | 'handover';
 type PaymentTarget = { id: string; label: string; outstanding: number; sessionId?: string };
@@ -35,9 +36,11 @@ interface DashboardData {
   activeRooms: number;
   activeDineInOrders: number;
   activeDeliveryOrders: number;
+  todayExpenses: number;
   todayCostOfGoods: number;
   todayProfit: number;
   unpaidOutstanding: number;
+  revenueByDay: FinanceDay[];
 }
 
 const views: Array<{ id: CashierView; label: string; icon: typeof BarChart3 }> = [
@@ -315,9 +318,18 @@ export const CashierScreen: React.FC<Props> = ({ token, onShowReceipt, onMenuCha
               <div className="grid grid-cols-2 gap-2.5">
                 <Metric label="Bugungi tushum" value={money(dashboard?.todayRevenue ?? 0)} tone="emerald" />
                 <Metric label="Sof foyda" value={money(dashboard?.todayProfit ?? 0)} tone="blue" />
+                <Metric label="Bugungi chiqim" value={money(dashboard?.todayExpenses ?? 0)} tone="rose" />
+                <Metric label="Mahsulot tannarxi" value={money(dashboard?.todayCostOfGoods ?? 0)} />
                 <Metric label="Faol buyurtma" value={String(activeOrders.length)} />
                 <Metric label="Ochiq qarz" value={money(roomOutstanding + deliveryOutstanding)} tone="rose" />
               </div>
+              <section className="surface p-4">
+                <div className="mb-3">
+                  <h3 className="text-[13px] font-black text-stone-100">Kirim, chiqim va foyda</h3>
+                  <p className="mt-0.5 text-[10px] font-medium text-stone-400">Oxirgi 7 kun · kunlik</p>
+                </div>
+                <WeeklyFinanceChart data={dashboard?.revenueByDay ?? []} />
+              </section>
               <div className="surface divide-y divide-stone-100 dark:divide-stone-800">
                 <OverviewRow label="Faol xonalar" value={`${rooms.filter((room) => room.activeSession).length} / ${rooms.length}`} />
                 <OverviewRow label="Zal buyurtmalari" value={String(dashboard?.activeDineInOrders ?? 0)} />

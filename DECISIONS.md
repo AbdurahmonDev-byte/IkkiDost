@@ -240,8 +240,13 @@
 - **Decision:** Use a dark, editorial food-menu theme with a featured dish, gold accents and compact dish tiles. Bundle locally stored photos keyed by the exact seeded product names; user-uploaded product images remain higher priority. Commons image credits and licenses are listed in `apps/mini-app/public/menu/ATTRIBUTION.md`; Unsplash images use the Unsplash License. No alternate-brand image is assigned to Flesh because no reusable exact-match photo was found.
 - **Consequences:** The customer menu works without remote image hotlinks; newly added products can still use their uploaded image or the neutral fallback until a matching photo is assigned.
 
-## ADR-028: Telegram-synced dark mode across the Mini App
-- **Context:** Only the customer menu had a dark culinary design; staff panels, owner/cashier workspaces and every modal were light-only, which was uncomfortable inside Telegram's dark theme.
-- **Decision:** Tailwind uses `darkMode: 'class'` with `.dark` on `<html>`. The theme resolves from a manual choice in `localStorage` (`ikki_dost_theme`) first, then Telegram's `colorScheme`, then the system preference; it is applied before first paint in `main.tsx` and follows Telegram's `themeChanged` event until the user picks a theme. Shared building blocks (`.surface`, `.field`, `.btn-secondary`, `.app-shell`) get dark overrides in `index.css`; individual screens add explicit `dark:` utilities. The customer menu keeps its always-dark culinary look in both themes, and the printable receipt paper stays light while only its shell is themed.
-- **Consequences:** No global palette remap, so white-on-dark badges and gradients keep working. New UI must add its own `dark:` variants; a scripted checker in the repo workflow (and contrast audit) verifies coverage. Telegram header/background colors are synced where the client supports it.
+## ADR-028: Dark-only Mini App
+- **Context:** The Mini App is used as a restaurant floor/kitchen tool and a dark-only interface is preferred; a light theme is not used.
+- **Decision:** Tailwind uses `darkMode: 'class'`; `.dark` is present on `<html>` in `index.html` and `applyTheme()` enforces it before first paint. There is no light-theme toggle or system-preference switching. Shared surfaces and controls use dark colors; screens use dark-compatible utility classes. Printable receipt paper remains white only in print output for legibility.
+- **Consequences:** All new Mini App screens must be authored and checked in dark mode. Telegram header/background colors are set to matching dark surfaces where supported.
+
+## ADR-029: Finance charts in cashier overview
+- **Context:** Cashiers need to monitor daily money movement, not only individual payment records.
+- **Decision:** The cashier overview reuses `WeeklyFinanceChart` to display seven-day revenue, expenses, and profit; its totals and tooltips use the same report API values as the owner dashboard. Today's expenses and product cost remain visible as separate metrics.
+- **Consequences:** Owner and cashier see the same finance definitions; profit remains revenue minus expenses and sold-item cost.
 

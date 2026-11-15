@@ -1,8 +1,7 @@
 # PROJECT STATUS
 
-Last updated: 2026-11-15 — Full dark mode across every Mini App screen (staff
-panels, modals, receipts shell) with Telegram color-scheme sync and a manual
-sun/moon toggle, on top of cashier admin access, all-order visibility, room and
+Last updated: 2026-11-15 — Dark-only Mini App with cashier revenue/expense/profit
+charts, on top of cashier admin access, all-order visibility, room and
 catalog management, product cost snapshots, net-profit KPIs, printable cashier
 receipts, the dark customer-menu design and locally bundled product photos. Delivery-address capture (bot location prompt, saved
 customer address, Mini App prefill), courier cash collection with cashier
