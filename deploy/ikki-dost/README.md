@@ -30,6 +30,23 @@ docker compose -f deploy/ikki-dost/compose.yaml --env-file deploy/ikki-dost/.env
 Seed only once on a new database. The owner login name is `owner`; the owner
 password is the value of `SEED_OWNER_PASSWORD`.
 
+## Deploy updates
+
+After pulling a new commit, rebuild and recreate the API container. The Mini
+App is built into this image, so restarting an existing container without
+`--build` leaves the previous frontend bundle in place:
+
+```sh
+git pull --ff-only
+docker compose -f deploy/ikki-dost/compose.yaml --env-file deploy/ikki-dost/.env up -d --build --force-recreate api
+docker compose -f deploy/ikki-dost/compose.yaml --env-file deploy/ikki-dost/.env ps
+curl -fsSI https://ikkidost.abitcore.uz/ | grep -i cache-control
+```
+
+The Mini App HTML entrypoint is sent with `no-store`; content-hashed JS/CSS
+assets are immutable and can be cached safely. The standalone admin-web is not
+included in this API image and requires its own deployment target if used.
+
 ## HTTPS proxy
 
 The deploy process first copies `nginx-http.conf` to

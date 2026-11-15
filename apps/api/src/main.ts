@@ -53,7 +53,18 @@ async function bootstrap() {
   const miniAppDir = path.resolve(process.cwd(), process.env.MINI_APP_DIR || '../mini-app/dist');
   const miniAppIndex = path.join(miniAppDir, 'index.html');
   if (nodeFs.existsSync(miniAppIndex)) {
-    app.use(express.static(miniAppDir, { maxAge: '1h', index: 'index.html' }));
+    app.use(
+      express.static(miniAppDir, {
+        maxAge: '1y',
+        immutable: true,
+        index: 'index.html',
+        setHeaders: (res: { setHeader: (name: string, value: string) => void }, filePath: string) => {
+          if (filePath === miniAppIndex) {
+            res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+          }
+        },
+      }),
+    );
     app.use((req: { method: string; path: string }, res: { sendFile: (file: string) => void }, next: () => void) => {
       if (req.method !== 'GET' || req.path.startsWith(`/${apiPrefix}`) || req.path.startsWith('/uploads')) {
         return next();
