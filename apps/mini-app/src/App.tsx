@@ -7,23 +7,13 @@ import {
   Loader2,
   Lock,
   LogOut,
-  Moon,
   ReceiptText,
-  Sun,
   Truck,
   UtensilsCrossed,
   Wallet,
 } from 'lucide-react';
 import { api } from './lib/api';
 import { tg } from './lib/telegram';
-import {
-  applyTheme,
-  detectTheme,
-  getStoredTheme,
-  persistTheme,
-  resolveTheme,
-  type Theme,
-} from './lib/theme';
 import type {
   CartItem,
   Category,
@@ -126,34 +116,6 @@ export const App: React.FC = () => {
   const [booting, setBooting] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const bootRan = useRef(false);
-
-  const [theme, setTheme] = useState<Theme>(() => resolveTheme());
-
-  useEffect(() => {
-    applyTheme(theme);
-  }, [theme]);
-
-  // Follow Telegram's light/dark switch until the user picks a theme manually.
-  useEffect(() => {
-    const app = tg.app;
-    if (!app) return;
-    const { onEvent, offEvent } = app;
-    if (!onEvent) return;
-    const sync = () => {
-      if (!getStoredTheme()) setTheme(detectTheme());
-    };
-    onEvent.call(app, 'themeChanged', sync);
-    return () => {
-      offEvent?.call(app, 'themeChanged', sync);
-    };
-  }, []);
-
-  const toggleTheme = () => {
-    const next: Theme = theme === 'dark' ? 'light' : 'dark';
-    persistTheme(next);
-    setTheme(next);
-    tg.selection();
-  };
 
   const telegramAvailable = Boolean(tg.app?.initData);
 
@@ -374,20 +336,6 @@ export const App: React.FC = () => {
             </div>
 
             <div className="flex items-center gap-1">
-              <button
-                type="button"
-                onClick={toggleTheme}
-                className={`tap rounded-xl p-2 transition-colors ${
-                  activeTab === 'customer' && !registrationNeeded
-                    ? 'text-white/65 hover:bg-white/10 hover:text-white'
-                    : 'border border-stone-200/80 dark:border-stone-800/80 bg-white/90 dark:bg-stone-900/90 text-stone-600 dark:text-stone-300 hover:bg-white dark:hover:bg-stone-800'
-                }`}
-                title={theme === 'dark' ? 'Yorug‘ rejim' : 'Tungi rejim'}
-                aria-label="Mavzuni almashtirish"
-              >
-                {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-              </button>
-
               {staffUser ? (
                 <>
                   <div className={`flex items-center gap-2 rounded-2xl border py-1.5 pl-1.5 pr-3 shadow-sm ${activeTab === 'customer' && !registrationNeeded ? 'border-white/10 bg-white/5' : 'border-stone-200/70 dark:border-stone-800/70 bg-white/90 dark:bg-stone-900/90'}`}>

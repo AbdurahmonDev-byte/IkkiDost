@@ -24,6 +24,7 @@ import { money, qty } from '../lib/format';
 import { tg } from '../lib/telegram';
 import type { Category, MeasurementUnit, Product, Role } from '../lib/types';
 import { StaffHeader } from './StaffHeader';
+import { WeeklyFinanceChart, type FinanceDay } from './WeeklyFinanceChart';
 
 interface Props {
   token: string;
@@ -38,8 +39,12 @@ interface Stats {
   activeDineInOrders: number;
   activeDeliveryOrders: number;
   paidToday: number;
+  todayExpenses: number;
+  todayCostOfGoods: number;
+  todayProfit: number;
   unpaidOutstanding: number;
   popularProducts: Array<{ productName: string; quantity: string; revenue: number }>;
+  revenueByDay: FinanceDay[];
 }
 
 interface EmployeeAccess {
@@ -448,6 +453,60 @@ export const OwnerScreen: React.FC<Props> = ({ token, onMenuChanged }) => {
               </div>
             </div>
           </div>
+
+          <div className="grid grid-cols-3 gap-2">
+            {[
+              {
+                label: 'Bugungi kirim',
+                value: stats ? money(stats.todayRevenue) : '—',
+                tone: 'border-emerald-400/25 bg-emerald-400/10 text-emerald-300',
+              },
+              {
+                label: 'Bugungi chiqim',
+                value: stats ? money(stats.todayExpenses) : '—',
+                tone: 'border-rose-400/25 bg-rose-400/10 text-rose-300',
+              },
+              {
+                label: 'Bugungi foyda',
+                value: stats ? money(stats.todayProfit) : '—',
+                tone:
+                  stats && stats.todayProfit < 0
+                    ? 'border-rose-400/25 bg-rose-400/10 text-rose-300'
+                    : 'border-brand-400/25 bg-brand-400/10 text-brand-200',
+              },
+            ].map((card) => (
+              <div key={card.label} className={`rounded-2xl border px-2.5 py-2.5 ${card.tone}`}>
+                <p className="text-[9px] font-black uppercase leading-tight tracking-wide opacity-80">
+                  {card.label}
+                </p>
+                <p className="mt-1 text-[11.5px] font-black leading-tight tabular-nums">{card.value}</p>
+              </div>
+            ))}
+          </div>
+
+          {stats && (
+            <div className="surface p-4">
+              <div className="flex items-start justify-between gap-2 px-0.5">
+                <div>
+                  <h3 className="text-[13px] font-black text-stone-900 dark:text-stone-100">
+                    Kirim, chiqim va foyda
+                  </h3>
+                  <p className="mt-0.5 text-[10.5px] font-medium text-stone-500 dark:text-stone-400">
+                    Oxirgi 7 kun · kunlik ko‘rsatkich
+                  </p>
+                </div>
+                <span className="chip bg-brand-50 dark:bg-brand-400/10 text-brand-700 dark:text-brand-200">
+                  7 kun
+                </span>
+              </div>
+              <div className="mt-3">
+                <WeeklyFinanceChart data={stats.revenueByDay} />
+              </div>
+              <p className="mt-2 text-[9.5px] leading-relaxed text-stone-500 dark:text-stone-400">
+                Foyda = kirim − chiqim − mahsulot tannarxi.
+              </p>
+            </div>
+          )}
 
           <div className="grid grid-cols-2 gap-3">
             {[

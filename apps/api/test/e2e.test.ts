@@ -805,6 +805,11 @@ describe('Reports & dashboard', () => {
     expect(typeof res.body.todayProfit).toBe('number');
     expect(typeof res.body.serviceFeeRevenueToday).toBe('number');
     expect(Array.isArray(res.body.revenueByDay)).toBe(true);
+    expect(res.body.revenueByDay).toHaveLength(7);
+    for (const day of res.body.revenueByDay) {
+      expect(typeof day.costOfGoods).toBe('number');
+      expect(day.profit).toBe(day.revenue - day.expenses - day.costOfGoods);
+    }
   });
 
   it('summary report subtracts expenses and product cost from revenue', async () => {

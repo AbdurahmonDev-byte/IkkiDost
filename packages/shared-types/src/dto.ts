@@ -256,7 +256,7 @@ export interface DashboardSummaryDto {
   todayExpenses: Uzs;
   popularProducts: Array<{ productName: string; quantity: string; revenue: Uzs }>;
   recentActivity: AuditLogDto[];
-  revenueByDay: Array<{ date: string; revenue: Uzs; expenses: Uzs }>;
+  revenueByDay: Array<{ date: string; revenue: Uzs; expenses: Uzs; costOfGoods: Uzs; profit: Uzs }>;
 }
 
 export interface ReportDto {

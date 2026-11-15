@@ -279,8 +279,9 @@ Changing the config never modifies existing orders.
 | GET | `/reports/summary` | `from`, `to` (ISO dates) |
 
 Report profit is paid revenue minus expenses and sold-item cost snapshots
-(`costOfGoods`). The dashboard also returns today's `todayCostOfGoods` and
-`todayProfit`.
+(`costOfGoods`). The dashboard also returns today's `todayExpenses`,
+`todayCostOfGoods` and `todayProfit`, plus `revenueByDay` — the last seven days
+with `revenue`, `expenses`, `costOfGoods` and `profit` per day.
 
 ### Audit (OWNER, CASHIER)
 

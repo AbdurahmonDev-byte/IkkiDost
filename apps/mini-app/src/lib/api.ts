@@ -290,8 +290,17 @@ export const api = {
       paidToday: number;
       todayCostOfGoods: number;
       todayProfit: number;
+      todayExpenses: number;
+      serviceFeeRevenueToday: number;
       unpaidOutstanding: number;
       popularProducts: Array<{ productName: string; quantity: string; revenue: number }>;
+      revenueByDay: Array<{
+        date: string;
+        revenue: number;
+        expenses: number;
+        costOfGoods: number;
+        profit: number;
+      }>;
     }>('/reports/dashboard', { method: 'GET' }, token),
 
   // ===== Owner: menu management =====

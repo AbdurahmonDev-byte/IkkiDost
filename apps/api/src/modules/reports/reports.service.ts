@@ -18,7 +18,8 @@ export class ReportsService {
 
   async dashboard(): Promise<DashboardSummaryDto> {
     const today = startOfDay(new Date());
-    const [todayPayments, todayOrders, activeRooms, activeDineIn, activeDelivery, openSessions, todayFeeOrders, todayExpenses, topProducts, recentActivity, weekPayments, weekExpenses, todayCostOfGoods] =
+    const weekStart = new Date(today.getTime() - 6 * 86400_000);
+    const [todayPayments, todayOrders, activeRooms, activeDineIn, activeDelivery, openSessions, todayFeeOrders, todayExpenses, topProducts, recentActivity, weekPayments, weekExpenses, weekCosts, todayCostOfGoods] =
       await Promise.all([
         this.prisma.payment.aggregate({ where: { createdAt: { gte: today }, reversedAt: null }, _sum: { amount: true } }),
         this.prisma.order.count({ where: { createdAt: { gte: today }, status: { not: 'CANCELLED' } } }),
@@ -36,8 +37,12 @@ export class ReportsService {
           take: 5,
         }),
         this.audit.findAll(10),
-        this.prisma.payment.findMany({ where: { createdAt: { gte: new Date(today.getTime() - 6 * 86400_000) }, reversedAt: null }, select: { amount: true, createdAt: true } }),
-        this.prisma.expense.findMany({ where: { spentAt: { gte: new Date(today.getTime() - 6 * 86400_000) } }, select: { amount: true, spentAt: true } }),
+        this.prisma.payment.findMany({ where: { createdAt: { gte: weekStart }, reversedAt: null }, select: { amount: true, createdAt: true } }),
+        this.prisma.expense.findMany({ where: { spentAt: { gte: weekStart } }, select: { amount: true, spentAt: true } }),
+        this.prisma.orderItem.findMany({
+          where: { createdAt: { gte: weekStart }, status: { not: 'CANCELLED' } },
+          select: { costTotal: true, createdAt: true },
+        }),
         this.prisma.orderItem.aggregate({
           where: { createdAt: { gte: today }, status: { not: 'CANCELLED' } },
           _sum: { costTotal: true },
@@ -49,10 +54,10 @@ export class ReportsService {
     const costTotal = todayCostOfGoods._sum.costTotal ?? 0;
     const unpaidOutstanding = openSessions.reduce((s, x) => s + (x.totalAmount - x.paidAmount), 0);
 
-    const byDay = new Map<string, { revenue: number; expenses: number }>();
+    const byDay = new Map<string, { revenue: number; expenses: number; costOfGoods: number }>();
     for (let i = 6; i >= 0; i--) {
       const d = startOfDay(new Date(today.getTime() - i * 86400_000)).toISOString().slice(0, 10);
-      byDay.set(d, { revenue: 0, expenses: 0 });
+      byDay.set(d, { revenue: 0, expenses: 0, costOfGoods: 0 });
     }
     for (const p of weekPayments) {
       const key = startOfDay(p.createdAt).toISOString().slice(0, 10);
@@ -63,6 +68,11 @@ export class ReportsService {
       const key = startOfDay(e.spentAt).toISOString().slice(0, 10);
       const cur = byDay.get(key);
       if (cur) cur.expenses += e.amount;
+    }
+    for (const item of weekCosts) {
+      const key = startOfDay(item.createdAt).toISOString().slice(0, 10);
+      const cur = byDay.get(key);
+      if (cur) cur.costOfGoods += item.costTotal;
     }
 
     return {
@@ -79,7 +89,11 @@ export class ReportsService {
       todayExpenses: expenseTotal,
       popularProducts: topProducts.map((p) => ({ productName: p.productName, quantity: String(p._sum.quantity ?? 0), revenue: p._sum.lineTotal ?? 0 })),
       recentActivity,
-      revenueByDay: [...byDay.entries()].map(([date, v]) => ({ date, ...v })),
+      revenueByDay: [...byDay.entries()].map(([date, v]) => ({
+        date,
+        ...v,
+        profit: v.revenue - v.expenses - v.costOfGoods,
+      })),
     };
   }
 
