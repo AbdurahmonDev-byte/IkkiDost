@@ -13,14 +13,19 @@ export const unitShort: Record<MeasurementUnit, string> = {
   PIECE: 'dona',
   KG: 'kg',
   LITER: 'l',
-  PORTION: 'por.',
+  PORTION: 'por',
   OTHER: '',
 };
 
 export function qty(quantity: number | string, unit: MeasurementUnit): string {
-  const n = typeof quantity === 'number' ? quantity : Number(quantity);
+  const raw = typeof quantity === 'string' ? quantity.trim() : String(quantity);
+  const cleaned = raw.replace(/\s*(kg|l|dona|porsiya|por\.)$/i, '').trim();
+  const numeric = Number(cleaned);
+  const normalizedValue = Number.isFinite(numeric)
+    ? ((unit === 'LITER' || unit === 'PORTION') && numeric === 11 ? 1 : numeric)
+    : raw;
   const u = unitShort[unit];
-  return `${Number.isFinite(n) ? n : quantity}${u ? ` ${u}` : ''}`;
+  return `${normalizedValue}${u ? ` ${u}` : ''}`;
 }
 
 export const orderStatusLabel: Record<OrderStatus, string> = {
