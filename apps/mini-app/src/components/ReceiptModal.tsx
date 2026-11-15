@@ -28,26 +28,26 @@ export const ReceiptModal: React.FC<Props> = ({ order, onClose }) => {
 
   return (
     <div className="receipt-overlay fixed inset-0 z-[60] flex items-end justify-center bg-stone-950/55 p-0 backdrop-blur-sm sm:items-center sm:p-4">
-      <div className="flex max-h-[92vh] w-full max-w-md flex-col overflow-hidden rounded-t-[30px] bg-[#fffdfa] shadow-2xl animate-rise sm:rounded-[30px]">
-        <div className="receipt-no-print relative overflow-hidden border-b border-stone-100 px-4 py-3.5">
-          <div className="pointer-events-none absolute -right-10 -top-16 h-32 w-32 rounded-full bg-emerald-200/50 blur-2xl" />
+      <div className="flex max-h-[92vh] w-full max-w-md flex-col overflow-hidden rounded-t-[30px] bg-[#fffdfa] dark:bg-[#151311] shadow-2xl animate-rise sm:rounded-[30px]">
+        <div className="receipt-no-print relative overflow-hidden border-b border-stone-100 dark:border-stone-800 px-4 py-3.5">
+          <div className="pointer-events-none absolute -right-10 -top-16 h-32 w-32 rounded-full bg-emerald-200/50 dark:bg-emerald-400/10 blur-2xl" />
           <div className="relative flex items-center justify-between gap-3">
             <div className="flex min-w-0 items-center gap-3">
               <div className="icon-tile bg-gradient-to-br from-emerald-500 to-teal-700 text-white shadow-lg shadow-emerald-600/30">
                 <ReceiptText className="h-5 w-5" />
               </div>
               <div className="min-w-0">
-                <h3 className="truncate text-[16px] font-black leading-tight text-stone-900">
+                <h3 className="truncate text-[16px] font-black leading-tight text-stone-900 dark:text-stone-100">
                   Elektron chek
                 </h3>
-                <p className="truncate text-[11.5px] font-medium text-stone-500">
+                <p className="truncate text-[11.5px] font-medium text-stone-500 dark:text-stone-400">
                   Buyurtma #{order.orderNumber} · {orderStatusLabel[order.status]}
                 </p>
               </div>
             </div>
             <button
               onClick={onClose}
-              className="tap shrink-0 rounded-2xl border border-stone-200/80 bg-white p-2.5 text-stone-400 shadow-sm hover:text-stone-700"
+              className="tap shrink-0 rounded-2xl border border-stone-200/80 dark:border-stone-800/80 bg-white dark:bg-stone-900 p-2.5 text-stone-500 shadow-sm hover:text-stone-700 dark:hover:text-stone-300"
               aria-label="Yopish"
             >
               <X className="h-4 w-4" />
@@ -55,7 +55,7 @@ export const ReceiptModal: React.FC<Props> = ({ order, onClose }) => {
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto bg-[#f6f1e8] p-3 sm:p-4">
+        <div className="flex-1 overflow-y-auto bg-[#f6f1e8] dark:bg-[#100e0c] p-3 sm:p-4">
           <div className="receipt-print mx-auto max-w-[330px] rounded-sm bg-white p-5 font-mono text-[11px] leading-relaxed text-stone-900 shadow-[0_10px_30px_-18px_rgba(60,40,20,0.6)]">
             <div className="text-center">
               <div className="mx-auto mb-2 flex h-11 w-11 items-center justify-center rounded-full bg-stone-900 text-lg text-white">
@@ -158,13 +158,13 @@ export const ReceiptModal: React.FC<Props> = ({ order, onClose }) => {
             <p className="text-center text-[10px] font-bold text-stone-700">
               Tashrifingiz uchun rahmat!
             </p>
-            <p className="mt-1 text-center text-[9px] text-stone-400">
+            <p className="mt-1 text-center text-[9px] text-stone-500">
               Bu chek elektron shaklda berilgan.
             </p>
           </div>
         </div>
 
-        <div className="receipt-no-print grid grid-cols-2 gap-2 border-t border-stone-100 bg-[#fffdfa] p-4 pb-safe">
+        <div className="receipt-no-print grid grid-cols-2 gap-2 border-t border-stone-100 dark:border-stone-800 bg-[#fffdfa] dark:bg-[#151311] p-4 pb-safe">
           <button onClick={onClose} className="btn-secondary py-3">
             <CheckCircle2 className="h-4 w-4 text-emerald-600" /> Yopish
           </button>

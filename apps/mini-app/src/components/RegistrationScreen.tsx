@@ -112,19 +112,19 @@ export const RegistrationScreen: React.FC<Props> = ({
               <User className="h-5 w-5" />
             </div>
             <div className="min-w-0">
-              <p className="truncate text-sm font-black text-stone-900">{customer.fullName}</p>
-              <p className="text-[11.5px] font-medium text-stone-500">{customer.phone}</p>
+              <p className="truncate text-sm font-black text-stone-900 dark:text-stone-100">{customer.fullName}</p>
+              <p className="text-[11.5px] font-medium text-stone-500 dark:text-stone-400">{customer.phone}</p>
             </div>
           </div>
 
-          <div className="surface-inset mt-3.5 space-y-2 p-3.5 text-[11.5px] text-stone-600">
+          <div className="surface-inset mt-3.5 space-y-2 p-3.5 text-[11.5px] text-stone-600 dark:text-stone-300">
             {[
               'Pastdagi tugma orqali botni oching.',
               'Botdagi «Telefon raqamni yuborish» tugmasini bosing.',
               'Bu ekranga qaytib «Tekshirish»ni bosing.',
             ].map((step, index) => (
               <p key={step} className="flex items-start gap-2">
-                <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-brand-100 text-[9px] font-black text-brand-700">
+                <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-brand-100 dark:bg-brand-400/20 text-[9px] font-black text-brand-700 dark:text-brand-200">
                   {index + 1}
                 </span>
                 <span>{step}</span>
@@ -133,7 +133,7 @@ export const RegistrationScreen: React.FC<Props> = ({
           </div>
 
           {error && (
-            <p className="mt-3 rounded-xl bg-rose-50 px-3 py-2 text-[11.5px] font-semibold text-rose-700">
+            <p className="mt-3 rounded-xl bg-rose-50 dark:bg-rose-400/10 px-3 py-2 text-[11.5px] font-semibold text-rose-700 dark:text-rose-300">
               {error}
             </p>
           )}
@@ -174,11 +174,11 @@ export const RegistrationScreen: React.FC<Props> = ({
 
       {sent ? (
         <div className="surface flex flex-col items-center p-5 text-center">
-          <div className="flex h-16 w-16 items-center justify-center rounded-3xl bg-emerald-50">
+          <div className="flex h-16 w-16 items-center justify-center rounded-3xl bg-emerald-50 dark:bg-emerald-400/10">
             <CheckCircle2 className="h-9 w-9 text-emerald-500" />
           </div>
-          <h3 className="mt-3 text-lg font-black text-stone-900">Ariza yuborildi</h3>
-          <p className="mt-1 text-[12px] leading-relaxed text-stone-500">
+          <h3 className="mt-3 text-lg font-black text-stone-900 dark:text-stone-100">Ariza yuborildi</h3>
+          <p className="mt-1 text-[12px] leading-relaxed text-stone-500 dark:text-stone-400">
             Botga tasdiqlash xabari yuborildi. Raqamni tasdiqlab, «Tekshirish»ni bosing.
           </p>
           <button
@@ -196,52 +196,52 @@ export const RegistrationScreen: React.FC<Props> = ({
         <form onSubmit={submit} className="surface space-y-3.5 p-4">
           <label className="block">
             <span className="label-mini">Ism</span>
-            <div className="flex items-center gap-2 rounded-2xl border border-stone-200/80 bg-stone-50/80 px-3.5 py-3 transition-colors focus-within:border-brand-400 focus-within:bg-white">
-              <User className="h-4 w-4 shrink-0 text-stone-400" />
+            <div className="flex items-center gap-2 rounded-2xl border border-stone-200/80 dark:border-stone-800/80 bg-stone-50/80 dark:bg-stone-800/60 px-3.5 py-3 transition-colors focus-within:border-brand-400 focus-within:bg-white dark:focus-within:bg-stone-800">
+              <User className="h-4 w-4 shrink-0 text-stone-500" />
               <input
                 value={firstName}
                 onChange={(e) => setFirstName(e.target.value)}
                 placeholder="Ismingiz"
                 autoComplete="given-name"
-                className="w-full bg-transparent text-sm font-semibold text-stone-900 outline-none placeholder:text-stone-400"
+                className="w-full bg-transparent text-sm font-semibold text-stone-900 dark:text-stone-100 outline-none placeholder:text-stone-400 dark:placeholder:text-stone-500"
               />
             </div>
           </label>
 
           <label className="block">
             <span className="label-mini">Familiya</span>
-            <div className="flex items-center gap-2 rounded-2xl border border-stone-200/80 bg-stone-50/80 px-3.5 py-3 transition-colors focus-within:border-brand-400 focus-within:bg-white">
-              <User className="h-4 w-4 shrink-0 text-stone-400" />
+            <div className="flex items-center gap-2 rounded-2xl border border-stone-200/80 dark:border-stone-800/80 bg-stone-50/80 dark:bg-stone-800/60 px-3.5 py-3 transition-colors focus-within:border-brand-400 focus-within:bg-white dark:focus-within:bg-stone-800">
+              <User className="h-4 w-4 shrink-0 text-stone-500" />
               <input
                 value={lastName}
                 onChange={(e) => setLastName(e.target.value)}
                 placeholder="Familiyangiz"
                 autoComplete="family-name"
-                className="w-full bg-transparent text-sm font-semibold text-stone-900 outline-none placeholder:text-stone-400"
+                className="w-full bg-transparent text-sm font-semibold text-stone-900 dark:text-stone-100 outline-none placeholder:text-stone-400 dark:placeholder:text-stone-500"
               />
             </div>
           </label>
 
           <label className="block">
             <span className="label-mini">Telefon raqam</span>
-            <div className="flex items-center gap-2 rounded-2xl border border-stone-200/80 bg-stone-50/80 px-3.5 py-3 transition-colors focus-within:border-brand-400 focus-within:bg-white">
-              <Phone className="h-4 w-4 shrink-0 text-stone-400" />
+            <div className="flex items-center gap-2 rounded-2xl border border-stone-200/80 dark:border-stone-800/80 bg-stone-50/80 dark:bg-stone-800/60 px-3.5 py-3 transition-colors focus-within:border-brand-400 focus-within:bg-white dark:focus-within:bg-stone-800">
+              <Phone className="h-4 w-4 shrink-0 text-stone-500" />
               <input
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 placeholder="+998 90 123 45 67"
                 inputMode="tel"
                 autoComplete="tel"
-                className="w-full bg-transparent text-sm font-semibold text-stone-900 outline-none placeholder:text-stone-400"
+                className="w-full bg-transparent text-sm font-semibold text-stone-900 dark:text-stone-100 outline-none placeholder:text-stone-400 dark:placeholder:text-stone-500"
               />
             </div>
-            <p className="mt-1 px-1 text-[10.5px] font-medium text-stone-400">
+            <p className="mt-1 px-1 text-[10.5px] font-medium text-stone-500">
               Raqam Telegram orqali tasdiqlanadi — SMS talab qilinmaydi.
             </p>
           </label>
 
           {error && (
-            <p className="rounded-xl bg-rose-50 px-3 py-2 text-[11.5px] font-semibold text-rose-700">
+            <p className="rounded-xl bg-rose-50 dark:bg-rose-400/10 px-3 py-2 text-[11.5px] font-semibold text-rose-700 dark:text-rose-300">
               {error}
             </p>
           )}

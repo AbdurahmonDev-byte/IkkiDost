@@ -13,9 +13,14 @@ declare global {
           start_param?: string;
         };
         colorScheme?: 'light' | 'dark';
+        platform?: string;
         ready: () => void;
         expand: () => void;
         close: () => void;
+        onEvent?: (event: string, callback: () => void) => void;
+        offEvent?: (event: string, callback: () => void) => void;
+        setHeaderColor?: (color: string) => void;
+        setBackgroundColor?: (color: string) => void;
         openTelegramLink?: (url: string) => void;
         openLink?: (url: string, options?: { try_instant_view?: boolean }) => void;
         showAlert?: (message: string, callback?: () => void) => void;

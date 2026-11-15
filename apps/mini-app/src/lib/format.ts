@@ -45,13 +45,13 @@ export const deliveryStatusLabel: Record<DeliveryStatus, string> = {
 };
 
 export const deliveryStatusColor: Record<DeliveryStatus, string> = {
-  PENDING: 'bg-amber-100 text-amber-800 border-amber-300',
-  CONFIRMED: 'bg-blue-100 text-blue-800 border-blue-300',
-  PREPARING: 'bg-orange-100 text-orange-800 border-orange-300',
-  READY: 'bg-emerald-100 text-emerald-800 border-emerald-300',
-  OUT_FOR_DELIVERY: 'bg-indigo-100 text-indigo-800 border-indigo-300',
-  DELIVERED: 'bg-stone-100 text-stone-700 border-stone-300',
-  CANCELLED: 'bg-rose-100 text-rose-800 border-rose-300',
+  PENDING: 'bg-amber-100 dark:bg-amber-400/15 text-amber-800 dark:text-amber-300 border-amber-300 dark:border-amber-400/40',
+  CONFIRMED: 'bg-blue-100 dark:bg-blue-400/15 text-blue-800 dark:text-blue-300 border-blue-300 dark:border-blue-400/40',
+  PREPARING: 'bg-orange-100 dark:bg-orange-400/15 text-orange-800 dark:text-orange-300 border-orange-300 dark:border-orange-400/40',
+  READY: 'bg-emerald-100 dark:bg-emerald-400/15 text-emerald-800 dark:text-emerald-300 border-emerald-300 dark:border-emerald-400/40',
+  OUT_FOR_DELIVERY: 'bg-indigo-100 dark:bg-indigo-400/15 text-indigo-800 dark:text-indigo-300 border-indigo-300 dark:border-indigo-400/40',
+  DELIVERED: 'bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 border-stone-300 dark:border-stone-700',
+  CANCELLED: 'bg-rose-100 dark:bg-rose-400/15 text-rose-800 dark:text-rose-300 border-rose-300 dark:border-rose-400/40',
 };
 
 /** Delivery statuses a courier can still work on. */
@@ -60,12 +60,12 @@ export function isDeliveryActive(status: DeliveryStatus): boolean {
 }
 
 export const statusColor: Record<OrderStatus, string> = {
-  PENDING: 'bg-amber-100 text-amber-800 border-amber-300',
-  CONFIRMED: 'bg-blue-100 text-blue-800 border-blue-300',
-  PREPARING: 'bg-orange-100 text-orange-800 border-orange-300',
-  PARTIALLY_READY: 'bg-purple-100 text-purple-800 border-purple-300',
-  READY: 'bg-emerald-100 text-emerald-800 border-emerald-300',
-  SERVED: 'bg-sky-100 text-sky-800 border-sky-300',
-  COMPLETED: 'bg-stone-100 text-stone-700 border-stone-300',
-  CANCELLED: 'bg-rose-100 text-rose-800 border-rose-300',
+  PENDING: 'bg-amber-100 dark:bg-amber-400/15 text-amber-800 dark:text-amber-300 border-amber-300 dark:border-amber-400/40',
+  CONFIRMED: 'bg-blue-100 dark:bg-blue-400/15 text-blue-800 dark:text-blue-300 border-blue-300 dark:border-blue-400/40',
+  PREPARING: 'bg-orange-100 dark:bg-orange-400/15 text-orange-800 dark:text-orange-300 border-orange-300 dark:border-orange-400/40',
+  PARTIALLY_READY: 'bg-purple-100 dark:bg-purple-400/15 text-purple-800 dark:text-purple-300 border-purple-300 dark:border-purple-400/40',
+  READY: 'bg-emerald-100 dark:bg-emerald-400/15 text-emerald-800 dark:text-emerald-300 border-emerald-300 dark:border-emerald-400/40',
+  SERVED: 'bg-sky-100 dark:bg-sky-400/15 text-sky-800 dark:text-sky-300 border-sky-300 dark:border-sky-400/40',
+  COMPLETED: 'bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 border-stone-300 dark:border-stone-700',
+  CANCELLED: 'bg-rose-100 dark:bg-rose-400/15 text-rose-800 dark:text-rose-300 border-rose-300 dark:border-rose-400/40',
 };

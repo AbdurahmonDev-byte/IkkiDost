@@ -1,7 +1,11 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { App } from './App';
+import { applyTheme, resolveTheme } from './lib/theme';
 import './index.css';
+
+// Apply the resolved theme before the first paint to avoid a light flash.
+applyTheme(resolveTheme());
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

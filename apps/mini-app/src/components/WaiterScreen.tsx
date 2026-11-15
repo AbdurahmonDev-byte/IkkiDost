@@ -68,12 +68,12 @@ export const WaiterScreen: React.FC<Props> = ({ token, onSelectRoomForOrder, onS
       <section>
         <div className="mb-2 flex items-center justify-between px-1">
           <h3 className="section-kicker">Xonalar</h3>
-          <span className="text-[10px] font-bold text-stone-400">
+          <span className="text-[10px] font-bold text-stone-500">
             {occupied}/{rooms.length} band
           </span>
         </div>
         {loading && rooms.length === 0 ? (
-          <div className="surface flex items-center justify-center gap-2 py-12 text-stone-400">
+          <div className="surface flex items-center justify-center gap-2 py-12 text-stone-500">
             <Loader2 className="h-5 w-5 animate-spin" />
             <span className="text-xs font-semibold">Yuklanmoqda...</span>
           </div>
@@ -83,7 +83,7 @@ export const WaiterScreen: React.FC<Props> = ({ token, onSelectRoomForOrder, onS
               <div
                 key={room.id}
                 className={`surface relative overflow-hidden p-4 ${
-                  room.isOccupied ? 'ring-1 ring-amber-200/80' : ''
+                  room.isOccupied ? 'ring-1 ring-amber-200/80 dark:ring-amber-400/30' : ''
                 }`}
               >
                 {room.isOccupied && (
@@ -93,8 +93,8 @@ export const WaiterScreen: React.FC<Props> = ({ token, onSelectRoomForOrder, onS
                   <div
                     className={`icon-tile ${
                       room.isOccupied
-                        ? 'bg-amber-100 text-amber-700'
-                        : 'bg-emerald-50 text-emerald-600'
+                        ? 'bg-amber-100 dark:bg-amber-400/15 text-amber-700 dark:text-amber-300'
+                        : 'bg-emerald-50 dark:bg-emerald-400/10 text-emerald-600'
                     }`}
                   >
                     <DoorOpen className="h-5 w-5" />
@@ -102,25 +102,25 @@ export const WaiterScreen: React.FC<Props> = ({ token, onSelectRoomForOrder, onS
                   <span
                     className={`chip ${
                       room.isOccupied
-                        ? 'bg-amber-100 text-amber-800'
-                        : 'bg-emerald-100 text-emerald-700'
+                        ? 'bg-amber-100 dark:bg-amber-400/15 text-amber-800 dark:text-amber-300'
+                        : 'bg-emerald-100 dark:bg-emerald-400/15 text-emerald-700 dark:text-emerald-300'
                     }`}
                   >
                     {room.isOccupied ? 'Band' : 'Bo‘sh'}
                   </span>
                 </div>
-                <p className="mt-3 text-[15px] font-black leading-tight text-stone-900">
+                <p className="mt-3 text-[15px] font-black leading-tight text-stone-900 dark:text-stone-100">
                   {room.name}
                 </p>
-                <p className="mt-0.5 text-[10.5px] font-medium text-stone-400">
+                <p className="mt-0.5 text-[10.5px] font-medium text-stone-500">
                   {room.isOccupied ? 'Mijozlar xizmatda' : 'Buyurtma uchun tayyor'}
                 </p>
                 <button
                   onClick={() => startOrder(room)}
                   className={`tap mt-3 flex w-full items-center justify-center gap-1.5 rounded-xl py-2 text-[11px] font-bold ${
                     room.isOccupied
-                      ? 'bg-stone-900 text-white'
-                      : 'bg-brand-50 text-brand-700 hover:bg-brand-100'
+                      ? 'bg-stone-900 dark:bg-stone-100 dark:text-stone-900 text-white'
+                      : 'bg-brand-50 dark:bg-brand-400/10 text-brand-700 dark:text-brand-200 hover:bg-brand-100 dark:hover:bg-brand-400/20'
                   }`}
                 >
                   <Plus className="h-3.5 w-3.5" /> Buyurtma
@@ -134,13 +134,13 @@ export const WaiterScreen: React.FC<Props> = ({ token, onSelectRoomForOrder, onS
       <section>
         <div className="mb-2 flex items-center justify-between px-1">
           <h3 className="section-kicker">Faol buyurtmalar</h3>
-          <span className="text-[10px] font-bold text-stone-400">{orders.length} ta</span>
+          <span className="text-[10px] font-bold text-stone-500">{orders.length} ta</span>
         </div>
         {orders.length === 0 ? (
           <div className="surface flex flex-col items-center px-4 py-10 text-center">
-            <UtensilsCrossed className="h-8 w-8 text-stone-300" />
-            <p className="mt-2 text-xs font-bold text-stone-500">Faol buyurtma yo‘q</p>
-            <p className="mt-0.5 text-[11px] text-stone-400">Xonadan buyurtma qo‘shsangiz, shu yerda ko‘rinadi.</p>
+            <UtensilsCrossed className="h-8 w-8 text-stone-300 dark:text-stone-600" />
+            <p className="mt-2 text-xs font-bold text-stone-500 dark:text-stone-400">Faol buyurtma yo‘q</p>
+            <p className="mt-0.5 text-[11px] text-stone-500">Xonadan buyurtma qo‘shsangiz, shu yerda ko‘rinadi.</p>
           </div>
         ) : (
           <div className="space-y-2.5">
@@ -150,7 +150,7 @@ export const WaiterScreen: React.FC<Props> = ({ token, onSelectRoomForOrder, onS
                   #{order.orderNumber}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-[13px] font-bold text-stone-900">
+                  <p className="truncate text-[13px] font-bold text-stone-900 dark:text-stone-100">
                     {order.roomName || 'Xona'} · {order.items.length} taom
                   </p>
                   <div className="mt-1 flex items-center gap-1.5">
@@ -159,17 +159,17 @@ export const WaiterScreen: React.FC<Props> = ({ token, onSelectRoomForOrder, onS
                     >
                       {orderStatusLabel[order.status]}
                     </span>
-                    <span className="text-[11px] font-black text-stone-800">
+                    <span className="text-[11px] font-black text-stone-800 dark:text-stone-200">
                       {money(order.totalAmount)}
                     </span>
-                    <span className="flex items-center gap-0.5 text-[10px] font-semibold text-stone-400">
+                    <span className="flex items-center gap-0.5 text-[10px] font-semibold text-stone-500">
                       <Users className="h-3 w-3" /> {order.numberOfPeople}
                     </span>
                   </div>
                 </div>
                 <button
                   onClick={() => onShowReceipt(order)}
-                  className="tap rounded-xl bg-stone-100 p-2.5 text-stone-700 hover:bg-stone-200"
+                  className="tap rounded-xl bg-stone-100 dark:bg-stone-800 p-2.5 text-stone-700 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-stone-700"
                   title="Chek"
                 >
                   <ReceiptText className="h-4 w-4" />

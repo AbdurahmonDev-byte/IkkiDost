@@ -59,12 +59,12 @@ export const StaffHeader: React.FC<Props> = ({
         <div className="min-w-0">
           <div className="flex items-center gap-1.5">
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-soft-pulse" />
-            <p className="text-[9px] font-black uppercase tracking-[0.18em] text-brand-600">
+            <p className="text-[9px] font-black uppercase tracking-[0.18em] text-brand-600 dark:text-brand-300">
               {eyebrow}
             </p>
           </div>
-          <h2 className="truncate text-[17px] font-black leading-tight text-stone-900">{title}</h2>
-          <p className="truncate text-[11.5px] font-medium text-stone-500">{subtitle}</p>
+          <h2 className="truncate text-[17px] font-black leading-tight text-stone-900 dark:text-stone-100">{title}</h2>
+          <p className="truncate text-[11.5px] font-medium text-stone-500 dark:text-stone-400">{subtitle}</p>
         </div>
       </div>
       {right ??
@@ -72,7 +72,7 @@ export const StaffHeader: React.FC<Props> = ({
           <button
             type="button"
             onClick={onRefresh}
-            className="tap shrink-0 rounded-2xl border border-stone-200/80 bg-white p-2.5 text-stone-600 shadow-sm hover:bg-stone-50"
+            className="tap shrink-0 rounded-2xl border border-stone-200/80 dark:border-stone-800/80 bg-white dark:bg-stone-900 p-2.5 text-stone-600 dark:text-stone-300 shadow-sm hover:bg-stone-50 dark:hover:bg-stone-800"
             title="Yangilash"
           >
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}

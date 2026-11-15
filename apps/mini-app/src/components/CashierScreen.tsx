@@ -290,7 +290,7 @@ export const CashierScreen: React.FC<Props> = ({ token, onShowReceipt, onMenuCha
             key={id}
             onClick={() => setView(id)}
             className={`tap flex shrink-0 items-center gap-1.5 rounded-xl px-3 py-2.5 text-[11px] font-bold ${
-              view === id ? 'bg-stone-900 text-white' : 'border border-stone-200 bg-white text-stone-600'
+              view === id ? 'bg-stone-900 dark:bg-stone-100 dark:text-stone-900 text-white' : 'border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 text-stone-600 dark:text-stone-300'
             }`}
           >
             <Icon className="h-3.5 w-3.5" /> {label}
@@ -301,11 +301,11 @@ export const CashierScreen: React.FC<Props> = ({ token, onShowReceipt, onMenuCha
         ))}
       </nav>
 
-      {error && <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2.5 text-xs font-semibold text-rose-700">{error}</div>}
-      {notice && <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-xs font-bold text-emerald-800">{notice}</div>}
+      {error && <div className="rounded-xl border border-rose-200 dark:border-rose-400/25 bg-rose-50 dark:bg-rose-400/10 px-3 py-2.5 text-xs font-semibold text-rose-700 dark:text-rose-300">{error}</div>}
+      {notice && <div className="rounded-xl border border-emerald-200 dark:border-emerald-400/25 bg-emerald-50 dark:bg-emerald-400/10 px-3 py-2.5 text-xs font-bold text-emerald-800 dark:text-emerald-300">{notice}</div>}
 
       {loading && !dashboard ? (
-        <div className="surface flex items-center justify-center gap-2 py-16 text-stone-400">
+        <div className="surface flex items-center justify-center gap-2 py-16 text-stone-500">
           <Loader2 className="h-5 w-5 animate-spin text-emerald-500" /><span className="text-xs font-semibold">Yuklanmoqda...</span>
         </div>
       ) : (
@@ -318,7 +318,7 @@ export const CashierScreen: React.FC<Props> = ({ token, onShowReceipt, onMenuCha
                 <Metric label="Faol buyurtma" value={String(activeOrders.length)} />
                 <Metric label="Ochiq qarz" value={money(roomOutstanding + deliveryOutstanding)} tone="rose" />
               </div>
-              <div className="surface divide-y divide-stone-100">
+              <div className="surface divide-y divide-stone-100 dark:divide-stone-800">
                 <OverviewRow label="Faol xonalar" value={`${rooms.filter((room) => room.activeSession).length} / ${rooms.length}`} />
                 <OverviewRow label="Zal buyurtmalari" value={String(dashboard?.activeDineInOrders ?? 0)} />
                 <OverviewRow label="Yetkazish buyurtmalari" value={String(dashboard?.activeDeliveryOrders ?? 0)} />
@@ -327,7 +327,7 @@ export const CashierScreen: React.FC<Props> = ({ token, onShowReceipt, onMenuCha
               </div>
               <div className="flex items-center justify-between px-1">
                 <h3 className="section-kicker">Oxirgi buyurtmalar</h3>
-                <button className="tap text-[10px] font-bold text-brand-700" onClick={() => setView('orders')}>Barchasi</button>
+                <button className="tap text-[10px] font-bold text-brand-700 dark:text-brand-200" onClick={() => setView('orders')}>Barchasi</button>
               </div>
               {orders.slice(0, 4).map((order) => (
                 <OrderCard key={order.id} order={order} rooms={rooms} onPay={setPaymentTarget} onReceipt={onShowReceipt} />
@@ -339,7 +339,7 @@ export const CashierScreen: React.FC<Props> = ({ token, onShowReceipt, onMenuCha
             <section className="space-y-2.5">
               <div className="flex items-center justify-between px-1">
                 <h3 className="section-kicker">Barcha buyurtmalar</h3>
-                <span className="text-[10px] font-bold text-stone-400">{orders.length} ta</span>
+                <span className="text-[10px] font-bold text-stone-500">{orders.length} ta</span>
               </div>
               {orders.length === 0 ? <Empty text="Buyurtmalar topilmadi" /> : orders.map((order) => (
                 <OrderCard key={order.id} order={order} rooms={rooms} onPay={setPaymentTarget} onReceipt={onShowReceipt} />
@@ -358,12 +358,12 @@ export const CashierScreen: React.FC<Props> = ({ token, onShowReceipt, onMenuCha
               {rooms.map((room) => (
                 <div key={room.id} className="surface p-3.5">
                   <div className="flex items-start gap-3">
-                    <span className={`icon-tile ${room.activeSession ? 'bg-amber-100 text-amber-700' : 'bg-emerald-50 text-emerald-700'}`}><DoorOpen className="h-5 w-5" /></span>
+                    <span className={`icon-tile ${room.activeSession ? 'bg-amber-100 dark:bg-amber-400/15 text-amber-700 dark:text-amber-300' : 'bg-emerald-50 dark:bg-emerald-400/10 text-emerald-700 dark:text-emerald-300'}`}><DoorOpen className="h-5 w-5" /></span>
                     <div className="min-w-0 flex-1">
-                      <p className="font-black text-stone-900">{room.name}</p>
-                      <p className="mt-0.5 text-[10px] font-bold text-stone-400">{room.activeSession ? `${room.activeSession.orderCount} buyurtma · qarz ${money(room.activeSession.outstandingAmount)}` : 'Bo‘sh xona'}</p>
+                      <p className="font-black text-stone-900 dark:text-stone-100">{room.name}</p>
+                      <p className="mt-0.5 text-[10px] font-bold text-stone-500">{room.activeSession ? `${room.activeSession.orderCount} buyurtma · qarz ${money(room.activeSession.outstandingAmount)}` : 'Bo‘sh xona'}</p>
                     </div>
-                    <button onClick={() => setEditingRoom(room)} className="tap rounded-lg bg-stone-100 p-2 text-stone-600" title="Xonani tahrirlash"><Pencil className="h-4 w-4" /></button>
+                    <button onClick={() => setEditingRoom(room)} className="tap rounded-lg bg-stone-100 dark:bg-stone-800 p-2 text-stone-600 dark:text-stone-300" title="Xonani tahrirlash"><Pencil className="h-4 w-4" /></button>
                   </div>
                   {room.activeSession && room.activeSession.outstandingAmount > 0 && (
                     <button
@@ -380,19 +380,19 @@ export const CashierScreen: React.FC<Props> = ({ token, onShowReceipt, onMenuCha
             <section className="space-y-2.5">
               <div className="flex items-center justify-between px-1">
                 <h3 className="section-kicker">Taomlar va narxlar</h3>
-                <button onClick={() => setAddingProduct(true)} className="tap flex items-center gap-1 rounded-lg bg-stone-900 px-2.5 py-2 text-[10px] font-bold text-white"><Plus className="h-3.5 w-3.5" /> Taom qo‘shish</button>
+                <button onClick={() => setAddingProduct(true)} className="tap flex items-center gap-1 rounded-lg bg-stone-900 dark:bg-stone-100 dark:text-stone-900 px-2.5 py-2 text-[10px] font-bold text-white"><Plus className="h-3.5 w-3.5" /> Taom qo‘shish</button>
               </div>
               {products.map((product) => (
                 <div key={product.id} className="surface flex items-center gap-3 p-3">
-                  <div className="h-12 w-12 shrink-0 overflow-hidden rounded-xl bg-stone-100">
-                    {menuImageFor(product) ? <img src={menuImageFor(product)!} alt={product.name} className="h-full w-full object-cover" /> : <ChefHat className="m-3 h-6 w-6 text-stone-400" />}
+                  <div className="h-12 w-12 shrink-0 overflow-hidden rounded-xl bg-stone-100 dark:bg-stone-800">
+                    {menuImageFor(product) ? <img src={menuImageFor(product)!} alt={product.name} className="h-full w-full object-cover" /> : <ChefHat className="m-3 h-6 w-6 text-stone-500" />}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-xs font-black text-stone-900">{product.name}</p>
-                    <p className="mt-1 text-[10px] font-semibold text-stone-500">Narx {money(product.price)} · tannarx {money(product.costPrice ?? 0)} · foyda {money(product.price - (product.costPrice ?? 0))}</p>
-                    <p className="text-[9px] text-stone-400">{product.categoryName ?? categories.find((category) => category.id === product.categoryId)?.name ?? ''} · {qty('1', product.unit)}</p>
+                    <p className="truncate text-xs font-black text-stone-900 dark:text-stone-100">{product.name}</p>
+                    <p className="mt-1 text-[10px] font-semibold text-stone-500 dark:text-stone-400">Narx {money(product.price)} · tannarx {money(product.costPrice ?? 0)} · foyda {money(product.price - (product.costPrice ?? 0))}</p>
+                    <p className="text-[9px] text-stone-500">{product.categoryName ?? categories.find((category) => category.id === product.categoryId)?.name ?? ''} · {qty('1', product.unit)}</p>
                   </div>
-                  <button onClick={() => setEditingProduct(product)} className="tap flex items-center gap-1 rounded-lg bg-sky-50 px-2.5 py-2 text-[10px] font-bold text-sky-800"><Pencil className="h-3.5 w-3.5" /> Tahrir</button>
+                  <button onClick={() => setEditingProduct(product)} className="tap flex items-center gap-1 rounded-lg bg-sky-50 dark:bg-sky-400/10 px-2.5 py-2 text-[10px] font-bold text-sky-800 dark:text-sky-300"><Pencil className="h-3.5 w-3.5" /> Tahrir</button>
                 </div>
               ))}
             </section>
@@ -407,10 +407,10 @@ export const CashierScreen: React.FC<Props> = ({ token, onShowReceipt, onMenuCha
               <h3 className="section-kicker px-1">Bugungi to‘lovlar</h3>
               {payments.length === 0 ? <Empty text="Bugun to‘lov bo‘lmagan" /> : payments.map((payment) => (
                 <div key={payment.id} className="surface flex items-center gap-3 p-3">
-                  <span className="icon-tile bg-emerald-50 text-emerald-700"><Banknote className="h-4 w-4" /></span>
+                  <span className="icon-tile bg-emerald-50 dark:bg-emerald-400/10 text-emerald-700 dark:text-emerald-300"><Banknote className="h-4 w-4" /></span>
                   <div className="min-w-0 flex-1">
-                    <p className="text-xs font-black text-stone-900">{money(payment.amount)} · {payment.methodName}</p>
-                    <p className="mt-0.5 truncate text-[10px] text-stone-400">{new Date(payment.createdAt).toLocaleString('uz-UZ')} · {payment.receivedByName}</p>
+                    <p className="text-xs font-black text-stone-900 dark:text-stone-100">{money(payment.amount)} · {payment.methodName}</p>
+                    <p className="mt-0.5 truncate text-[10px] text-stone-500">{new Date(payment.createdAt).toLocaleString('uz-UZ')} · {payment.receivedByName}</p>
                   </div>
                   {payment.orderId && (
                     <button
@@ -418,7 +418,7 @@ export const CashierScreen: React.FC<Props> = ({ token, onShowReceipt, onMenuCha
                         try { onShowReceipt(await api.getStaffOrder(token, payment.orderId!)); }
                         catch (err) { setError(err instanceof Error ? err.message : 'Chek ochilmadi'); }
                       }}
-                      className="tap rounded-lg bg-stone-100 p-2 text-stone-700"
+                      className="tap rounded-lg bg-stone-100 dark:bg-stone-800 p-2 text-stone-700 dark:text-stone-300"
                       title="Chekni chiqarish"
                     ><Printer className="h-4 w-4" /></button>
                   )}
@@ -430,17 +430,17 @@ export const CashierScreen: React.FC<Props> = ({ token, onShowReceipt, onMenuCha
           {view === 'handover' && (
             <section className="space-y-3">
               <div className="surface flex items-center justify-between p-4">
-                <div><p className="text-[10px] font-bold uppercase text-stone-400">Kutilayotgan naqd</p><p className="mt-1 text-lg font-black text-emerald-700">{money(pendingCash)}</p></div>
+                <div><p className="text-[10px] font-bold uppercase text-stone-500">Kutilayotgan naqd</p><p className="mt-1 text-lg font-black text-emerald-700 dark:text-emerald-300">{money(pendingCash)}</p></div>
                 <Banknote className="h-6 w-6 text-emerald-600" />
               </div>
               {pendingDeliveries.length === 0 ? <Empty text="Kuryerdan topshiriladigan pul yo‘q" /> : pendingDeliveries.map((delivery) => (
-                <div key={delivery.id} className="surface overflow-hidden ring-1 ring-emerald-200/70">
-                  <div className="flex items-center justify-between gap-2 border-b border-emerald-100 bg-emerald-50/70 px-3.5 py-3">
-                    <div><p className="text-xs font-black text-stone-900">Buyurtma #{delivery.orderNumber}</p><p className="text-[10px] text-stone-500">{delivery.customerName}</p></div>
-                    <p className="font-black text-emerald-700">{money(delivery.cashCollectedAmount ?? 0)}</p>
+                <div key={delivery.id} className="surface overflow-hidden ring-1 ring-emerald-200/70 dark:ring-emerald-400/25">
+                  <div className="flex items-center justify-between gap-2 border-b border-emerald-100 dark:border-emerald-400/25 bg-emerald-50/70 dark:bg-emerald-400/10 px-3.5 py-3">
+                    <div><p className="text-xs font-black text-stone-900 dark:text-stone-100">Buyurtma #{delivery.orderNumber}</p><p className="text-[10px] text-stone-500 dark:text-stone-400">{delivery.customerName}</p></div>
+                    <p className="font-black text-emerald-700 dark:text-emerald-300">{money(delivery.cashCollectedAmount ?? 0)}</p>
                   </div>
                   <div className="space-y-2 p-3.5">
-                    <p className="text-[10px] text-stone-500">Kuryer: {delivery.assignedToName || '—'} · qoldiq {money(delivery.outstandingAmount)}</p>
+                    <p className="text-[10px] text-stone-500 dark:text-stone-400">Kuryer: {delivery.assignedToName || '—'} · qoldiq {money(delivery.outstandingAmount)}</p>
                     <button onClick={() => void confirmHandover(delivery)} disabled={busy === `handover-${delivery.id}`} className="btn-primary w-full py-2.5 text-xs">
                       {busy === `handover-${delivery.id}` ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />} To‘lov qilindi
                     </button>
@@ -453,7 +453,7 @@ export const CashierScreen: React.FC<Props> = ({ token, onShowReceipt, onMenuCha
                   {deliveries.filter((delivery) => delivery.cashHandedOverAt).slice(0, 5).map((delivery) => (
                     <div key={delivery.id} className="surface flex items-center justify-between p-3 text-xs">
                       <span className="font-bold">#{delivery.orderNumber} · {delivery.customerName}</span>
-                      <span className="font-black text-emerald-700">{money(delivery.cashCollectedAmount ?? 0)}</span>
+                      <span className="font-black text-emerald-700 dark:text-emerald-300">{money(delivery.cashCollectedAmount ?? 0)}</span>
                     </div>
                   ))}
                 </>
@@ -483,8 +483,8 @@ export const CashierScreen: React.FC<Props> = ({ token, onShowReceipt, onMenuCha
               {units.map((unit) => <option key={unit.value} value={unit.value}>{unit.label}</option>)}
             </select>
             <div className="grid grid-cols-2 gap-2">
-              <label className="text-[10px] font-bold text-stone-500">Sotuv narxi<input type="number" min="1" inputMode="numeric" value={editingProduct.price} onChange={(event) => setEditingProduct({ ...editingProduct, price: Number(event.target.value) })} className="field mt-1" /></label>
-              <label className="text-[10px] font-bold text-stone-500">Tannarx<input type="number" min="0" inputMode="numeric" value={editingProduct.costPrice ?? 0} onChange={(event) => setEditingProduct({ ...editingProduct, costPrice: Number(event.target.value) })} className="field mt-1" /></label>
+              <label className="text-[10px] font-bold text-stone-500 dark:text-stone-400">Sotuv narxi<input type="number" min="1" inputMode="numeric" value={editingProduct.price} onChange={(event) => setEditingProduct({ ...editingProduct, price: Number(event.target.value) })} className="field mt-1" /></label>
+              <label className="text-[10px] font-bold text-stone-500 dark:text-stone-400">Tannarx<input type="number" min="0" inputMode="numeric" value={editingProduct.costPrice ?? 0} onChange={(event) => setEditingProduct({ ...editingProduct, costPrice: Number(event.target.value) })} className="field mt-1" /></label>
             </div>
             <select value={editingProduct.status} onChange={(event) => setEditingProduct({ ...editingProduct, status: event.target.value as Product['status'] })} className="field">
               <option value="ACTIVE">Faol</option><option value="DISABLED">O‘chirilgan</option><option value="ARCHIVED">Arxivlangan</option>
@@ -505,8 +505,8 @@ export const CashierScreen: React.FC<Props> = ({ token, onShowReceipt, onMenuCha
               {units.map((unit) => <option key={unit.value} value={unit.value}>{unit.label}</option>)}
             </select>
             <div className="grid grid-cols-2 gap-2">
-              <label className="text-[10px] font-bold text-stone-500">Sotuv narxi<input type="number" min="1" inputMode="numeric" value={newProduct.price} onChange={(event) => setNewProduct({ ...newProduct, price: event.target.value })} className="field mt-1" /></label>
-              <label className="text-[10px] font-bold text-stone-500">Bozor tannarxi<input type="number" min="0" inputMode="numeric" value={newProduct.costPrice} onChange={(event) => setNewProduct({ ...newProduct, costPrice: event.target.value })} className="field mt-1" /></label>
+              <label className="text-[10px] font-bold text-stone-500 dark:text-stone-400">Sotuv narxi<input type="number" min="1" inputMode="numeric" value={newProduct.price} onChange={(event) => setNewProduct({ ...newProduct, price: event.target.value })} className="field mt-1" /></label>
+              <label className="text-[10px] font-bold text-stone-500 dark:text-stone-400">Bozor tannarxi<input type="number" min="0" inputMode="numeric" value={newProduct.costPrice} onChange={(event) => setNewProduct({ ...newProduct, costPrice: event.target.value })} className="field mt-1" /></label>
             </div>
             <OverlayActions
               onClose={() => setAddingProduct(false)}
@@ -521,12 +521,12 @@ export const CashierScreen: React.FC<Props> = ({ token, onShowReceipt, onMenuCha
       {paymentTarget && (
         <EditOverlay title="To‘lov qabul qilish" onClose={() => setPaymentTarget(null)}>
           <form onSubmit={pay} className="space-y-3">
-            <div className="rounded-xl bg-stone-50 p-3"><p className="text-[10px] font-semibold text-stone-500">{paymentTarget.label}</p><p className="text-lg font-black">{money(paymentTarget.outstanding)}</p></div>
-            <label className="block text-[10px] font-bold text-stone-500">Summa<input type="number" min="1" max={paymentTarget.outstanding} inputMode="numeric" value={paymentAmount} onChange={(event) => setPaymentAmount(event.target.value)} className="field mt-1" /></label>
+            <div className="rounded-xl bg-stone-50 dark:bg-stone-800/60 p-3"><p className="text-[10px] font-semibold text-stone-500 dark:text-stone-400">{paymentTarget.label}</p><p className="text-lg font-black">{money(paymentTarget.outstanding)}</p></div>
+            <label className="block text-[10px] font-bold text-stone-500 dark:text-stone-400">Summa<input type="number" min="1" max={paymentTarget.outstanding} inputMode="numeric" value={paymentAmount} onChange={(event) => setPaymentAmount(event.target.value)} className="field mt-1" /></label>
             <select value={paymentMethodId} onChange={(event) => setPaymentMethodId(event.target.value)} className="field">
               {methods.map((method) => <option key={method.id} value={method.id}>{method.name}</option>)}
             </select>
-            <div className="flex flex-wrap gap-1.5">{[0.5, 1].map((factor) => <button key={factor} type="button" onClick={() => setPaymentAmount(String(Math.round(paymentTarget.outstanding * factor)))} className="tap rounded-lg bg-stone-100 px-3 py-2 text-[10px] font-bold">{factor === 1 ? 'To‘liq' : 'Yarmi'}</button>)}</div>
+            <div className="flex flex-wrap gap-1.5">{[0.5, 1].map((factor) => <button key={factor} type="button" onClick={() => setPaymentAmount(String(Math.round(paymentTarget.outstanding * factor)))} className="tap rounded-lg bg-stone-100 dark:bg-stone-800 px-3 py-2 text-[10px] font-bold">{factor === 1 ? 'To‘liq' : 'Yarmi'}</button>)}</div>
             <OverlayActions onClose={() => setPaymentTarget(null)} loading={busy === 'payment'} disabled={!paymentMethodId || Number(paymentAmount) <= 0 || Number(paymentAmount) > paymentTarget.outstanding} submitLabel="To‘lovni saqlash" />
           </form>
         </EditOverlay>
@@ -536,12 +536,12 @@ export const CashierScreen: React.FC<Props> = ({ token, onShowReceipt, onMenuCha
 };
 
 function Metric({ label, value, tone = 'stone' }: { label: string; value: string; tone?: 'stone' | 'emerald' | 'blue' | 'rose' }) {
-  const tones = { stone: 'text-stone-900', emerald: 'text-emerald-700', blue: 'text-sky-700', rose: 'text-rose-700' };
-  return <div className="surface min-w-0 p-3"><p className="truncate text-[9px] font-bold uppercase text-stone-400">{label}</p><p className={`mt-1 truncate text-sm font-black ${tones[tone]}`}>{value}</p></div>;
+  const tones = { stone: 'text-stone-900 dark:text-stone-100', emerald: 'text-emerald-700 dark:text-emerald-300', blue: 'text-sky-700 dark:text-sky-300', rose: 'text-rose-700 dark:text-rose-300' };
+  return <div className="surface min-w-0 p-3"><p className="truncate text-[9px] font-bold uppercase text-stone-500">{label}</p><p className={`mt-1 truncate text-sm font-black ${tones[tone]}`}>{value}</p></div>;
 }
 
 function OverviewRow({ label, value }: { label: string; value: string }) {
-  return <div className="flex items-center justify-between gap-3 px-3.5 py-3 text-xs"><span className="text-stone-500">{label}</span><span className="font-black text-stone-900">{value}</span></div>;
+  return <div className="flex items-center justify-between gap-3 px-3.5 py-3 text-xs"><span className="text-stone-500 dark:text-stone-400">{label}</span><span className="font-black text-stone-900 dark:text-stone-100">{value}</span></div>;
 }
 
 function OrderCard({ order, rooms, onPay, onReceipt }: { order: OrderDto; rooms: Room[]; onPay: (target: PaymentTarget) => void; onReceipt: (order: OrderDto) => void }) {
@@ -552,16 +552,16 @@ function OrderCard({ order, rooms, onPay, onReceipt }: { order: OrderDto; rooms:
     <div className="surface p-3.5">
       <div className="flex items-start gap-3">
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2"><p className="text-xs font-black text-stone-900">#{order.orderNumber} · {label}</p><span className="chip bg-stone-100 text-stone-600">{order.type === 'DINE_IN' ? 'Zal' : 'Yetkazish'}</span></div>
-          <p className="mt-1 text-[10px] text-stone-500">{orderStatusLabel[order.status]} · {order.items.filter((item) => item.status !== 'CANCELLED').length} ta taom · {new Date(order.createdAt).toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' })}</p>
+          <div className="flex items-center gap-2"><p className="text-xs font-black text-stone-900 dark:text-stone-100">#{order.orderNumber} · {label}</p><span className="chip bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300">{order.type === 'DINE_IN' ? 'Zal' : 'Yetkazish'}</span></div>
+          <p className="mt-1 text-[10px] text-stone-500 dark:text-stone-400">{orderStatusLabel[order.status]} · {order.items.filter((item) => item.status !== 'CANCELLED').length} ta taom · {new Date(order.createdAt).toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' })}</p>
         </div>
-        <p className="shrink-0 text-xs font-black text-stone-900">{money(order.totalAmount)}</p>
+        <p className="shrink-0 text-xs font-black text-stone-900 dark:text-stone-100">{money(order.totalAmount)}</p>
       </div>
-      <div className="mt-3 flex items-center justify-between border-t border-stone-100 pt-2.5">
-        <span className={`text-[10px] font-bold ${outstanding > 0 ? 'text-rose-600' : 'text-emerald-700'}`}>{outstanding > 0 ? `Qarz ${money(outstanding)}` : 'To‘langan'}</span>
+      <div className="mt-3 flex items-center justify-between border-t border-stone-100 dark:border-stone-800 pt-2.5">
+        <span className={`text-[10px] font-bold ${outstanding > 0 ? 'text-rose-600' : 'text-emerald-700 dark:text-emerald-300'}`}>{outstanding > 0 ? `Qarz ${money(outstanding)}` : 'To‘langan'}</span>
         <div className="flex gap-1.5">
-          {outstanding > 0 && order.status !== 'CANCELLED' && <button onClick={() => onPay({ id: order.id, sessionId: order.type === 'DINE_IN' ? room?.activeSession?.id : undefined, label, outstanding })} className="tap rounded-lg bg-emerald-50 px-2.5 py-2 text-[10px] font-bold text-emerald-800"><Banknote className="mr-1 inline h-3.5 w-3.5" />To‘lov</button>}
-          <button onClick={() => onReceipt(order)} className="tap rounded-lg bg-stone-100 px-2.5 py-2 text-[10px] font-bold text-stone-700" title="Chekni ko‘rish va chiqarish"><Printer className="mr-1 inline h-3.5 w-3.5" />Chek</button>
+          {outstanding > 0 && order.status !== 'CANCELLED' && <button onClick={() => onPay({ id: order.id, sessionId: order.type === 'DINE_IN' ? room?.activeSession?.id : undefined, label, outstanding })} className="tap rounded-lg bg-emerald-50 dark:bg-emerald-400/10 px-2.5 py-2 text-[10px] font-bold text-emerald-800 dark:text-emerald-300"><Banknote className="mr-1 inline h-3.5 w-3.5" />To‘lov</button>}
+          <button onClick={() => onReceipt(order)} className="tap rounded-lg bg-stone-100 dark:bg-stone-800 px-2.5 py-2 text-[10px] font-bold text-stone-700 dark:text-stone-300" title="Chekni ko‘rish va chiqarish"><Printer className="mr-1 inline h-3.5 w-3.5" />Chek</button>
         </div>
       </div>
     </div>
@@ -569,13 +569,13 @@ function OrderCard({ order, rooms, onPay, onReceipt }: { order: OrderDto; rooms:
 }
 
 function Empty({ text }: { text: string }) {
-  return <div className="surface flex flex-col items-center gap-2 py-10 text-stone-400"><ReceiptText className="h-6 w-6" /><p className="text-xs font-semibold">{text}</p></div>;
+  return <div className="surface flex flex-col items-center gap-2 py-10 text-stone-500"><ReceiptText className="h-6 w-6" /><p className="text-xs font-semibold">{text}</p></div>;
 }
 
 function EditOverlay({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
-  return <div className="fixed inset-0 z-[70] flex items-end justify-center bg-stone-950/50 p-3 sm:items-center"><div className="w-full max-w-md rounded-3xl bg-[#fffdfa] p-4 shadow-2xl"><div className="mb-4 flex items-center justify-between"><h3 className="text-sm font-black text-stone-900">{title}</h3><button onClick={onClose} className="tap rounded-xl bg-stone-100 p-2 text-stone-500" aria-label="Yopish"><X className="h-4 w-4" /></button></div>{children}</div></div>;
+  return <div className="fixed inset-0 z-[70] flex items-end justify-center bg-stone-950/50 p-3 sm:items-center"><div className="w-full max-w-md rounded-3xl bg-[#fffdfa] dark:bg-[#151311] p-4 shadow-2xl"><div className="mb-4 flex items-center justify-between"><h3 className="text-sm font-black text-stone-900 dark:text-stone-100">{title}</h3><button onClick={onClose} className="tap rounded-xl bg-stone-100 dark:bg-stone-800 p-2 text-stone-500 dark:text-stone-400" aria-label="Yopish"><X className="h-4 w-4" /></button></div>{children}</div></div>;
 }
 
 function OverlayActions({ onClose, loading, disabled, submitLabel = 'Saqlash' }: { onClose: () => void; loading: boolean; disabled: boolean; submitLabel?: string }) {
-  return <div className="grid grid-cols-2 gap-2 border-t border-stone-100 pt-3"><button type="button" onClick={onClose} className="btn-secondary py-3">Bekor qilish</button><button type="submit" disabled={disabled || loading} className="btn-primary py-3 disabled:opacity-50">{loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}{submitLabel}</button></div>;
+  return <div className="grid grid-cols-2 gap-2 border-t border-stone-100 dark:border-stone-800 pt-3"><button type="button" onClick={onClose} className="btn-secondary py-3">Bekor qilish</button><button type="submit" disabled={disabled || loading} className="btn-primary py-3 disabled:opacity-50">{loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}{submitLabel}</button></div>;
 }

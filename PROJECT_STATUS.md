@@ -1,9 +1,10 @@
 # PROJECT STATUS
 
-Last updated: 2026-11-14 — Cashier admin access, all-order visibility, room and
-catalog management in Mini App, product cost snapshots and net-profit KPIs,
-plus printable cashier receipts, dark customer-menu design and locally bundled
-product-name-matched photos. Delivery-address capture (bot location prompt, saved
+Last updated: 2026-11-15 — Full dark mode across every Mini App screen (staff
+panels, modals, receipts shell) with Telegram color-scheme sync and a manual
+sun/moon toggle, on top of cashier admin access, all-order visibility, room and
+catalog management, product cost snapshots, net-profit KPIs, printable cashier
+receipts, the dark customer-menu design and locally bundled product photos. Delivery-address capture (bot location prompt, saved
 customer address, Mini App prefill), courier cash collection with cashier
 “To‘lov qilindi” handover, and owner-managed employee roles/activation are
 implemented on top of Telegram-ID staff authentication, the DELIVERY role,
@@ -35,11 +36,20 @@ documented only.
 | 14. Delivery role & remote orders | Dedicated DELIVERY role, customer → kitchen → courier workflow, claimable deliveries, delivery-only public orders | ✅ |
 | 15. Registration, receipts & UI | Mandatory name/phone registration via Telegram contact, printable receipts, redesigned Mini App, owner menu/photo management | ✅ |
 | 16. Location, cash handover & roles | Telegram location address capture + saved address, courier cash collection, cashier handover confirmation, owner role/activation management, passwordless owner login with customer-first screen | ✅ |
+| 17. Dark mode everywhere | Telegram-synced light/dark theme with manual toggle; all staff panels, modals, owner/cashier workspaces themed; contrast-audited | ✅ |
 
 Docs: `docs/ARCHITECTURE.md`, `docs/DATABASE.md`, `docs/API.md`,
 `docs/DEPLOYMENT.md`, `docs/TESTING.md`, plus `DECISIONS.md`.
 
-## Verification snapshot (2026-11-14)
+## Verification snapshot (2026-11-15)
+
+- Mini App dark mode contrast-audited with headless Chrome: cashier (all six
+  views), waiter, kitchen, delivery, owner (all sections) and every modal pass
+  the 3:1 minimum for body text in both themes; theme toggle persistence and
+  Telegram `themeChanged` sync verified end-to-end.
+- All workspace TypeScript checks and production builds pass.
+
+## Earlier verification snapshot (2026-11-14)
 
 - `npm run test:api` — **51/51 tests pass**, including cashier room/product
   management, debt-close reason auditing, and cost-aware profit reporting.

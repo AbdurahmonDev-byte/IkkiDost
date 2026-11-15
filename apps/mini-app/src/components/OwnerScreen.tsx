@@ -385,7 +385,7 @@ export const OwnerScreen: React.FC<Props> = ({ token, onMenuChanged }) => {
         loading={loading}
       />
 
-      <div className="grid grid-cols-3 gap-1.5 rounded-[24px] border border-stone-200/60 bg-white/80 p-1.5 shadow-sm backdrop-blur">
+      <div className="grid grid-cols-3 gap-1.5 rounded-[24px] border border-stone-200/60 dark:border-stone-800/60 bg-white/80 dark:bg-stone-900/80 p-1.5 shadow-sm backdrop-blur">
         {OWNER_SECTIONS.map((item) => {
           const Icon = item.icon;
           const active = section === item.id;
@@ -400,7 +400,7 @@ export const OwnerScreen: React.FC<Props> = ({ token, onMenuChanged }) => {
               className={`tap flex flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2.5 text-[11px] font-bold ${
                 active
                   ? 'bg-gradient-to-br from-violet-500 to-purple-700 text-white shadow-lg shadow-violet-600/25'
-                  : 'text-stone-500 hover:bg-stone-100 hover:text-stone-900'
+                  : 'text-stone-500 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800 hover:text-stone-900 dark:hover:text-stone-100'
               }`}
             >
               <Icon className="h-4 w-4" />
@@ -409,18 +409,18 @@ export const OwnerScreen: React.FC<Props> = ({ token, onMenuChanged }) => {
           );
         })}
       </div>
-      <div className="flex items-start gap-2 rounded-2xl border border-violet-100 bg-violet-50/70 px-3 py-2.5 text-[11px] font-medium leading-relaxed text-violet-900">
+      <div className="flex items-start gap-2 rounded-2xl border border-violet-100 dark:border-violet-400/25 bg-violet-50/70 dark:bg-violet-400/10 px-3 py-2.5 text-[11px] font-medium leading-relaxed text-violet-900 dark:text-violet-200">
         <BarChart3 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-violet-500" />
         <span>{OWNER_SECTIONS.find((item) => item.id === section)?.hint}</span>
       </div>
 
       {notice && (
-        <div className="flex items-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-xs font-bold text-emerald-800">
+        <div className="flex items-center gap-2 rounded-2xl border border-emerald-200 dark:border-emerald-400/25 bg-emerald-50 dark:bg-emerald-400/10 px-4 py-2.5 text-xs font-bold text-emerald-800 dark:text-emerald-300">
           <CheckCircle2 className="h-4 w-4" /> {notice}
         </div>
       )}
       {error && (
-        <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-xs font-medium text-rose-700">
+        <div className="rounded-2xl border border-rose-200 dark:border-rose-400/25 bg-rose-50 dark:bg-rose-400/10 px-4 py-2.5 text-xs font-medium text-rose-700 dark:text-rose-300">
           {error}
         </div>
       )}
@@ -455,25 +455,25 @@ export const OwnerScreen: React.FC<Props> = ({ token, onMenuChanged }) => {
                 label: 'Buyurtmalar',
                 value: stats ? `${stats.todayOrderCount} ta` : '—',
                 icon: ShoppingBag,
-                tile: 'bg-sky-50 text-sky-600',
+                tile: 'bg-sky-50 dark:bg-sky-400/10 text-sky-600',
               },
               {
                 label: 'Faol xonalar',
                 value: stats ? `${stats.activeRooms} ta` : '—',
                 icon: DoorOpen,
-                tile: 'bg-amber-50 text-amber-600',
+                tile: 'bg-amber-50 dark:bg-amber-400/10 text-amber-600',
               },
               {
                 label: 'Yetkazishlar',
                 value: stats ? `${stats.activeDeliveryOrders} ta` : '—',
                 icon: Truck,
-                tile: 'bg-indigo-50 text-indigo-600',
+                tile: 'bg-indigo-50 dark:bg-indigo-400/10 text-indigo-600 dark:text-indigo-300',
               },
               {
                 label: 'Qarzdorlik',
                 value: stats ? money(stats.unpaidOutstanding) : '—',
                 icon: Banknote,
-                tile: 'bg-rose-50 text-rose-600',
+                tile: 'bg-rose-50 dark:bg-rose-400/10 text-rose-600',
               },
             ].map((card) => {
               const Icon = card.icon;
@@ -482,8 +482,8 @@ export const OwnerScreen: React.FC<Props> = ({ token, onMenuChanged }) => {
                   <div className={`flex h-9 w-9 items-center justify-center rounded-xl ${card.tile}`}>
                     <Icon className="h-4 w-4" />
                   </div>
-                  <p className="mt-2.5 text-[10.5px] font-bold text-stone-400">{card.label}</p>
-                  <p className="mt-0.5 text-[17px] font-black leading-tight text-stone-900">
+                  <p className="mt-2.5 text-[10.5px] font-bold text-stone-500">{card.label}</p>
+                  <p className="mt-0.5 text-[17px] font-black leading-tight text-stone-900 dark:text-stone-100">
                     {card.value}
                   </p>
                 </div>
@@ -500,21 +500,21 @@ export const OwnerScreen: React.FC<Props> = ({ token, onMenuChanged }) => {
             <Users className="h-5 w-5" />
           </div>
           <div>
-            <h3 className="text-sm font-black text-stone-900">Xodimlar va rollar</h3>
-            <p className="mt-0.5 text-[11px] leading-relaxed text-stone-500">
+            <h3 className="text-sm font-black text-stone-900 dark:text-stone-100">Xodimlar va rollar</h3>
+            <p className="mt-0.5 text-[11px] leading-relaxed text-stone-500 dark:text-stone-400">
               Telegram ID rolni aniqlaydi. Xodimlar parolsiz, ID orqali kiradi.
             </p>
           </div>
         </div>
-        <div className="mb-4 grid grid-cols-2 gap-1.5 rounded-2xl bg-stone-50 p-2.5">
+        <div className="mb-4 grid grid-cols-2 gap-1.5 rounded-2xl bg-stone-50 dark:bg-stone-800/60 p-2.5">
           {STAFF_ROLES.map((role) => (
-            <div key={role} className="rounded-xl bg-white/80 px-2.5 py-2">
-              <p className="text-[10.5px] font-black text-stone-800">{roleName[role]}</p>
-              <p className="text-[9.5px] font-medium leading-tight text-stone-400">{roleHint[role]}</p>
+            <div key={role} className="rounded-xl bg-white/80 dark:bg-stone-900/80 px-2.5 py-2">
+              <p className="text-[10.5px] font-black text-stone-800 dark:text-stone-200">{roleName[role]}</p>
+              <p className="text-[9.5px] font-medium leading-tight text-stone-500">{roleHint[role]}</p>
             </div>
           ))}
         </div>
-        <form onSubmit={createEmployee} className="mb-4 grid gap-2.5 border-b border-stone-100 pb-4 sm:grid-cols-2">
+        <form onSubmit={createEmployee} className="mb-4 grid gap-2.5 border-b border-stone-100 dark:border-stone-800 pb-4 sm:grid-cols-2">
           <label className="space-y-1">
             <span className="label-mini">Ism-familiya</span>
             <input
@@ -571,7 +571,7 @@ export const OwnerScreen: React.FC<Props> = ({ token, onMenuChanged }) => {
           {employees.map((employee) => (
             <div
               key={employee.id}
-              className={`rounded-2xl border border-stone-200/70 bg-stone-50/60 p-3.5 ${
+              className={`rounded-2xl border border-stone-200/70 dark:border-stone-800/70 bg-stone-50/60 dark:bg-stone-800/50 p-3.5 ${
                 employee.isActive ? '' : 'opacity-60'
               }`}
             >
@@ -581,8 +581,8 @@ export const OwnerScreen: React.FC<Props> = ({ token, onMenuChanged }) => {
                     {employee.fullName.slice(0, 1).toUpperCase()}
                   </div>
                   <div className="min-w-0">
-                    <p className="truncate text-xs font-black text-stone-900">{employee.fullName}</p>
-                    <p className="truncate text-[10px] font-medium text-stone-500">
+                    <p className="truncate text-xs font-black text-stone-900 dark:text-stone-100">{employee.fullName}</p>
+                    <p className="truncate text-[10px] font-medium text-stone-500 dark:text-stone-400">
                       {roleName[employee.role]} · {roleHint[employee.role]}
                     </p>
                   </div>
@@ -591,8 +591,8 @@ export const OwnerScreen: React.FC<Props> = ({ token, onMenuChanged }) => {
                   <span
                     className={`chip ${
                       employee.isActive
-                        ? 'bg-emerald-100 text-emerald-700'
-                        : 'bg-stone-200 text-stone-500'
+                        ? 'bg-emerald-100 dark:bg-emerald-400/15 text-emerald-700 dark:text-emerald-300'
+                        : 'bg-stone-200 dark:bg-stone-700 text-stone-500 dark:text-stone-400'
                     }`}
                   >
                     <span
@@ -609,8 +609,8 @@ export const OwnerScreen: React.FC<Props> = ({ token, onMenuChanged }) => {
                     title={employee.isActive ? 'Faolsizlantirish' : 'Faollashtirish'}
                     className={`tap flex h-8 w-8 items-center justify-center rounded-xl disabled:opacity-40 ${
                       employee.isActive
-                        ? 'bg-rose-50 text-rose-600'
-                        : 'bg-emerald-50 text-emerald-600'
+                        ? 'bg-rose-50 dark:bg-rose-400/10 text-rose-600'
+                        : 'bg-emerald-50 dark:bg-emerald-400/10 text-emerald-600'
                     }`}
                   >
                     {busy === `emp-${employee.id}` ? (
@@ -623,7 +623,7 @@ export const OwnerScreen: React.FC<Props> = ({ token, onMenuChanged }) => {
               </div>
               <div className="mt-3 grid grid-cols-[minmax(0,108px)_1fr_auto] items-end gap-1.5">
                 <label className="space-y-1">
-                  <span className="px-1 text-[9px] font-bold uppercase tracking-wide text-stone-400">
+                  <span className="px-1 text-[9px] font-bold uppercase tracking-wide text-stone-500">
                     Rol
                   </span>
                   <select
@@ -633,7 +633,7 @@ export const OwnerScreen: React.FC<Props> = ({ token, onMenuChanged }) => {
                     }
                     disabled={busy === `emp-${employee.id}`}
                     aria-label={`${employee.fullName} roli`}
-                    className="w-full rounded-lg border border-stone-200 bg-white px-2 py-2 text-[11px] font-bold text-stone-800 outline-none focus:border-brand-400 disabled:opacity-50"
+                    className="w-full rounded-lg border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 px-2 py-2 text-[11px] font-bold text-stone-800 dark:text-stone-200 outline-none focus:border-brand-400 disabled:opacity-50"
                   >
                     {ROLE_OPTIONS.map((role) => (
                       <option key={role} value={role}>{roleName[role]}</option>
@@ -641,7 +641,7 @@ export const OwnerScreen: React.FC<Props> = ({ token, onMenuChanged }) => {
                   </select>
                 </label>
                 <label className="space-y-1">
-                  <span className="px-1 text-[9px] font-bold uppercase tracking-wide text-stone-400">
+                  <span className="px-1 text-[9px] font-bold uppercase tracking-wide text-stone-500">
                     Telegram ID
                   </span>
                   <input
@@ -650,7 +650,7 @@ export const OwnerScreen: React.FC<Props> = ({ token, onMenuChanged }) => {
                     inputMode="numeric"
                     aria-label={`${employee.fullName} Telegram ID`}
                     placeholder="Telegram ID"
-                    className="w-full rounded-lg border border-stone-200 bg-white px-2 py-2 text-[11px] font-semibold text-stone-800 outline-none focus:border-brand-400"
+                    className="w-full rounded-lg border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 px-2 py-2 text-[11px] font-semibold text-stone-800 dark:text-stone-200 outline-none focus:border-brand-400"
                   />
                 </label>
                 <button
@@ -658,7 +658,7 @@ export const OwnerScreen: React.FC<Props> = ({ token, onMenuChanged }) => {
                   onClick={() => assignTelegramId(employee)}
                   disabled={busy === `tg-${employee.id}` || !/^\d{4,20}$/.test(telegramIds[employee.id] ?? '')}
                   title="Telegram ID ni saqlash"
-                  className="tap flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-stone-900 text-white disabled:opacity-40"
+                  className="tap flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-stone-900 dark:bg-stone-100 dark:text-stone-900 text-white disabled:opacity-40"
                 >
                   {busy === `tg-${employee.id}` ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                 </button>
@@ -666,10 +666,10 @@ export const OwnerScreen: React.FC<Props> = ({ token, onMenuChanged }) => {
             </div>
           ))}
           {employees.length === 0 && !loading && (
-            <p className="py-4 text-center text-xs font-semibold text-stone-500">Faol xodim topilmadi.</p>
+            <p className="py-4 text-center text-xs font-semibold text-stone-500 dark:text-stone-400">Faol xodim topilmadi.</p>
           )}
         </div>
-        <p className="mt-3 flex items-start gap-1.5 border-t border-stone-100 pt-3 text-[10px] leading-relaxed text-stone-500">
+        <p className="mt-3 flex items-start gap-1.5 border-t border-stone-100 dark:border-stone-800 pt-3 text-[10px] leading-relaxed text-stone-500 dark:text-stone-400">
           <KeyRound className="mt-0.5 h-3 w-3 shrink-0" /> Xodim botda /start bosganda ID si chiqadi. ID’ni shu yerga kiriting;
           keyin u qayta /start bossa, roli bo‘yicha avtomatik kiradi.
         </p>
@@ -685,8 +685,8 @@ export const OwnerScreen: React.FC<Props> = ({ token, onMenuChanged }) => {
             <ImagePlus className="h-5 w-5" />
           </div>
           <div>
-            <h3 className="text-sm font-black text-stone-900">Yangi taom qo‘shish</h3>
-            <p className="mt-0.5 text-[11px] leading-relaxed text-stone-500">
+            <h3 className="text-sm font-black text-stone-900 dark:text-stone-100">Yangi taom qo‘shish</h3>
+            <p className="mt-0.5 text-[11px] leading-relaxed text-stone-500 dark:text-stone-400">
               Nomi, narxi va rasmni kiriting
             </p>
           </div>
@@ -731,7 +731,7 @@ export const OwnerScreen: React.FC<Props> = ({ token, onMenuChanged }) => {
             inputMode="numeric"
             className="field"
           />
-          <label className="tap flex cursor-pointer items-center gap-2 rounded-2xl border border-dashed border-stone-300 bg-stone-50/80 px-3.5 py-3 text-xs font-semibold text-stone-500 hover:border-brand-300 hover:bg-brand-50/40">
+          <label className="tap flex cursor-pointer items-center gap-2 rounded-2xl border border-dashed border-stone-300 dark:border-stone-700 bg-stone-50/80 dark:bg-stone-800/60 px-3.5 py-3 text-xs font-semibold text-stone-500 dark:text-stone-400 hover:border-brand-300 dark:hover:border-brand-400/40 hover:bg-brand-50/40 dark:hover:bg-brand-400/15">
             <Camera className="h-4 w-4 text-brand-500" />
             <span className="truncate">{imageFile ? imageFile.name : 'Taom rasmi (ixtiyoriy)'}</span>
             <input
@@ -752,7 +752,7 @@ export const OwnerScreen: React.FC<Props> = ({ token, onMenuChanged }) => {
           </button>
         </form>
 
-        <form onSubmit={addCategory} className="mt-3 flex gap-2 border-t border-stone-100 pt-3">
+        <form onSubmit={addCategory} className="mt-3 flex gap-2 border-t border-stone-100 dark:border-stone-800 pt-3">
           <input
             value={newCategory}
             onChange={(e) => setNewCategory(e.target.value)}
@@ -762,7 +762,7 @@ export const OwnerScreen: React.FC<Props> = ({ token, onMenuChanged }) => {
           <button
             type="submit"
             disabled={busy === 'cat'}
-            className="tap flex items-center gap-1 rounded-xl bg-stone-900 px-3 py-2 text-xs font-bold text-white disabled:opacity-50"
+            className="tap flex items-center gap-1 rounded-xl bg-stone-900 dark:bg-stone-100 dark:text-stone-900 px-3 py-2 text-xs font-bold text-white disabled:opacity-50"
           >
             {busy === 'cat' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FolderPlus className="h-3.5 w-3.5" />}
             Qo‘shish
@@ -774,11 +774,11 @@ export const OwnerScreen: React.FC<Props> = ({ token, onMenuChanged }) => {
       <div className="space-y-2.5">
         <div className="flex items-center justify-between px-1">
           <h3 className="section-kicker">Menyu</h3>
-          <span className="text-[10px] font-bold text-stone-400">{products.length} ta taom</span>
+          <span className="text-[10px] font-bold text-stone-500">{products.length} ta taom</span>
         </div>
 
         {loading && products.length === 0 ? (
-          <div className="surface flex items-center justify-center gap-2 py-12 text-stone-400">
+          <div className="surface flex items-center justify-center gap-2 py-12 text-stone-500">
             <Loader2 className="h-5 w-5 animate-spin text-brand-500" />
             <span className="text-xs font-semibold">Yuklanmoqda...</span>
           </div>
@@ -788,7 +788,7 @@ export const OwnerScreen: React.FC<Props> = ({ token, onMenuChanged }) => {
               key={product.id}
               className="surface flex items-center gap-3 p-3"
             >
-              <div className="h-16 w-16 shrink-0 overflow-hidden rounded-2xl bg-stone-100">
+              <div className="h-16 w-16 shrink-0 overflow-hidden rounded-2xl bg-stone-100 dark:bg-stone-800">
                 {product.thumbnailUrl || product.imageUrl ? (
                   <img
                     src={product.thumbnailUrl || product.imageUrl || ''}
@@ -804,22 +804,22 @@ export const OwnerScreen: React.FC<Props> = ({ token, onMenuChanged }) => {
 
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-1.5">
-                  <p className="truncate text-[13px] font-black text-stone-900">{product.name}</p>
+                  <p className="truncate text-[13px] font-black text-stone-900 dark:text-stone-100">{product.name}</p>
                   <span
                     className={`chip shrink-0 ${
                       product.status === 'ACTIVE'
-                        ? 'bg-emerald-100 text-emerald-700'
-                        : 'bg-stone-100 text-stone-500'
+                        ? 'bg-emerald-100 dark:bg-emerald-400/15 text-emerald-700 dark:text-emerald-300'
+                        : 'bg-stone-100 dark:bg-stone-800 text-stone-500 dark:text-stone-400'
                     }`}
                   >
                     {product.status === 'ACTIVE' ? 'Faol' : 'O‘chiq'}
                   </span>
                 </div>
-                <p className="mt-0.5 text-[11px] font-semibold text-stone-500">
+                <p className="mt-0.5 text-[11px] font-semibold text-stone-500 dark:text-stone-400">
                   {money(product.price)} · {qty(1, product.unit)}
                 </p>
                 <div className="mt-1.5 flex flex-wrap gap-1.5">
-                  <label className="tap inline-flex cursor-pointer items-center gap-1 rounded-lg bg-sky-50 px-2 py-1 text-[10px] font-bold text-sky-700 hover:bg-sky-100">
+                  <label className="tap inline-flex cursor-pointer items-center gap-1 rounded-lg bg-sky-50 dark:bg-sky-400/10 px-2 py-1 text-[10px] font-bold text-sky-700 dark:text-sky-300 hover:bg-sky-100">
                     {busy === `img-${product.id}` ? (
                       <Loader2 className="h-3 w-3 animate-spin" />
                     ) : (
@@ -840,7 +840,7 @@ export const OwnerScreen: React.FC<Props> = ({ token, onMenuChanged }) => {
                   {(product.imageUrl || product.thumbnailUrl) && (
                     <button
                       onClick={() => removePhoto(product)}
-                      className="tap rounded-lg bg-stone-100 px-2 py-1 text-[10px] font-bold text-stone-500 hover:bg-rose-50 hover:text-rose-600"
+                      className="tap rounded-lg bg-stone-100 dark:bg-stone-800 px-2 py-1 text-[10px] font-bold text-stone-500 dark:text-stone-400 hover:bg-rose-50 hover:text-rose-600"
                     >
                       <Trash2 className="h-3 w-3" />
                     </button>
@@ -848,7 +848,7 @@ export const OwnerScreen: React.FC<Props> = ({ token, onMenuChanged }) => {
                   <button
                     onClick={() => toggleStatus(product)}
                     disabled={busy === `st-${product.id}`}
-                    className="tap rounded-lg bg-stone-100 px-2 py-1 text-[10px] font-bold text-stone-600 disabled:opacity-50"
+                    className="tap rounded-lg bg-stone-100 dark:bg-stone-800 px-2 py-1 text-[10px] font-bold text-stone-600 dark:text-stone-300 disabled:opacity-50"
                   >
                     {product.status === 'ACTIVE' ? 'O‘chirish' : 'Yoqish'}
                   </button>
@@ -865,21 +865,21 @@ export const OwnerScreen: React.FC<Props> = ({ token, onMenuChanged }) => {
         <div className="surface p-4 animate-rise">
           <div className="mb-2.5 flex items-center justify-between px-0.5">
             <h3 className="section-kicker">Eng ko‘p sotilganlar</h3>
-            <span className="chip bg-brand-50 text-brand-700">TOP 5</span>
+            <span className="chip bg-brand-50 dark:bg-brand-400/10 text-brand-700 dark:text-brand-200">TOP 5</span>
           </div>
           <div className="space-y-1.5">
             {stats.popularProducts.slice(0, 5).map((p, index) => (
               <div
                 key={p.productName}
-                className="flex items-center gap-2.5 rounded-xl bg-stone-50/80 px-2.5 py-2"
+                className="flex items-center gap-2.5 rounded-xl bg-stone-50/80 dark:bg-stone-800/60 px-2.5 py-2"
               >
-                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-white text-[10px] font-black text-brand-600 shadow-sm">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-white dark:bg-stone-900 text-[10px] font-black text-brand-600 dark:text-brand-300 shadow-sm">
                   {index + 1}
                 </span>
-                <span className="min-w-0 flex-1 truncate text-xs font-semibold text-stone-700">
+                <span className="min-w-0 flex-1 truncate text-xs font-semibold text-stone-700 dark:text-stone-300">
                   {p.productName}
                 </span>
-                <span className="shrink-0 text-xs font-black text-stone-900">
+                <span className="shrink-0 text-xs font-black text-stone-900 dark:text-stone-100">
                   {money(p.revenue)}
                 </span>
               </div>
@@ -888,14 +888,14 @@ export const OwnerScreen: React.FC<Props> = ({ token, onMenuChanged }) => {
         </div>
       )}
       {section === 'overview' && (
-        <div className="rounded-[26px] border border-rose-200/80 bg-white p-4 shadow-sm animate-rise">
+        <div className="rounded-[26px] border border-rose-200/80 dark:border-rose-400/25 bg-white dark:bg-stone-900 p-4 shadow-sm animate-rise">
           <div className="flex items-start gap-2.5">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-rose-50 text-rose-600">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-rose-50 dark:bg-rose-400/10 text-rose-600">
               <TriangleAlert className="h-5 w-5" />
             </div>
             <div className="min-w-0">
-              <h3 className="text-[13px] font-black text-stone-900">Sinov ma’lumotlarini tozalash</h3>
-              <p className="mt-0.5 text-[11px] leading-relaxed text-stone-500">
+              <h3 className="text-[13px] font-black text-stone-900 dark:text-stone-100">Sinov ma’lumotlarini tozalash</h3>
+              <p className="mt-0.5 text-[11px] leading-relaxed text-stone-500 dark:text-stone-400">
                 Buyurtmalar, to‘lovlar, yetkazishlar va xona sessiyalari o‘chiriladi. Menyu,
                 xodimlar, xonalar va mijozlar saqlanadi.
               </p>
@@ -909,13 +909,13 @@ export const OwnerScreen: React.FC<Props> = ({ token, onMenuChanged }) => {
                 tg.selection();
                 setConfirmClear(true);
               }}
-              className="tap mt-3 flex w-full items-center justify-center gap-2 rounded-2xl border border-rose-200 bg-rose-50 py-3 text-xs font-bold text-rose-700 hover:bg-rose-100"
+              className="tap mt-3 flex w-full items-center justify-center gap-2 rounded-2xl border border-rose-200 dark:border-rose-400/25 bg-rose-50 dark:bg-rose-400/10 py-3 text-xs font-bold text-rose-700 dark:text-rose-300 hover:bg-rose-100"
             >
               <Trash2 className="h-4 w-4" /> Savdo tarixini tozalash
             </button>
           ) : (
-            <div className="mt-3 rounded-2xl border border-rose-200 bg-rose-50 p-3">
-              <p className="text-[11px] font-bold leading-relaxed text-rose-800">
+            <div className="mt-3 rounded-2xl border border-rose-200 dark:border-rose-400/25 bg-rose-50 dark:bg-rose-400/10 p-3">
+              <p className="text-[11px] font-bold leading-relaxed text-rose-800 dark:text-rose-300">
                 Rostdan ham barcha savdo tarixini o‘chirasizmi? Bu amalni ortga qaytarib
                 bo‘lmaydi.
               </p>

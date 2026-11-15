@@ -61,11 +61,11 @@ export const CallWaiterModal: React.FC<Props> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-stone-950/50 p-0 backdrop-blur-sm sm:items-center sm:p-4">
-      <div className="w-full max-w-md overflow-hidden rounded-t-[30px] bg-[#fffdfa] shadow-2xl animate-rise sm:rounded-[30px]">
+      <div className="w-full max-w-md overflow-hidden rounded-t-[30px] bg-[#fffdfa] dark:bg-[#151311] shadow-2xl animate-rise sm:rounded-[30px]">
         <div className="sheet-grabber sm:hidden" />
 
-        <div className="relative overflow-hidden border-b border-stone-100 px-4 pb-4 pt-3">
-          <div className="pointer-events-none absolute -right-10 -top-16 h-36 w-36 rounded-full bg-amber-200/60 blur-2xl" />
+        <div className="relative overflow-hidden border-b border-stone-100 dark:border-stone-800 px-4 pb-4 pt-3">
+          <div className="pointer-events-none absolute -right-10 -top-16 h-36 w-36 rounded-full bg-amber-200/60 dark:bg-amber-400/10 blur-2xl" />
           <div className="relative flex items-center justify-between gap-3">
             <div className="flex min-w-0 items-center gap-3">
               <div className="icon-tile bg-gradient-to-br from-amber-400 to-orange-600 text-white shadow-lg shadow-orange-500/30">
@@ -78,17 +78,17 @@ export const CallWaiterModal: React.FC<Props> = ({
                     Xizmat
                   </p>
                 </div>
-                <h3 className="truncate text-[17px] font-black leading-tight text-stone-900">
+                <h3 className="truncate text-[17px] font-black leading-tight text-stone-900 dark:text-stone-100">
                   Ofitsiant chaqirish
                 </h3>
-                <p className="truncate text-[11.5px] font-medium text-stone-500">
+                <p className="truncate text-[11.5px] font-medium text-stone-500 dark:text-stone-400">
                   {room ? `🏠 ${room.name}` : 'Xonangizni tanlang'}
                 </p>
               </div>
             </div>
             <button
               onClick={onClose}
-              className="tap shrink-0 rounded-2xl border border-stone-200/80 bg-white p-2.5 text-stone-400 shadow-sm hover:text-stone-700"
+              className="tap shrink-0 rounded-2xl border border-stone-200/80 dark:border-stone-800/80 bg-white dark:bg-stone-900 p-2.5 text-stone-500 shadow-sm hover:text-stone-700 dark:hover:text-stone-300"
               aria-label="Yopish"
             >
               <X className="h-4 w-4" />
@@ -98,11 +98,11 @@ export const CallWaiterModal: React.FC<Props> = ({
 
         {success ? (
           <div className="flex flex-col items-center px-6 py-12 text-center">
-            <div className="flex h-16 w-16 items-center justify-center rounded-3xl bg-emerald-50">
+            <div className="flex h-16 w-16 items-center justify-center rounded-3xl bg-emerald-50 dark:bg-emerald-400/10">
               <CheckCircle2 className="h-9 w-9 text-emerald-500" />
             </div>
-            <h4 className="mt-3 text-lg font-black text-stone-900">Ofitsiant chaqirildi!</h4>
-            <p className="mt-1 text-[12.5px] leading-relaxed text-stone-500">
+            <h4 className="mt-3 text-lg font-black text-stone-900 dark:text-stone-100">Ofitsiant chaqirildi!</h4>
+            <p className="mt-1 text-[12.5px] leading-relaxed text-stone-500 dark:text-stone-400">
               Xodimlarimiz tez orada xonangizga kelishadi.
             </p>
           </div>
@@ -122,14 +122,14 @@ export const CallWaiterModal: React.FC<Props> = ({
                     className={`tap rounded-xl px-2 py-2.5 text-[11px] font-bold ${
                       room?.id === r.id
                         ? 'bg-gradient-to-br from-amber-500 to-orange-600 text-white shadow-md shadow-orange-500/25'
-                        : 'border border-stone-200/80 bg-white text-stone-600 shadow-sm hover:bg-stone-50'
+                        : 'border border-stone-200/80 dark:border-stone-800/80 bg-white dark:bg-stone-900 text-stone-600 dark:text-stone-300 shadow-sm hover:bg-stone-50 dark:hover:bg-stone-800'
                     }`}
                   >
                     {r.name}
                   </button>
                 ))}
                 {rooms.length === 0 && (
-                  <p className="col-span-3 rounded-xl bg-stone-50 px-3 py-2 text-[11px] font-medium text-stone-400">
+                  <p className="col-span-3 rounded-xl bg-stone-50 dark:bg-stone-800/60 px-3 py-2 text-[11px] font-medium text-stone-500">
                     Xonalar yuklanmadi
                   </p>
                 )}
@@ -153,7 +153,7 @@ export const CallWaiterModal: React.FC<Props> = ({
                   key={tag}
                   type="button"
                   onClick={() => setNote((prev) => (prev ? `${prev}, ${tag}` : tag))}
-                  className="tap rounded-xl bg-stone-100 px-2.5 py-1.5 text-[11px] font-bold text-stone-600 hover:bg-brand-50 hover:text-brand-700"
+                  className="tap rounded-xl bg-stone-100 dark:bg-stone-800 px-2.5 py-1.5 text-[11px] font-bold text-stone-600 dark:text-stone-300 hover:bg-brand-50 dark:hover:bg-brand-400/15 hover:text-brand-700 dark:hover:text-brand-300"
                 >
                   + {tag}
                 </button>
@@ -161,7 +161,7 @@ export const CallWaiterModal: React.FC<Props> = ({
             </div>
 
             {error && (
-              <p className="rounded-xl bg-rose-50 px-3 py-2 text-[11.5px] font-semibold text-rose-700">
+              <p className="rounded-xl bg-rose-50 dark:bg-rose-400/10 px-3 py-2 text-[11.5px] font-semibold text-rose-700 dark:text-rose-300">
                 {error}
               </p>
             )}

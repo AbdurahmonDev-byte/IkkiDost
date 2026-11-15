@@ -5,10 +5,20 @@
 :root {
   font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', system-ui, Roboto, sans-serif;
   -webkit-tap-highlight-color: transparent;
+  color-scheme: light;
   --ink: #241a12;
   --muted: #8a7767;
   --cream: #faf6ef;
   --brand-gradient: linear-gradient(135deg, #c98a4b 0%, #a5622f 55%, #7c4525 100%);
+}
+
+/* Dark theme: Telegram color scheme by default, manual override in the header. */
+.dark {
+  color-scheme: dark;
+  --ink: #f4efe6;
+  --muted: #a8a29e;
+  --cream: #0d0b09;
+  --brand-gradient: linear-gradient(135deg, #d9a05f 0%, #b87d40 55%, #8f5427 100%);
 }
 
 html {
@@ -31,7 +41,19 @@ body {
     linear-gradient(180deg, #fdf9f2 0%, #f8f1e7 55%, #f4ece0 100%);
 }
 
+.dark .app-shell {
+  background:
+    radial-gradient(1100px 420px at 12% -8%, #2a2119 0%, transparent 55%),
+    radial-gradient(900px 380px at 100% 2%, #1a1512 0%, transparent 50%),
+    linear-gradient(180deg, #12100e 0%, #0e0c0a 55%, #0b0908 100%);
+}
+
 .app-shell--culinary {
+  background: #090b0c;
+  color: #f4f0e8;
+}
+
+.dark .app-shell--culinary {
   background: #090b0c;
   color: #f4f0e8;
 }
@@ -52,7 +74,7 @@ body {
   }
 
   .section-kicker {
-    @apply text-[10px] font-black uppercase tracking-[0.16em] text-stone-400;
+    @apply text-[10px] font-black uppercase tracking-[0.16em] text-stone-500;
   }
 
   .chip {
@@ -84,11 +106,42 @@ body {
   }
 
   .label-mini {
-    @apply mb-1 block px-1 text-[10px] font-bold uppercase tracking-wide text-stone-400;
+    @apply mb-1 block px-1 text-[10px] font-bold uppercase tracking-wide text-stone-500;
   }
 
   .icon-tile {
     @apply flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl;
+  }
+
+  /* Dark theme overrides for the shared building blocks. Individual screens
+     add their own `dark:` utilities on top of these. */
+  .dark .surface {
+    @apply border-stone-800/80 bg-stone-900/95 shadow-[0_18px_44px_-32px_rgba(0,0,0,0.95)];
+  }
+
+  .dark .surface-soft {
+    @apply border-stone-800/80 bg-stone-900/70;
+  }
+
+  .dark .surface-inset {
+    @apply border-stone-800/80 bg-stone-800/40;
+  }
+
+  .dark .btn-secondary {
+    @apply border-stone-700 bg-stone-800 text-stone-100 shadow-none;
+  }
+
+  .dark .btn-secondary:hover {
+    @apply bg-stone-700;
+  }
+
+  .dark .field,
+  .dark .field-mini {
+    @apply border-stone-700 bg-stone-800/70 text-stone-100 placeholder:text-stone-500 focus:border-brand-400 focus:bg-stone-800;
+  }
+
+  .dark .sheet-grabber {
+    background: #3f3a36;
   }
 }
 

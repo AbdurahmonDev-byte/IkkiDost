@@ -7,13 +7,23 @@ import {
   Loader2,
   Lock,
   LogOut,
+  Moon,
   ReceiptText,
+  Sun,
   Truck,
   UtensilsCrossed,
   Wallet,
 } from 'lucide-react';
 import { api } from './lib/api';
 import { tg } from './lib/telegram';
+import {
+  applyTheme,
+  detectTheme,
+  getStoredTheme,
+  persistTheme,
+  resolveTheme,
+  type Theme,
+} from './lib/theme';
 import type {
   CartItem,
   Category,
@@ -116,6 +126,34 @@ export const App: React.FC = () => {
   const [booting, setBooting] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const bootRan = useRef(false);
+
+  const [theme, setTheme] = useState<Theme>(() => resolveTheme());
+
+  useEffect(() => {
+    applyTheme(theme);
+  }, [theme]);
+
+  // Follow Telegram's light/dark switch until the user picks a theme manually.
+  useEffect(() => {
+    const app = tg.app;
+    if (!app) return;
+    const { onEvent, offEvent } = app;
+    if (!onEvent) return;
+    const sync = () => {
+      if (!getStoredTheme()) setTheme(detectTheme());
+    };
+    onEvent.call(app, 'themeChanged', sync);
+    return () => {
+      offEvent?.call(app, 'themeChanged', sync);
+    };
+  }, []);
+
+  const toggleTheme = () => {
+    const next: Theme = theme === 'dark' ? 'light' : 'dark';
+    persistTheme(next);
+    setTheme(next);
+    tg.selection();
+  };
 
   const telegramAvailable = Boolean(tg.app?.initData);
 
@@ -295,13 +333,13 @@ export const App: React.FC = () => {
 
   if (booting) {
     return (
-      <div className="app-shell flex min-h-screen flex-col items-center justify-center gap-4 text-stone-500">
+      <div className="app-shell flex min-h-screen flex-col items-center justify-center gap-4 text-stone-500 dark:text-stone-400">
         <div className="relative flex h-16 w-16 items-center justify-center rounded-[22px] bg-gradient-to-br from-brand-500 to-brand-700 text-3xl shadow-xl shadow-brand-600/30">
           🫖
           <span className="absolute inset-0 rounded-[22px] ring-1 ring-inset ring-white/25" />
         </div>
-        <div className="flex items-center gap-2 rounded-full bg-white/80 px-4 py-2 text-xs font-bold text-stone-600 shadow-sm">
-          <Loader2 className="h-4 w-4 animate-spin text-brand-600" /> Yuklanmoqda...
+        <div className="flex items-center gap-2 rounded-full bg-white/80 dark:bg-stone-900/80 px-4 py-2 text-xs font-bold text-stone-600 dark:text-stone-300 shadow-sm">
+          <Loader2 className="h-4 w-4 animate-spin text-brand-600 dark:text-brand-300" /> Yuklanmoqda...
         </div>
       </div>
     );
@@ -318,7 +356,7 @@ export const App: React.FC = () => {
     <div className={`app-shell ${activeTab === 'customer' && !registrationNeeded ? 'app-shell--culinary' : ''}`}>
       <div className="mx-auto min-h-screen max-w-xl px-4 pb-10 pt-3">
         {/* Brand header */}
-        <header className={`sticky top-0 z-30 -mx-4 mb-4 border-b px-4 py-3 backdrop-blur-xl ${activeTab === 'customer' && !registrationNeeded ? 'border-white/10 bg-[#090b0c]/90' : 'border-stone-200/50 bg-[#fdf9f2]/85'}`}>
+        <header className={`sticky top-0 z-30 -mx-4 mb-4 border-b px-4 py-3 backdrop-blur-xl ${activeTab === 'customer' && !registrationNeeded ? 'border-white/10 bg-[#090b0c]/90' : 'border-stone-200/50 dark:border-stone-800/50 bg-[#fdf9f2]/85 dark:bg-[#12100e]/90'}`}>
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2.5">
               <div className="relative flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-500 to-brand-700 text-xl shadow-lg shadow-brand-600/30">
@@ -326,47 +364,63 @@ export const App: React.FC = () => {
                 <span className={`absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 ${activeTab === 'customer' && !registrationNeeded ? 'border-[#090b0c]' : 'border-[#fdf9f2]'} bg-emerald-500`} />
               </div>
               <div>
-                <h1 className={`text-[17px] font-black leading-tight tracking-tight ${activeTab === 'customer' && !registrationNeeded ? 'text-white' : 'text-stone-900'}`}>
+                <h1 className={`text-[17px] font-black leading-tight tracking-tight ${activeTab === 'customer' && !registrationNeeded ? 'text-white' : 'text-stone-900 dark:text-stone-100'}`}>
                   Ikki Do‘st
                 </h1>
-                <p className="text-[9.5px] font-black uppercase tracking-[0.18em] text-[#caa96b]">
+                <p className={`text-[9.5px] font-black uppercase tracking-[0.18em] ${activeTab === 'customer' && !registrationNeeded ? 'text-[#caa96b]' : 'text-[#a97c33] dark:text-[#caa96b]'}`}>
                   Choyxonasi
                 </p>
               </div>
             </div>
 
-            {staffUser ? (
-              <div className="flex items-center gap-1">
-                <div className={`flex items-center gap-2 rounded-2xl border py-1.5 pl-1.5 pr-3 shadow-sm ${activeTab === 'customer' && !registrationNeeded ? 'border-white/10 bg-white/5' : 'border-stone-200/70 bg-white/90'}`}>
-                  <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-stone-800 to-stone-950 text-[11px] font-black text-white">
-                    {staffUser.fullName.slice(0, 1).toUpperCase()}
-                  </div>
-                  <div className="leading-tight">
-                    <p className={`max-w-[96px] truncate text-[11px] font-black ${activeTab === 'customer' && !registrationNeeded ? 'text-white' : 'text-stone-900'}`}>
-                      {staffUser.fullName}
-                    </p>
-                    <p className={`text-[9px] font-bold uppercase tracking-wide ${activeTab === 'customer' && !registrationNeeded ? 'text-[#caa96b]' : 'text-brand-600'}`}>
-                      {roleLabel[staffUser.role]}
-                    </p>
-                  </div>
-                </div>
-                <button
-                  onClick={handleLogout}
-                  className={`tap rounded-xl p-2 transition-colors ${activeTab === 'customer' && !registrationNeeded ? 'text-white/45 hover:bg-white/10 hover:text-rose-300' : 'text-stone-400 hover:bg-white hover:text-rose-600'}`}
-                  title="Chiqish"
-                >
-                  <LogOut className="h-4 w-4" />
-                </button>
-              </div>
-            ) : (
+            <div className="flex items-center gap-1">
               <button
-                onClick={() => setIsStaffLoginOpen(true)}
-                className={`tap flex items-center gap-1.5 rounded-2xl border px-3 py-2 text-xs font-bold shadow-sm ${activeTab === 'customer' && !registrationNeeded ? 'border-white/10 bg-white/5 text-white/80' : 'border-stone-200/80 bg-white/90 text-stone-700 hover:bg-white'}`}
+                type="button"
+                onClick={toggleTheme}
+                className={`tap rounded-xl p-2 transition-colors ${
+                  activeTab === 'customer' && !registrationNeeded
+                    ? 'text-white/65 hover:bg-white/10 hover:text-white'
+                    : 'border border-stone-200/80 dark:border-stone-800/80 bg-white/90 dark:bg-stone-900/90 text-stone-600 dark:text-stone-300 hover:bg-white dark:hover:bg-stone-800'
+                }`}
+                title={theme === 'dark' ? 'Yorug‘ rejim' : 'Tungi rejim'}
+                aria-label="Mavzuni almashtirish"
               >
-                <Lock className="h-3.5 w-3.5 text-brand-600" />
-                <span>Xodimlar</span>
+                {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
               </button>
-            )}
+
+              {staffUser ? (
+                <>
+                  <div className={`flex items-center gap-2 rounded-2xl border py-1.5 pl-1.5 pr-3 shadow-sm ${activeTab === 'customer' && !registrationNeeded ? 'border-white/10 bg-white/5' : 'border-stone-200/70 dark:border-stone-800/70 bg-white/90 dark:bg-stone-900/90'}`}>
+                    <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-stone-800 to-stone-950 text-[11px] font-black text-white">
+                      {staffUser.fullName.slice(0, 1).toUpperCase()}
+                    </div>
+                    <div className="leading-tight">
+                      <p className={`max-w-[96px] truncate text-[11px] font-black ${activeTab === 'customer' && !registrationNeeded ? 'text-white' : 'text-stone-900 dark:text-stone-100'}`}>
+                        {staffUser.fullName}
+                      </p>
+                      <p className={`text-[9px] font-bold uppercase tracking-wide ${activeTab === 'customer' && !registrationNeeded ? 'text-[#caa96b]' : 'text-brand-600 dark:text-brand-300'}`}>
+                        {roleLabel[staffUser.role]}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={handleLogout}
+                    className={`tap rounded-xl p-2 transition-colors ${activeTab === 'customer' && !registrationNeeded ? 'text-white/45 hover:bg-white/10 hover:text-rose-300' : 'text-stone-500 hover:bg-white dark:hover:bg-stone-800 hover:text-rose-600'}`}
+                    title="Chiqish"
+                  >
+                    <LogOut className="h-4 w-4" />
+                  </button>
+                </>
+              ) : (
+                <button
+                  onClick={() => setIsStaffLoginOpen(true)}
+                  className={`tap flex items-center gap-1.5 rounded-2xl border px-3 py-2 text-xs font-bold shadow-sm ${activeTab === 'customer' && !registrationNeeded ? 'border-white/10 bg-white/5 text-white/80' : 'border-stone-200/80 dark:border-stone-800/80 bg-white/90 dark:bg-stone-900/90 text-stone-700 dark:text-stone-300 hover:bg-white dark:hover:bg-stone-800'}`}
+                >
+                  <Lock className="h-3.5 w-3.5 text-brand-600 dark:text-brand-300" />
+                  <span>Xodimlar</span>
+                </button>
+              )}
+            </div>
           </div>
         </header>
 
@@ -387,7 +441,7 @@ export const App: React.FC = () => {
                     className={`tap flex shrink-0 items-center gap-1.5 rounded-2xl px-3.5 py-2.5 text-xs font-bold ${
                       active
                         ? activeTab === 'customer' && !registrationNeeded ? 'bg-[#d2b273] text-[#15120d]' : 'bg-gradient-to-br from-brand-500 to-brand-700 text-white shadow-lg shadow-brand-600/25'
-                        : activeTab === 'customer' && !registrationNeeded ? 'border border-white/10 bg-white/5 text-white/65 hover:bg-white/10' : 'border border-stone-200/70 bg-white/80 text-stone-600 shadow-sm hover:bg-white hover:text-stone-900'
+                        : activeTab === 'customer' && !registrationNeeded ? 'border border-white/10 bg-white/5 text-white/65 hover:bg-white/10' : 'border border-stone-200/70 dark:border-stone-800/70 bg-white/80 dark:bg-stone-900/80 text-stone-600 dark:text-stone-300 shadow-sm hover:bg-white dark:hover:bg-stone-800 hover:text-stone-900 dark:hover:text-stone-100'
                     }`}
                   >
                     <Icon className="h-3.5 w-3.5" />
@@ -396,8 +450,8 @@ export const App: React.FC = () => {
                 );
               })}
             </nav>
-            <div className={`flex items-start gap-2 rounded-2xl border px-3 py-2.5 text-[11px] font-medium leading-relaxed ${activeTab === 'customer' && !registrationNeeded ? 'border-white/10 bg-white/5 text-white/65' : 'border-brand-200/60 bg-brand-50/70 text-brand-900'}`}>
-              <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-brand-600" />
+            <div className={`flex items-start gap-2 rounded-2xl border px-3 py-2.5 text-[11px] font-medium leading-relaxed ${activeTab === 'customer' && !registrationNeeded ? 'border-white/10 bg-white/5 text-white/65' : 'border-brand-200/60 dark:border-brand-400/25 bg-brand-50/70 dark:bg-brand-400/10 text-brand-900 dark:text-brand-100'}`}>
+              <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-brand-600 dark:text-brand-300" />
               <span>
                 {staffUser.role === 'OWNER' && activeTab === 'customer'
                   ? 'Ega rejimidasiz. “Ega” tabidan xodimlar, menyu va hisobotlarni boshqaring.'
@@ -408,14 +462,14 @@ export const App: React.FC = () => {
         )}
 
         {error && (
-          <div className="mb-3 flex items-start gap-2 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs font-medium text-rose-700">
+          <div className="mb-3 flex items-start gap-2 rounded-2xl border border-rose-200 dark:border-rose-400/25 bg-rose-50 dark:bg-rose-400/10 px-4 py-3 text-xs font-medium text-rose-700 dark:text-rose-300">
             <Info className="mt-0.5 h-4 w-4 shrink-0" />
             <span>{error}</span>
           </div>
         )}
 
         {!telegramAvailable && activeTab === 'customer' && (
-          <div className={`mb-3 rounded-2xl border px-4 py-3 text-xs font-medium ${activeTab === 'customer' && !registrationNeeded ? 'border-white/10 bg-white/5 text-white/55' : 'border-sky-200 bg-sky-50 text-sky-800'}`}>
+          <div className={`mb-3 rounded-2xl border px-4 py-3 text-xs font-medium ${activeTab === 'customer' && !registrationNeeded ? 'border-white/10 bg-white/5 text-white/55' : 'border-sky-200 dark:border-sky-400/25 bg-sky-50 dark:bg-sky-400/10 text-sky-800 dark:text-sky-300'}`}>
             Buyurtma berish uchun Mini App’ni Telegram orqali oching. Brauzerda faqat menyuni
             ko‘rish mumkin.
           </div>

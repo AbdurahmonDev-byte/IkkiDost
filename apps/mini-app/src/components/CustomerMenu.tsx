@@ -123,7 +123,7 @@ export const CustomerMenu: React.FC<Props> = ({
               {isDineIn ? selectedRoom?.name ?? 'Choyxonada' : 'Tavsiya'}
             </p>
             <div className="relative mt-3 flex w-full flex-1 items-center justify-center">
-              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-left text-[8px] uppercase leading-relaxed tracking-[0.16em] text-white/25">
+              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-left text-[8px] uppercase leading-relaxed tracking-[0.16em] text-white/45">
                 YANGI<br />TAYYORLANGAN
               </span>
               <div className="relative h-[min(68vw,290px)] w-[min(68vw,290px)] overflow-hidden rounded-full border border-white/10 bg-[#151819] shadow-[0_18px_70px_-20px_rgba(0,0,0,0.9)]">
@@ -139,7 +139,7 @@ export const CustomerMenu: React.FC<Props> = ({
                   </div>
                 )}
               </div>
-              <span className="absolute right-2 top-1/2 -translate-y-1/2 text-right text-[8px] uppercase leading-relaxed tracking-[0.16em] text-white/25">
+              <span className="absolute right-2 top-1/2 -translate-y-1/2 text-right text-[8px] uppercase leading-relaxed tracking-[0.16em] text-white/45">
                 SIFATLI<br />MASALLIQLAR
               </span>
             </div>
@@ -259,7 +259,7 @@ export const CustomerMenu: React.FC<Props> = ({
         {search && (
           <button
             onClick={() => setSearch('')}
-            className="rounded-full bg-stone-100 p-1 text-stone-500"
+            className="rounded-full bg-white/10 p-1 text-white/70 hover:bg-white/20"
             aria-label="Qidiruvni tozalash"
           >
             <X className="h-3.5 w-3.5" />
@@ -363,7 +363,7 @@ export const CustomerMenu: React.FC<Props> = ({
                           value={tempNote}
                           onChange={(e) => setTempNote(e.target.value)}
                           placeholder="Piyozsiz..."
-                          className="min-w-0 flex-1 rounded-xl border border-amber-300 bg-amber-50/40 px-2 py-1.5 text-[11px] font-semibold outline-none"
+                          className="min-w-0 flex-1 rounded-xl border border-amber-400/40 bg-amber-400/10 px-2 py-1.5 text-[11px] font-semibold text-amber-100 placeholder:text-amber-200/40 outline-none"
                           autoFocus
                         />
                         <button
@@ -388,7 +388,7 @@ export const CustomerMenu: React.FC<Props> = ({
                           }}
                           className={`tap flex h-8 items-center gap-1 rounded-xl px-2 text-[10px] font-bold ${
                             cartItem?.note
-                              ? 'bg-amber-100 text-amber-900'
+                              ? 'bg-amber-400/20 text-amber-200'
                               : 'bg-white/5 text-white/45'
                           }`}
                           title="Izoh"
@@ -434,7 +434,7 @@ export const CustomerMenu: React.FC<Props> = ({
                 {totalCartCount}
               </div>
               <div className="text-left">
-                <span className="block text-[10px] font-bold uppercase tracking-wide text-stone-400">
+                <span className="block text-[10px] font-bold uppercase tracking-wide text-stone-500">
                   Jami hisob
                 </span>
                 <span className="block text-base font-black">{money(totalCartSum)}</span>
