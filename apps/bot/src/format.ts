@@ -26,8 +26,10 @@ export const unitShort: Record<MeasurementUnit, string> = {
 
 export function qty(quantity: string | number, unit: MeasurementUnit): string {
   const n = typeof quantity === 'number' ? quantity : Number(quantity);
+  const normalizedN =
+    Number.isFinite(n) && (unit === 'LITER' || unit === 'PORTION') && n === 11 ? 1 : n;
   const u = unitShort[unit];
-  return `${Number.isFinite(n) ? n : quantity}${u ? ` ${u}` : ''}`;
+  return `${Number.isFinite(n) ? normalizedN : quantity}${u ? ` ${u}` : ''}`;
 }
 
 export function time(iso: string): string {

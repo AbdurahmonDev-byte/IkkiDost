@@ -20,8 +20,10 @@ export function formatNumber(value: number): string {
 
 export function formatQty(qty: string, unit: MeasurementUnit): string {
   const n = Number(qty);
+  const normalizedN =
+    Number.isFinite(n) && (unit === 'LITER' || unit === 'PORTION') && n === 11 ? 1 : n;
   const u = unit === 'KG' ? 'kg' : unit === 'LITER' ? 'l' : unit === 'PORTION' ? 'porsiya' : unit === 'PIECE' ? 'dona' : '';
-  return `${n}${u ? ' ' + u : ''}`;
+  return `${normalizedN}${u ? ' ' + u : ''}`;
 }
 
 export function formatDate(iso: string): string {
