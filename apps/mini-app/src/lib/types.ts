@@ -33,6 +33,7 @@ export interface Product {
   categoryName?: string;
   unit: MeasurementUnit;
   price: number;
+  costPrice: number;
   status: 'ACTIVE' | 'DISABLED' | 'ARCHIVED';
   imageUrl: string | null;
   thumbnailUrl: string | null;
@@ -43,6 +44,13 @@ export interface Room {
   name: string;
   isActive: boolean;
   isOccupied: boolean;
+  activeSession?: {
+    id: string;
+    orderCount: number;
+    totalAmount: number;
+    paidAmount: number;
+    outstandingAmount: number;
+  } | null;
 }
 
 export interface ServiceFeeConfig {
@@ -126,6 +134,7 @@ export interface OrderDto {
   type: OrderType;
   status: OrderStatus;
   roomId: string | null;
+  roomSessionId: string | null;
   roomName: string | null;
   numberOfPeople: number;
   note: string | null;
@@ -140,6 +149,27 @@ export interface OrderDto {
   outstandingAmount: number;
   createdById: string;
   createdByName: string;
+  createdAt: string;
+}
+
+export interface PaymentMethod {
+  id: string;
+  name: string;
+  kind: 'CASH' | 'CARD' | 'OTHER';
+  isActive: boolean;
+}
+
+export interface PaymentDto {
+  id: string;
+  orderId: string | null;
+  roomSessionId: string | null;
+  amount: number;
+  methodId: string;
+  methodName: string;
+  methodKind: PaymentMethod['kind'];
+  note: string | null;
+  receivedByName: string;
+  reversedAt: string | null;
   createdAt: string;
 }
 

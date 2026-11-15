@@ -55,7 +55,7 @@ const tabHint: Record<Tab, string> = {
   waiter: 'Xonalar va faol buyurtmalar. Yangi buyurtma uchun xonani tanlang.',
   kitchen: 'Navbatdagi taomlar. “Boshlash” va “Tayyor” orqali holatni yangilang.',
   delivery: 'Yetkazishlar. Buyurtmani qabul qiling, yo‘lga chiqing va naqd pulni kiriting.',
-  cashier: 'Kuryer topshirgan naqd pulni tekshirib, “To‘lov qilindi” bilan tasdiqlang.',
+  cashier: 'Savdo, buyurtmalar, xonalar, taomlar, to‘lovlar va kuryer naqd pulini boshqaring.',
   owner: 'Xodimlar, menyu va bugungi hisobotlar — hammasi shu yerda.',
 };
 
@@ -315,21 +315,21 @@ export const App: React.FC = () => {
     (!customer || !customer.phoneVerified);
 
   return (
-    <div className="app-shell">
+    <div className={`app-shell ${activeTab === 'customer' && !registrationNeeded ? 'app-shell--culinary' : ''}`}>
       <div className="mx-auto min-h-screen max-w-xl px-4 pb-10 pt-3">
         {/* Brand header */}
-        <header className="sticky top-0 z-30 -mx-4 mb-4 border-b border-stone-200/50 bg-[#fdf9f2]/85 px-4 py-3 backdrop-blur-xl">
+        <header className={`sticky top-0 z-30 -mx-4 mb-4 border-b px-4 py-3 backdrop-blur-xl ${activeTab === 'customer' && !registrationNeeded ? 'border-white/10 bg-[#090b0c]/90' : 'border-stone-200/50 bg-[#fdf9f2]/85'}`}>
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2.5">
               <div className="relative flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-500 to-brand-700 text-xl shadow-lg shadow-brand-600/30">
                 <span>🫖</span>
-                <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-[#fdf9f2] bg-emerald-500" />
+                <span className={`absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 ${activeTab === 'customer' && !registrationNeeded ? 'border-[#090b0c]' : 'border-[#fdf9f2]'} bg-emerald-500`} />
               </div>
               <div>
-                <h1 className="text-[17px] font-black leading-tight tracking-tight text-stone-900">
+                <h1 className={`text-[17px] font-black leading-tight tracking-tight ${activeTab === 'customer' && !registrationNeeded ? 'text-white' : 'text-stone-900'}`}>
                   Ikki Do‘st
                 </h1>
-                <p className="text-[9.5px] font-black uppercase tracking-[0.18em] text-brand-600">
+                <p className="text-[9.5px] font-black uppercase tracking-[0.18em] text-[#caa96b]">
                   Choyxonasi
                 </p>
               </div>
@@ -337,22 +337,22 @@ export const App: React.FC = () => {
 
             {staffUser ? (
               <div className="flex items-center gap-1">
-                <div className="flex items-center gap-2 rounded-2xl border border-stone-200/70 bg-white/90 py-1.5 pl-1.5 pr-3 shadow-sm">
+                <div className={`flex items-center gap-2 rounded-2xl border py-1.5 pl-1.5 pr-3 shadow-sm ${activeTab === 'customer' && !registrationNeeded ? 'border-white/10 bg-white/5' : 'border-stone-200/70 bg-white/90'}`}>
                   <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-stone-800 to-stone-950 text-[11px] font-black text-white">
                     {staffUser.fullName.slice(0, 1).toUpperCase()}
                   </div>
                   <div className="leading-tight">
-                    <p className="max-w-[96px] truncate text-[11px] font-black text-stone-900">
+                    <p className={`max-w-[96px] truncate text-[11px] font-black ${activeTab === 'customer' && !registrationNeeded ? 'text-white' : 'text-stone-900'}`}>
                       {staffUser.fullName}
                     </p>
-                    <p className="text-[9px] font-bold uppercase tracking-wide text-brand-600">
+                    <p className={`text-[9px] font-bold uppercase tracking-wide ${activeTab === 'customer' && !registrationNeeded ? 'text-[#caa96b]' : 'text-brand-600'}`}>
                       {roleLabel[staffUser.role]}
                     </p>
                   </div>
                 </div>
                 <button
                   onClick={handleLogout}
-                  className="tap rounded-xl p-2 text-stone-400 transition-colors hover:bg-white hover:text-rose-600"
+                  className={`tap rounded-xl p-2 transition-colors ${activeTab === 'customer' && !registrationNeeded ? 'text-white/45 hover:bg-white/10 hover:text-rose-300' : 'text-stone-400 hover:bg-white hover:text-rose-600'}`}
                   title="Chiqish"
                 >
                   <LogOut className="h-4 w-4" />
@@ -361,7 +361,7 @@ export const App: React.FC = () => {
             ) : (
               <button
                 onClick={() => setIsStaffLoginOpen(true)}
-                className="tap flex items-center gap-1.5 rounded-2xl border border-stone-200/80 bg-white/90 px-3 py-2 text-xs font-bold text-stone-700 shadow-sm hover:bg-white"
+                className={`tap flex items-center gap-1.5 rounded-2xl border px-3 py-2 text-xs font-bold shadow-sm ${activeTab === 'customer' && !registrationNeeded ? 'border-white/10 bg-white/5 text-white/80' : 'border-stone-200/80 bg-white/90 text-stone-700 hover:bg-white'}`}
               >
                 <Lock className="h-3.5 w-3.5 text-brand-600" />
                 <span>Xodimlar</span>
@@ -386,8 +386,8 @@ export const App: React.FC = () => {
                     }}
                     className={`tap flex shrink-0 items-center gap-1.5 rounded-2xl px-3.5 py-2.5 text-xs font-bold ${
                       active
-                        ? 'bg-gradient-to-br from-brand-500 to-brand-700 text-white shadow-lg shadow-brand-600/25'
-                        : 'border border-stone-200/70 bg-white/80 text-stone-600 shadow-sm hover:bg-white hover:text-stone-900'
+                        ? activeTab === 'customer' && !registrationNeeded ? 'bg-[#d2b273] text-[#15120d]' : 'bg-gradient-to-br from-brand-500 to-brand-700 text-white shadow-lg shadow-brand-600/25'
+                        : activeTab === 'customer' && !registrationNeeded ? 'border border-white/10 bg-white/5 text-white/65 hover:bg-white/10' : 'border border-stone-200/70 bg-white/80 text-stone-600 shadow-sm hover:bg-white hover:text-stone-900'
                     }`}
                   >
                     <Icon className="h-3.5 w-3.5" />
@@ -396,7 +396,7 @@ export const App: React.FC = () => {
                 );
               })}
             </nav>
-            <div className="flex items-start gap-2 rounded-2xl border border-brand-200/60 bg-brand-50/70 px-3 py-2.5 text-[11px] font-medium leading-relaxed text-brand-900">
+            <div className={`flex items-start gap-2 rounded-2xl border px-3 py-2.5 text-[11px] font-medium leading-relaxed ${activeTab === 'customer' && !registrationNeeded ? 'border-white/10 bg-white/5 text-white/65' : 'border-brand-200/60 bg-brand-50/70 text-brand-900'}`}>
               <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-brand-600" />
               <span>
                 {staffUser.role === 'OWNER' && activeTab === 'customer'
@@ -415,7 +415,7 @@ export const App: React.FC = () => {
         )}
 
         {!telegramAvailable && activeTab === 'customer' && (
-          <div className="mb-3 rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3 text-xs font-medium text-sky-800">
+          <div className={`mb-3 rounded-2xl border px-4 py-3 text-xs font-medium ${activeTab === 'customer' && !registrationNeeded ? 'border-white/10 bg-white/5 text-white/55' : 'border-sky-200 bg-sky-50 text-sky-800'}`}>
             Buyurtma berish uchun Mini App’ni Telegram orqali oching. Brauzerda faqat menyuni
             ko‘rish mumkin.
           </div>
@@ -475,7 +475,11 @@ export const App: React.FC = () => {
         )}
 
         {activeTab === 'cashier' && staffUser && (
-          <CashierScreen token={staffUser.accessToken} />
+          <CashierScreen
+            token={staffUser.accessToken}
+            onShowReceipt={setReceiptOrder}
+            onMenuChanged={() => { loadMenu().catch(() => undefined); }}
+          />
         )}
 
         {activeTab === 'owner' && staffUser && (

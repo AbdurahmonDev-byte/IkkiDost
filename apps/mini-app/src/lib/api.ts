@@ -5,6 +5,8 @@ import type {
   DeliveryDto,
   DeliveryStatus,
   OrderDto,
+  PaymentDto,
+  PaymentMethod,
   Product,
   PublicConfig,
   Role,
@@ -101,6 +103,14 @@ export const api = {
     ),
 
   getRooms: () => request<Room[]>('/public/rooms'),
+
+  getStaffRooms: (token: string) => request<Room[]>('/rooms', { method: 'GET' }, token),
+
+  createRoom: (token: string, name: string) =>
+    request<Room>('/rooms', { method: 'POST', body: JSON.stringify({ name }) }, token),
+
+  updateRoom: (token: string, id: string, input: { name?: string; isActive?: boolean }) =>
+    request<Room>(`/rooms/${id}`, { method: 'PATCH', body: JSON.stringify(input) }, token),
 
   /** Registered customer attached to the current Telegram identity (or null). */
   getMe: () => request<{ customer: Customer | null }>('/public/me'),
@@ -201,6 +211,21 @@ export const api = {
     return request<OrderDto[]>(`/orders${suffix}`, { method: 'GET' }, token);
   },
 
+  getStaffOrder: (token: string, id: string) => request<OrderDto>(`/orders/${id}`, { method: 'GET' }, token),
+
+  getPaymentMethods: (token: string) => request<PaymentMethod[]>('/payments/methods', { method: 'GET' }, token),
+
+  getPayments: (token: string, from: string, to: string) => {
+    const qs = new URLSearchParams({ from, to });
+    return request<PaymentDto[]>(`/payments?${qs}`, { method: 'GET' }, token);
+  },
+
+  payOrder: (token: string, orderId: string, input: { amount: number; methodId: string; idempotencyKey: string }) =>
+    request<PaymentDto>(`/payments/order/${orderId}`, { method: 'POST', body: JSON.stringify(input) }, token),
+
+  payRoomSession: (token: string, sessionId: string, input: { amount: number; methodId: string; idempotencyKey: string }) =>
+    request<PaymentDto>(`/payments/session/${sessionId}`, { method: 'POST', body: JSON.stringify(input) }, token),
+
   createStaffOrder: (
     token: string,
     input:
@@ -263,6 +288,8 @@ export const api = {
       activeDineInOrders: number;
       activeDeliveryOrders: number;
       paidToday: number;
+      todayCostOfGoods: number;
+      todayProfit: number;
       unpaidOutstanding: number;
       popularProducts: Array<{ productName: string; quantity: string; revenue: number }>;
     }>('/reports/dashboard', { method: 'GET' }, token),
@@ -279,13 +306,13 @@ export const api = {
 
   createProduct: (
     token: string,
-    input: { name: string; categoryId: string; unit: string; price: number },
+    input: { name: string; categoryId: string; unit: string; price: number; costPrice?: number },
   ) => request<Product>('/products', { method: 'POST', body: JSON.stringify(input) }, token),
 
   updateProduct: (
     token: string,
     id: string,
-    input: Partial<{ name: string; categoryId: string; unit: string; price: number; status: string }>,
+    input: Partial<{ name: string; categoryId: string; unit: string; price: number; costPrice: number; status: string }>,
   ) =>
     request<Product>(`/products/${id}`, { method: 'PATCH', body: JSON.stringify(input) }, token),
 

@@ -1,8 +1,9 @@
 # PROJECT STATUS
 
-Last updated: 2026-11-14 — Cashier admin access, room and catalog management,
-product cost snapshots and net-profit KPIs, plus printable receipts beside
-payment records. Delivery-address capture (bot location prompt, saved
+Last updated: 2026-11-14 — Cashier admin access, all-order visibility, room and
+catalog management in Mini App, product cost snapshots and net-profit KPIs,
+plus printable cashier receipts, dark customer-menu design and locally bundled
+product-name-matched photos. Delivery-address capture (bot location prompt, saved
 customer address, Mini App prefill), courier cash collection with cashier
 “To‘lov qilindi” handover, and owner-managed employee roles/activation are
 implemented on top of Telegram-ID staff authentication, the DELIVERY role,
@@ -42,8 +43,8 @@ Docs: `docs/ARCHITECTURE.md`, `docs/DATABASE.md`, `docs/API.md`,
 
 - `npm run test:api` — **51/51 tests pass**, including cashier room/product
   management, debt-close reason auditing, and cost-aware profit reporting.
-- API and admin-web TypeScript checks pass after cashier, cost, dashboard and
-  receipt changes; API and admin-web production builds pass.
+- All workspace TypeScript checks pass; API, admin-web and Mini App production
+  builds pass after cashier, cost, dashboard and receipt changes.
 
 ## Earlier verification snapshot (2026-11-13)
 

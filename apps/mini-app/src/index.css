@@ -31,6 +31,11 @@ body {
     linear-gradient(180deg, #fdf9f2 0%, #f8f1e7 55%, #f4ece0 100%);
 }
 
+.app-shell--culinary {
+  background: #090b0c;
+  color: #f4f0e8;
+}
+
 @layer components {
   /* Elevated card used across the whole product. */
   .surface {

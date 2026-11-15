@@ -232,5 +232,10 @@
 
 ## ADR-026: Cashier admin access, cost snapshots and payment receipts
 - **Context:** The cashier needs the room/catalog and management tools available to the owner, product-level cost visibility for net profit, and a receipt beside recorded payments.
-- **Decision:** CASHIER receives the OWNER-protected admin/API capabilities and may sign in to admin-web with a password configured by the owner; WAITER, CHEF and DELIVERY retain Telegram-only staff login. Products store integer UZS `costPrice`; each order item snapshots `unitCost` and `costTotal`, and reports subtract cost of goods and expenses from paid revenue. Admin-web payment rows load their linked order/session into an 80 mm printable receipt.
+- **Decision:** CASHIER receives the OWNER-protected admin/API capabilities and may sign in to admin-web with a password configured by the owner; WAITER, CHEF and DELIVERY retain Telegram-only staff login. Products store integer UZS `costPrice`; each order item snapshots `unitCost` and `costTotal`, and reports subtract cost of goods and expenses from paid revenue. The Mini App cashier workspace includes all orders, rooms, menu editing, payments and courier cash handover; order receipts use the shared 80 mm print view.
 - **Consequences:** Existing products and order items migrate with cost 0, so historical profit will not include costs unless backfilled. Changing a product's cost only affects future order items. Cashier room closure with debt still requires an audited reason.
+
+## ADR-027: Customer menu photography and dark editorial theme
+- **Context:** The Mini App customer menu needed a more visual restaurant presentation and the seeded products had no uploaded photos.
+- **Decision:** Use a dark, editorial food-menu theme with a featured dish, gold accents and compact dish tiles. Bundle locally stored photos keyed by the exact seeded product names; user-uploaded product images remain higher priority. Commons image credits and licenses are listed in `apps/mini-app/public/menu/ATTRIBUTION.md`; Unsplash images use the Unsplash License. No alternate-brand image is assigned to Flesh because no reusable exact-match photo was found.
+- **Consequences:** The customer menu works without remote image hotlinks; newly added products can still use their uploaded image or the neutral fallback until a matching photo is assigned.
