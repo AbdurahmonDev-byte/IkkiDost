@@ -111,7 +111,7 @@ export const WeeklyFinanceChart: React.FC<Props> = ({ data }) => {
                 strokeDasharray="3 4"
                 strokeWidth={1}
               />
-              <text x={left - 5} y={y + 3} textAnchor="end" fontSize={8.5} fontWeight={700} fill="#78716c">
+              <text x={left - 5} y={y + 3} textAnchor="end" fontSize={9} fontWeight={700} fill="#a8a29e">
                 {compact(tick)}
               </text>
             </g>
@@ -164,7 +164,7 @@ export const WeeklyFinanceChart: React.FC<Props> = ({ data }) => {
       <div className="mt-3 grid grid-cols-3 gap-2">
         {totals.map((series) => (
           <div key={series.key} className="rounded-xl border border-stone-800/80 bg-stone-800/40 px-2 py-2">
-            <p className="flex items-center gap-1 text-[9px] font-bold uppercase tracking-wide text-stone-500">
+            <p className="flex items-center gap-1 text-[9px] font-bold uppercase tracking-wide text-stone-400">
               <span className={`h-1.5 w-1.5 rounded-full ${series.tile}`} />
               {series.label}
             </p>

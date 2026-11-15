@@ -502,7 +502,7 @@ export const OwnerScreen: React.FC<Props> = ({ token, onMenuChanged }) => {
               <div className="mt-3">
                 <WeeklyFinanceChart data={stats.revenueByDay} />
               </div>
-              <p className="mt-2 text-[9.5px] leading-relaxed text-stone-500 dark:text-stone-400">
+              <p className="mt-2 text-[9.5px] leading-relaxed text-stone-400">
                 Foyda = kirim − chiqim − mahsulot tannarxi.
               </p>
             </div>
