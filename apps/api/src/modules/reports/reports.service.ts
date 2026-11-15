@@ -32,9 +32,9 @@ export class ReportsService {
         this.prisma.orderItem.groupBy({
           by: ['productName'],
           where: { createdAt: { gte: today }, status: { not: 'CANCELLED' } },
-          _sum: { lineTotal: true, quantity: true },
+          _sum: { lineTotal: true, costTotal: true, quantity: true },
           orderBy: { _sum: { lineTotal: 'desc' } },
-          take: 5,
+          take: 10,
         }),
         this.audit.findAll(10),
         this.prisma.payment.findMany({ where: { createdAt: { gte: weekStart }, reversedAt: null }, select: { amount: true, createdAt: true } }),
@@ -123,7 +123,12 @@ export class ReportsService {
       unpaidOutstanding,
       serviceFeeRevenueToday: todayFeeOrders._sum.serviceFeeAmount ?? 0,
       todayExpenses: expenseTotal,
-      popularProducts: topProducts.map((p) => ({ productName: p.productName, quantity: String(p._sum.quantity ?? 0), revenue: p._sum.lineTotal ?? 0 })),
+      popularProducts: topProducts.map((p) => ({
+        productName: p.productName,
+        quantity: String(p._sum.quantity ?? 0),
+        revenue: p._sum.lineTotal ?? 0,
+        profit: (p._sum.lineTotal ?? 0) - (p._sum.costTotal ?? 0),
+      })),
       recentActivity,
       revenueByDay: [...byDay.entries()].map(([date, v]) => ({
         date,

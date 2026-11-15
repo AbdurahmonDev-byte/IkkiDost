@@ -254,7 +254,7 @@ export interface DashboardSummaryDto {
   unpaidOutstanding: Uzs;
   serviceFeeRevenueToday: Uzs;
   todayExpenses: Uzs;
-  popularProducts: Array<{ productName: string; quantity: string; revenue: Uzs }>;
+  popularProducts: Array<{ productName: string; quantity: string; revenue: Uzs; profit?: Uzs }>;
   recentActivity: AuditLogDto[];
   revenueByDay: Array<{ date: string; revenue: Uzs; expenses: Uzs; costOfGoods: Uzs; profit: Uzs }>;
   /** Bugungi soatlik savdo (00–23). Faqat to'lov bo'lgan soatlar qaytariladi. */

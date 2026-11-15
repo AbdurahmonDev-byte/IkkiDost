@@ -293,7 +293,7 @@ export const api = {
       todayExpenses: number;
       serviceFeeRevenueToday: number;
       unpaidOutstanding: number;
-      popularProducts: Array<{ productName: string; quantity: string; revenue: number }>;
+      popularProducts: Array<{ productName: string; quantity: string; revenue: number; profit?: number }>;
       revenueByDay: Array<{
         date: string;
         revenue: number;

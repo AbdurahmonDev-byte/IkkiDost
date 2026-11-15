@@ -1,20 +1,16 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
   BarChart3,
-  Banknote,
   Camera,
   CheckCircle2,
-  DoorOpen,
   FolderPlus,
   ImagePlus,
   Loader2,
   KeyRound,
   Plus,
   Save,
-  ShoppingBag,
   Trash2,
   TriangleAlert,
-  Truck,
   Utensils,
   Users,
   Power,
@@ -24,9 +20,7 @@ import { money, qty } from '../lib/format';
 import { tg } from '../lib/telegram';
 import type { Category, MeasurementUnit, Product, Role } from '../lib/types';
 import { StaffHeader } from './StaffHeader';
-import { WeeklyFinanceChart, type FinanceDay } from './WeeklyFinanceChart';
-import { HourlySalesChart } from './HourlySalesChart';
-
+import { OptimoDashboard, type OptimoStats } from './OptimoDashboard';
 
 interface Props {
   token: string;
@@ -34,22 +28,7 @@ interface Props {
   onMenuChanged?: () => void;
 }
 
-interface Stats {
-  todayRevenue: number;
-  todayOrderCount: number;
-  activeRooms: number;
-  activeDineInOrders: number;
-  activeDeliveryOrders: number;
-  paidToday: number;
-  todayExpenses: number;
-  todayCostOfGoods: number;
-  todayProfit: number;
-  unpaidOutstanding: number;
-  popularProducts: Array<{ productName: string; quantity: string; revenue: number }>;
-  revenueByDay: FinanceDay[];
-  hourlySales: Array<{ hour: number; revenue: number; orderCount: number }>;
-  paymentsByMethod: Array<{ methodName: string; kind: string; amount: number; count: number }>;
-}
+type Stats = OptimoStats;
 
 
 interface EmployeeAccess {
@@ -435,292 +414,17 @@ export const OwnerScreen: React.FC<Props> = ({ token, onMenuChanged }) => {
         </div>
       )}
 
-      {/* Stats — Optimo uslubida */}
+      {/* Stats — Optimo Dashboard */}
       {section === 'overview' && (
         <div className="space-y-3 animate-rise">
-
-          {/* ── Hero savdo kartasi ── */}
-          <div className="relative overflow-hidden rounded-[28px] bg-gradient-to-br from-brand-600 via-brand-700 to-[#5a341c] p-5 text-white shadow-xl shadow-brand-900/25">
-            <div className="pointer-events-none absolute -right-8 -top-10 h-40 w-40 rounded-full border border-white/10" />
-            <div className="pointer-events-none absolute -right-4 -bottom-14 h-28 w-28 rounded-full bg-white/5 blur-2xl" />
-            <div className="relative">
-              <p className="text-[10px] font-black uppercase tracking-[0.18em] text-brand-100">
-                Bugungi savdo
-              </p>
-              <p className="mt-1 text-[32px] font-black leading-none tracking-tight">
-                {stats ? money(stats.todayRevenue) : '—'}
-              </p>
-              <div className="mt-3 flex flex-wrap gap-2 text-[10.5px] font-bold">
-                <span className="rounded-full bg-white/15 px-2.5 py-1 backdrop-blur">
-                  {stats ? `${stats.todayOrderCount} buyurtma` : '—'}
-                </span>
-                <span className="rounded-full bg-white/15 px-2.5 py-1 backdrop-blur">
-                  To'langan: {stats ? money(stats.paidToday) : '—'}
-                </span>
-                {stats && stats.unpaidOutstanding > 0 && (
-                  <span className="rounded-full bg-rose-500/30 px-2.5 py-1 backdrop-blur">
-                    Qarz: {money(stats.unpaidOutstanding)}
-                  </span>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* ── KPI qatori (3 ta) ── */}
-          <div className="grid grid-cols-3 gap-2">
-            {[
-              {
-                label: 'Kirim',
-                value: stats ? money(stats.todayRevenue) : '—',
-                sub: 'bugungi savdo',
-                dot: 'bg-emerald-400',
-                tone: 'border-emerald-400/20 bg-emerald-400/8 dark:bg-emerald-400/10',
-                val: 'text-emerald-700 dark:text-emerald-300',
-              },
-              {
-                label: 'Chiqim',
-                value: stats ? money(stats.todayExpenses) : '—',
-                sub: 'xarajatlar',
-                dot: 'bg-rose-400',
-                tone: 'border-rose-400/20 bg-rose-400/8 dark:bg-rose-400/10',
-                val: 'text-rose-700 dark:text-rose-300',
-              },
-              {
-                label: 'Foyda',
-                value: stats ? money(stats.todayProfit) : '—',
-                sub: 'sof daromad',
-                dot: stats && stats.todayProfit < 0 ? 'bg-rose-400' : 'bg-brand-400',
-                tone:
-                  stats && stats.todayProfit < 0
-                    ? 'border-rose-400/20 bg-rose-400/8 dark:bg-rose-400/10'
-                    : 'border-brand-400/20 bg-brand-400/8 dark:bg-brand-400/10',
-                val:
-                  stats && stats.todayProfit < 0
-                    ? 'text-rose-700 dark:text-rose-300'
-                    : 'text-brand-700 dark:text-brand-200',
-              },
-            ].map((card) => (
-              <div key={card.label} className={`rounded-2xl border p-2.5 ${card.tone}`}>
-                <div className="flex items-center gap-1 mb-1">
-                  <span className={`h-1.5 w-1.5 rounded-full ${card.dot}`} />
-                  <p className="text-[9px] font-black uppercase tracking-wide text-stone-500 dark:text-stone-400">
-                    {card.label}
-                  </p>
-                </div>
-                <p className={`text-[11px] font-black leading-tight tabular-nums ${card.val}`}>
-                  {card.value}
-                </p>
-                <p className="mt-0.5 text-[8.5px] text-stone-400">{card.sub}</p>
-              </div>
-            ))}
-          </div>
-
-          {/* ── Soatlik savdo grafigi ── */}
-          <div className="surface p-4">
-            <div className="flex items-start justify-between gap-2 mb-3">
-              <div>
-                <h3 className="text-[13px] font-black text-stone-900 dark:text-stone-100">
-                  Soatlik savdo
-                </h3>
-                <p className="mt-0.5 text-[10.5px] font-medium text-stone-500 dark:text-stone-400">
-                  Bugun · soat bo'yicha to'lovlar
-                </p>
-              </div>
-              <span className="chip bg-emerald-50 dark:bg-emerald-400/10 text-emerald-700 dark:text-emerald-300">
-                bugun
-              </span>
-            </div>
-            {stats ? (
-              <HourlySalesChart data={stats.hourlySales} />
-            ) : (
-              <div className="h-28 animate-pulse rounded-xl bg-stone-100 dark:bg-stone-800" />
-            )}
-          </div>
-
-          {/* ── To'lov usullari ── */}
-          {stats && stats.paymentsByMethod.length > 0 && (
-            <div className="surface p-4">
-              <div className="flex items-start justify-between gap-2 mb-3">
-                <div>
-                  <h3 className="text-[13px] font-black text-stone-900 dark:text-stone-100">
-                    To'lov usullari
-                  </h3>
-                  <p className="mt-0.5 text-[10.5px] font-medium text-stone-500 dark:text-stone-400">
-                    Bugungi kesim
-                  </p>
-                </div>
-              </div>
-              {(() => {
-                const totalAmt = stats.paymentsByMethod.reduce((s, m) => s + m.amount, 0) || 1;
-                const METHOD_COLORS: Record<string, { bar: string; badge: string; text: string }> = {
-                  CASH: { bar: 'bg-emerald-400', badge: 'bg-emerald-400/15 text-emerald-300', text: 'text-emerald-300' },
-                  CARD: { bar: 'bg-sky-400', badge: 'bg-sky-400/15 text-sky-300', text: 'text-sky-300' },
-                  OTHER: { bar: 'bg-stone-400', badge: 'bg-stone-700 text-stone-300', text: 'text-stone-300' },
-                };
-                return (
-                  <div className="space-y-3">
-                    {stats.paymentsByMethod.map((m) => {
-                      const pct = Math.round((m.amount / totalAmt) * 100);
-                      const c = METHOD_COLORS[m.kind] ?? METHOD_COLORS.OTHER;
-                      return (
-                        <div key={m.methodName}>
-                          <div className="flex items-center justify-between mb-1.5">
-                            <div className="flex items-center gap-2">
-                              <span className={`rounded-full px-2 py-0.5 text-[9px] font-black ${c.badge}`}>
-                                {m.methodName}
-                              </span>
-                              <span className="text-[10px] text-stone-400">{m.count} ta</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <span className={`text-[11px] font-black tabular-nums ${c.text}`}>
-                                {money(m.amount)}
-                              </span>
-                              <span className="text-[9.5px] font-bold text-stone-500">{pct}%</span>
-                            </div>
-                          </div>
-                          <div className="h-1.5 w-full rounded-full bg-stone-800">
-                            <div
-                              className={`h-1.5 rounded-full ${c.bar} transition-all duration-700`}
-                              style={{ width: `${pct}%` }}
-                            />
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                );
-              })()}
+          {stats ? (
+            <OptimoDashboard stats={stats} title="Ega — Asosiy hisobot" />
+          ) : (
+            <div className="surface flex items-center justify-center py-16 text-stone-500">
+              <Loader2 className="h-5 w-5 animate-spin text-brand-500" />
+              <span className="ml-2 text-xs font-semibold">Yuklanmoqda...</span>
             </div>
           )}
-
-          {/* ── Top mahsulotlar ── */}
-          {stats && stats.popularProducts.length > 0 && (
-            <div className="surface p-4">
-              <div className="flex items-start justify-between gap-2 mb-3">
-                <div>
-                  <h3 className="text-[13px] font-black text-stone-900 dark:text-stone-100">
-                    Top mahsulotlar
-                  </h3>
-                  <p className="mt-0.5 text-[10.5px] font-medium text-stone-500 dark:text-stone-400">
-                    Bugungi savdo reytingi
-                  </p>
-                </div>
-                <span className="chip bg-violet-50 dark:bg-violet-400/10 text-violet-700 dark:text-violet-300">
-                  top 5
-                </span>
-              </div>
-              {(() => {
-                const maxRev = Math.max(1, ...stats.popularProducts.map((p) => p.revenue));
-                return (
-                  <div className="space-y-3">
-                    {stats.popularProducts.map((p, idx) => {
-                      const pct = Math.round((p.revenue / maxRev) * 100);
-                      return (
-                        <div key={p.productName}>
-                          <div className="flex items-center justify-between mb-1.5">
-                            <div className="flex items-center gap-2 min-w-0">
-                              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-lg bg-stone-800 text-[9px] font-black text-stone-300">
-                                {idx + 1}
-                              </span>
-                              <span className="truncate text-[11px] font-bold text-stone-900 dark:text-stone-100">
-                                {p.productName}
-                              </span>
-                            </div>
-                            <div className="flex shrink-0 items-center gap-2 pl-2">
-                              <span className="text-[9px] text-stone-400">{p.quantity} ta</span>
-                              <span className="text-[11px] font-black tabular-nums text-brand-200">
-                                {money(p.revenue)}
-                              </span>
-                            </div>
-                          </div>
-                          <div className="h-1.5 w-full rounded-full bg-stone-800">
-                            <div
-                              className="h-1.5 rounded-full bg-gradient-to-r from-brand-500 to-brand-400 transition-all duration-700"
-                              style={{ width: `${pct}%` }}
-                            />
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                );
-              })()}
-            </div>
-          )}
-
-          {/* ── Haftalik chart ── */}
-          {stats && (
-            <div className="surface p-4">
-              <div className="flex items-start justify-between gap-2 mb-3">
-                <div>
-                  <h3 className="text-[13px] font-black text-stone-900 dark:text-stone-100">
-                    Kirim, chiqim va foyda
-                  </h3>
-                  <p className="mt-0.5 text-[10.5px] font-medium text-stone-500 dark:text-stone-400">
-                    Oxirgi 7 kun · kunlik ko'rsatkich
-                  </p>
-                </div>
-                <span className="chip bg-brand-50 dark:bg-brand-400/10 text-brand-700 dark:text-brand-200">
-                  7 kun
-                </span>
-              </div>
-              <WeeklyFinanceChart data={stats.revenueByDay} />
-              <p className="mt-2 text-[9.5px] leading-relaxed text-stone-400">
-                Foyda = kirim − chiqim − mahsulot tannarxi.
-              </p>
-            </div>
-          )}
-
-          {/* ── Faol xonalar va yetkazishlar ── */}
-          <div className="grid grid-cols-2 gap-3">
-            {[
-              {
-                label: 'Buyurtmalar',
-                value: stats ? `${stats.todayOrderCount}` : '—',
-                sub: 'bugun',
-                icon: ShoppingBag,
-                tile: 'bg-gradient-to-br from-sky-500 to-cyan-600',
-              },
-              {
-                label: 'Faol xonalar',
-                value: stats ? `${stats.activeRooms}` : '—',
-                sub: 'hozir ochiq',
-                icon: DoorOpen,
-                tile: 'bg-gradient-to-br from-amber-500 to-orange-600',
-              },
-              {
-                label: 'Yetkazishlar',
-                value: stats ? `${stats.activeDeliveryOrders}` : '—',
-                sub: "yo\u2018lda",
-                icon: Truck,
-                tile: 'bg-gradient-to-br from-indigo-500 to-purple-600',
-              },
-              {
-                label: 'Qarzdorlik',
-                value: stats ? money(stats.unpaidOutstanding) : '—',
-                sub: "to\u2018lanmagan",
-                icon: Banknote,
-                tile: stats && stats.unpaidOutstanding > 0
-                  ? 'bg-gradient-to-br from-rose-500 to-red-600'
-                  : 'bg-gradient-to-br from-stone-600 to-stone-700',
-              },
-            ].map((card) => {
-              const Icon = card.icon;
-              return (
-                <div key={card.label} className="surface p-3.5">
-                  <div className={`flex h-10 w-10 items-center justify-center rounded-2xl text-white shadow-lg ${card.tile}`}>
-                    <Icon className="h-4.5 w-4.5" />
-                  </div>
-                  <p className="mt-3 text-[10.5px] font-bold text-stone-500 dark:text-stone-400">{card.label}</p>
-                  <p className="mt-0.5 text-[18px] font-black leading-tight tabular-nums text-stone-900 dark:text-stone-100">
-                    {card.value}
-                  </p>
-                  <p className="mt-0.5 text-[9px] text-stone-400">{card.sub}</p>
-                </div>
-              );
-            })}
-          </div>
-
         </div>
       )}
 

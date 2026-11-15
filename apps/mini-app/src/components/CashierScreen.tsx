@@ -19,7 +19,7 @@ import { menuImageFor } from '../lib/menuImages';
 import { tg } from '../lib/telegram';
 import type { Category, DeliveryDto, MeasurementUnit, OrderDto, PaymentDto, PaymentMethod, Product, Room } from '../lib/types';
 import { StaffHeader } from './StaffHeader';
-import { WeeklyFinanceChart, type FinanceDay } from './WeeklyFinanceChart';
+import { OptimoDashboard, type OptimoStats } from './OptimoDashboard';
 
 type CashierView = 'overview' | 'orders' | 'rooms' | 'menu' | 'payments' | 'handover';
 type PaymentTarget = { id: string; label: string; outstanding: number; sessionId?: string };
@@ -30,18 +30,7 @@ interface Props {
   onMenuChanged?: () => void;
 }
 
-interface DashboardData {
-  todayRevenue: number;
-  todayOrderCount: number;
-  activeRooms: number;
-  activeDineInOrders: number;
-  activeDeliveryOrders: number;
-  todayExpenses: number;
-  todayCostOfGoods: number;
-  todayProfit: number;
-  unpaidOutstanding: number;
-  revenueByDay: FinanceDay[];
-}
+type DashboardData = OptimoStats;
 
 const views: Array<{ id: CashierView; label: string; icon: typeof BarChart3 }> = [
   { id: 'overview', label: 'Umumiy', icon: BarChart3 },
@@ -315,26 +304,12 @@ export const CashierScreen: React.FC<Props> = ({ token, onShowReceipt, onMenuCha
         <>
           {view === 'overview' && (
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-2.5">
-                <Metric label="Bugungi tushum" value={money(dashboard?.todayRevenue ?? 0)} tone="emerald" />
-                <Metric label="Sof foyda" value={money(dashboard?.todayProfit ?? 0)} tone="blue" />
-                <Metric label="Bugungi chiqim" value={money(dashboard?.todayExpenses ?? 0)} tone="rose" />
-                <Metric label="Mahsulot tannarxi" value={money(dashboard?.todayCostOfGoods ?? 0)} />
-                <Metric label="Faol buyurtma" value={String(activeOrders.length)} />
-                <Metric label="Ochiq qarz" value={money(roomOutstanding + deliveryOutstanding)} tone="rose" />
-              </div>
-              <section className="surface p-4">
-                <div className="mb-3">
-                  <h3 className="text-[13px] font-black text-stone-100">Kirim, chiqim va foyda</h3>
-                  <p className="mt-0.5 text-[10px] font-medium text-stone-400">Oxirgi 7 kun · kunlik</p>
-                </div>
-                <WeeklyFinanceChart data={dashboard?.revenueByDay ?? []} />
-              </section>
+              {dashboard && <OptimoDashboard stats={dashboard} title="Kassir — Asosiy hisobot" />}
+
               <div className="surface divide-y divide-stone-100 dark:divide-stone-800">
                 <OverviewRow label="Faol xonalar" value={`${rooms.filter((room) => room.activeSession).length} / ${rooms.length}`} />
-                <OverviewRow label="Zal buyurtmalari" value={String(dashboard?.activeDineInOrders ?? 0)} />
-                <OverviewRow label="Yetkazish buyurtmalari" value={String(dashboard?.activeDeliveryOrders ?? 0)} />
-                <OverviewRow label="Bugungi tannarx" value={money(dashboard?.todayCostOfGoods ?? 0)} />
+                <OverviewRow label="Faol buyurtmalar" value={String(activeOrders.length)} />
+                <OverviewRow label="Ochiq qarz (zal + yetkazish)" value={money(roomOutstanding + deliveryOutstanding)} />
                 <OverviewRow label="Kuryerdan olinadigan naqd" value={money(pendingCash)} />
               </div>
               <div className="flex items-center justify-between px-1">
