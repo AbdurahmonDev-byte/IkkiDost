@@ -19,7 +19,7 @@ export class ReportsService {
   async dashboard(): Promise<DashboardSummaryDto> {
     const today = startOfDay(new Date());
     const weekStart = new Date(today.getTime() - 6 * 86400_000);
-    const [todayPayments, todayOrders, activeRooms, activeDineIn, activeDelivery, openSessions, todayFeeOrders, todayExpenses, topProducts, recentActivity, weekPayments, weekExpenses, weekCosts, todayCostOfGoods] =
+    const [todayPayments, todayOrders, activeRooms, activeDineIn, activeDelivery, openSessions, todayFeeOrders, todayExpenses, topProducts, recentActivity, weekPayments, weekExpenses, weekCosts, todayCostOfGoods, todayPaymentsFull, todayPaymentsByMethod] =
       await Promise.all([
         this.prisma.payment.aggregate({ where: { createdAt: { gte: today }, reversedAt: null }, _sum: { amount: true } }),
         this.prisma.order.count({ where: { createdAt: { gte: today }, status: { not: 'CANCELLED' } } }),
@@ -46,6 +46,18 @@ export class ReportsService {
         this.prisma.orderItem.aggregate({
           where: { createdAt: { gte: today }, status: { not: 'CANCELLED' } },
           _sum: { costTotal: true },
+        }),
+        // Soatlik savdo uchun bugungi to'lovlar
+        this.prisma.payment.findMany({
+          where: { createdAt: { gte: today }, reversedAt: null },
+          select: { amount: true, createdAt: true, orderId: true },
+        }),
+        // To'lov usullari kesimi
+        this.prisma.payment.groupBy({
+          by: ['methodId'],
+          where: { createdAt: { gte: today }, reversedAt: null },
+          _sum: { amount: true },
+          _count: true,
         }),
       ]);
 
@@ -75,6 +87,30 @@ export class ReportsService {
       if (cur) cur.costOfGoods += item.costTotal;
     }
 
+    // Soatlik savdo hisoblash (00–23)
+    const byHour = new Map<number, { revenue: number; orderCount: number }>();
+    for (const p of todayPaymentsFull) {
+      const hour = p.createdAt.getHours();
+      const cur = byHour.get(hour) ?? { revenue: 0, orderCount: 0 };
+      cur.revenue += p.amount;
+      cur.orderCount += 1;
+      byHour.set(hour, cur);
+    }
+    const hourlySales = [...byHour.entries()]
+      .sort(([a], [b]) => a - b)
+      .map(([hour, v]) => ({ hour, revenue: v.revenue, orderCount: v.orderCount }));
+
+    // To'lov usullari kesimi
+    const methodIds = todayPaymentsByMethod.map((m) => m.methodId);
+    const methods = await this.prisma.paymentMethod.findMany({ where: { id: { in: methodIds } } });
+    const methodById = new Map(methods.map((m) => [m.id, m]));
+    const paymentsByMethod = todayPaymentsByMethod.map((m) => ({
+      methodName: methodById.get(m.methodId)?.name ?? 'Noma\'lum',
+      kind: (methodById.get(m.methodId)?.kind ?? 'OTHER') as 'CASH' | 'CARD' | 'OTHER',
+      amount: m._sum.amount ?? 0,
+      count: m._count,
+    }));
+
     return {
       todayRevenue: paidToday,
       todayOrderCount: todayOrders,
@@ -94,8 +130,11 @@ export class ReportsService {
         ...v,
         profit: v.revenue - v.expenses - v.costOfGoods,
       })),
+      hourlySales,
+      paymentsByMethod,
     };
   }
+
 
   /** Full financial report for a date range. Profit = revenue − expenses − product costs. */
   async summary(from: string, to: string): Promise<ReportDto> {

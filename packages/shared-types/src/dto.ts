@@ -257,7 +257,12 @@ export interface DashboardSummaryDto {
   popularProducts: Array<{ productName: string; quantity: string; revenue: Uzs }>;
   recentActivity: AuditLogDto[];
   revenueByDay: Array<{ date: string; revenue: Uzs; expenses: Uzs; costOfGoods: Uzs; profit: Uzs }>;
+  /** Bugungi soatlik savdo (00–23). Faqat to'lov bo'lgan soatlar qaytariladi. */
+  hourlySales: Array<{ hour: number; revenue: Uzs; orderCount: number }>;
+  /** Bugungi to'lov usullari kesimi */
+  paymentsByMethod: Array<{ methodName: string; kind: PaymentKind; amount: Uzs; count: number }>;
 }
+
 
 export interface ReportDto {
   from: string;

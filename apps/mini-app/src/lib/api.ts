@@ -301,6 +301,8 @@ export const api = {
         costOfGoods: number;
         profit: number;
       }>;
+      hourlySales: Array<{ hour: number; revenue: number; orderCount: number }>;
+      paymentsByMethod: Array<{ methodName: string; kind: string; amount: number; count: number }>;
     }>('/reports/dashboard', { method: 'GET' }, token),
 
   // ===== Owner: menu management =====
