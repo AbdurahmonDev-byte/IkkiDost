@@ -288,6 +288,14 @@ Report profit is paid revenue minus expenses and sold-item cost snapshots
 |---|---|---|
 | GET | `/audit-logs` | `?limit=100` |
 
+### Maintenance (OWNER)
+
+| Method | Path | Body | Notes |
+|---|---|---|---|
+| POST | `/maintenance/clear-sales-history` | — | Deletes orders, order items, payments, reversals, deliveries, room sessions, sales notifications and their audit rows. Menu, staff, rooms, customers and expenses are kept. Runs in one transaction and writes a `SALES_HISTORY_CLEARED` audit entry. |
+
+Intended for clearing test data before go-live; it is irreversible.
+
 ### Public / customer (no auth)
 
 Used by the Telegram Mini App and the registration bot. Telegram identity is

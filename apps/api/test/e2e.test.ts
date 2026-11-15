@@ -818,3 +818,56 @@ describe('Reports & dashboard', () => {
     expect(Array.isArray(res.body.employeePerformance)).toBe(true);
   });
 });
+
+describe('19. Owner clears test sales history', () => {
+  it('waiter cannot clear sales history', async () => {
+    const res = await req(ctx, 'POST', '/maintenance/clear-sales-history', {}, ctx.tokens.waiter);
+    expect(res.status).toBe(403);
+  });
+
+  it('owner wipes orders, payments, deliveries and room sessions', async () => {
+    const before = await req(ctx, 'GET', '/reports/dashboard', undefined, ctx.tokens.owner);
+    expect(before.status).toBe(200);
+
+    const res = await req(ctx, 'POST', '/maintenance/clear-sales-history', {}, ctx.tokens.owner);
+    expect(res.status).toBe(201);
+    expect(res.body.status).toBe('ok');
+    expect(res.body.deleted.orders).toBeGreaterThan(0);
+
+    const orders = await req(ctx, 'GET', '/orders', undefined, ctx.tokens.owner);
+    expect(orders.status).toBe(200);
+    expect(orders.body).toEqual([]);
+
+    const deliveries = await req(ctx, 'GET', '/deliveries', undefined, ctx.tokens.owner);
+    expect(deliveries.status).toBe(200);
+    expect(deliveries.body).toEqual([]);
+
+    const rooms = await req(ctx, 'GET', '/rooms', undefined, ctx.tokens.owner);
+    expect(rooms.status).toBe(200);
+    for (const room of rooms.body) expect(room.activeSession).toBeNull();
+
+    const after = await req(ctx, 'GET', '/reports/dashboard', undefined, ctx.tokens.owner);
+    expect(after.body.todayOrderCount).toBe(0);
+    expect(after.body.todayRevenue).toBe(0);
+
+    const audit = await req(ctx, 'GET', '/audit-logs?limit=5', undefined, ctx.tokens.owner);
+    expect(audit.status).toBe(200);
+    expect(audit.body[0].action).toBe('SALES_HISTORY_CLEARED');
+  });
+
+  it('keeps menu, staff, rooms and expenses intact', async () => {
+    const products = await req(ctx, 'GET', '/products', undefined, ctx.tokens.owner);
+    expect(products.status).toBe(200);
+    expect(products.body.length).toBeGreaterThan(0);
+
+    const employees = await req(ctx, 'GET', '/employees', undefined, ctx.tokens.owner);
+    expect(employees.status).toBe(200);
+    expect(employees.body.length).toBeGreaterThan(0);
+
+    const rooms = await req(ctx, 'GET', '/rooms', undefined, ctx.tokens.owner);
+    expect(rooms.body.length).toBeGreaterThan(0);
+
+    const expenses = await req(ctx, 'GET', '/expenses', undefined, ctx.tokens.owner);
+    expect(expenses.status).toBe(200);
+  });
+});

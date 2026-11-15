@@ -13,6 +13,7 @@ import {
   Save,
   ShoppingBag,
   Trash2,
+  TriangleAlert,
   Truck,
   Utensils,
   Users,
@@ -123,6 +124,7 @@ export const OwnerScreen: React.FC<Props> = ({ token, onMenuChanged }) => {
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [confirmClear, setConfirmClear] = useState(false);
 
   // New product form
   const [name, setName] = useState('');
@@ -165,6 +167,24 @@ export const OwnerScreen: React.FC<Props> = ({ token, onMenuChanged }) => {
   const flash = (text: string) => {
     setNotice(text);
     setTimeout(() => setNotice(null), 2500);
+  };
+
+  const clearSalesHistory = async () => {
+    setBusy('clear-sales');
+    setError(null);
+    try {
+      const res = await api.clearSalesHistory(token);
+      setConfirmClear(false);
+      tg.hapticSuccess();
+      await fetchAll(true);
+      flash(
+        `Tozalandi: ${res.deleted.orders ?? 0} buyurtma, ${res.deleted.payments ?? 0} to‘lov`,
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Ma’lumotlarni tozalab bo‘lmadi');
+    } finally {
+      setBusy(null);
+    }
   };
 
   const createProduct = async (e: React.FormEvent) => {
@@ -865,6 +885,65 @@ export const OwnerScreen: React.FC<Props> = ({ token, onMenuChanged }) => {
               </div>
             ))}
           </div>
+        </div>
+      )}
+      {section === 'overview' && (
+        <div className="rounded-[26px] border border-rose-200/80 bg-white p-4 shadow-sm animate-rise">
+          <div className="flex items-start gap-2.5">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-rose-50 text-rose-600">
+              <TriangleAlert className="h-5 w-5" />
+            </div>
+            <div className="min-w-0">
+              <h3 className="text-[13px] font-black text-stone-900">Sinov ma’lumotlarini tozalash</h3>
+              <p className="mt-0.5 text-[11px] leading-relaxed text-stone-500">
+                Buyurtmalar, to‘lovlar, yetkazishlar va xona sessiyalari o‘chiriladi. Menyu,
+                xodimlar, xonalar va mijozlar saqlanadi.
+              </p>
+            </div>
+          </div>
+
+          {!confirmClear ? (
+            <button
+              type="button"
+              onClick={() => {
+                tg.selection();
+                setConfirmClear(true);
+              }}
+              className="tap mt-3 flex w-full items-center justify-center gap-2 rounded-2xl border border-rose-200 bg-rose-50 py-3 text-xs font-bold text-rose-700 hover:bg-rose-100"
+            >
+              <Trash2 className="h-4 w-4" /> Savdo tarixini tozalash
+            </button>
+          ) : (
+            <div className="mt-3 rounded-2xl border border-rose-200 bg-rose-50 p-3">
+              <p className="text-[11px] font-bold leading-relaxed text-rose-800">
+                Rostdan ham barcha savdo tarixini o‘chirasizmi? Bu amalni ortga qaytarib
+                bo‘lmaydi.
+              </p>
+              <div className="mt-2.5 flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setConfirmClear(false)}
+                  disabled={busy === 'clear-sales'}
+                  className="btn-secondary flex-1 py-2.5 text-xs disabled:opacity-50"
+                >
+                  Bekor qilish
+                </button>
+                <button
+                  type="button"
+                  onClick={clearSalesHistory}
+                  disabled={busy === 'clear-sales'}
+                  className="tap flex flex-1 items-center justify-center gap-1.5 rounded-2xl bg-rose-600 py-2.5 text-xs font-bold text-white shadow-lg shadow-rose-600/25 disabled:opacity-50"
+                >
+                  {busy === 'clear-sales' ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Trash2 className="h-4 w-4" />
+                  )}
+                  Ha, o‘chirish
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

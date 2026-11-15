@@ -300,4 +300,13 @@ export const api = {
 
   createCategory: (token: string, input: { name: string; sortOrder?: number }) =>
     request<Category>('/categories', { method: 'POST', body: JSON.stringify(input) }, token),
+
+  // ===== Owner: maintenance =====
+  /** Deletes all sales history (orders, payments, deliveries, sessions) — owner only. */
+  clearSalesHistory: (token: string) =>
+    request<{ status: 'ok'; deleted: Record<string, number> }>(
+      '/maintenance/clear-sales-history',
+      { method: 'POST' },
+      token,
+    ),
 };
