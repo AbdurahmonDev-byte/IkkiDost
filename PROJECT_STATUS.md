@@ -280,3 +280,8 @@ Telegram Mini App served by the API at `/` (same origin as `/api`), Vite + React
 - Shared product picker with decimal kg/litre quantities; service fee preview.
 - Verified in headless Chrome against local API: saboy order with 1.82 kg -> 81 900 so'm line, room order created on an open session.
 - Remaining: rebuild Windows artifact from this commit and test the installer on a Windows machine.
+
+## Cashier: add items to an existing order
+- «Qo'shish» on a room order (session) and on a Saboy/delivery order opens the product picker in append mode.
+- Verified against local API: saboy 87 900 -> 111 900 so'm after adding 2 l Fanta; room order updated too.
+- Service fee is not recalculated when appending (order fee stays as snapshotted at creation).

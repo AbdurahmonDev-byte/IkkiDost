@@ -18,12 +18,15 @@ export type ComposerMode = 'DINE_IN' | 'DELIVERY';
 interface Props {
   mode: ComposerMode;
   rooms: RoomDto[];
+  /** When set, new items are appended to this existing order. */
+  targetOrder?: OrderDto;
   onClose: () => void;
   onCreated: (order: OrderDto) => void;
 }
 
-export function OrderComposer({ mode, rooms, onClose, onCreated }: Props) {
+export function OrderComposer({ mode, rooms, targetOrder, onClose, onCreated }: Props) {
   const isDelivery = mode === 'DELIVERY';
+  const isAdding = Boolean(targetOrder);
   const [roomId, setRoomId] = useState('');
   const [people, setPeople] = useState('1');
   const [customerName, setCustomerName] = useState('');
@@ -69,11 +72,32 @@ export function OrderComposer({ mode, rooms, onClose, onCreated }: Props) {
 
   const numberOfPeople = Math.max(0, Math.floor(Number(people) || 0));
   const feeConfig: ServiceFeeConfigDto | undefined = feeQuery.data;
-  const fee = feeConfig ? computeServiceFee(feeConfig, mode, numberOfPeople) : null;
+  const fee = !isAdding && feeConfig ? computeServiceFee(feeConfig, mode, numberOfPeople) : null;
   const feeAmount = fee?.amount ?? 0;
 
-  const createMutation = useMutation({
-    mutationFn: (input: Parameters<typeof api.createOrder>[0]) => api.createOrder(input),
+  const saveMutation = useMutation({
+    mutationFn: (items: Array<{ productId: string; quantity: string }>) =>
+      targetOrder
+        ? api.addOrderItems(targetOrder.id, { items })
+        : api.createOrder(
+            isDelivery
+              ? {
+                  type: 'DELIVERY',
+                  numberOfPeople,
+                  note: note.trim() || null,
+                  items,
+                  customerName: customerName.trim(),
+                  customerPhone: customerPhone.trim(),
+                  address: address.trim(),
+                }
+              : {
+                  type: 'DINE_IN',
+                  roomId,
+                  numberOfPeople,
+                  note: note.trim() || null,
+                  items,
+                },
+          ),
     onSuccess: (order) => onCreated(order),
     onError: (e) => setError(e instanceof Error ? e.message : 'Buyurtmani saqlab bo‘lmadi'),
   });
@@ -130,22 +154,24 @@ export function OrderComposer({ mode, rooms, onClose, onCreated }: Props) {
         return;
       }
     }
-    if (!isDelivery && !roomId) {
-      setError('Xonani tanlang');
-      return;
-    }
-    if (isDelivery) {
-      if (customerName.trim().length < 2) {
-        setError('Mijoz ismini kiriting');
+    if (!isAdding) {
+      if (!isDelivery && !roomId) {
+        setError('Xonani tanlang');
         return;
       }
-      if (customerPhone.trim().length < 4) {
-        setError('Mijoz telefon raqamini kiriting');
-        return;
-      }
-      if (address.trim().length < 3) {
-        setError('Manzilni kiriting');
-        return;
+      if (isDelivery) {
+        if (customerName.trim().length < 2) {
+          setError('Mijoz ismini kiriting');
+          return;
+        }
+        if (customerPhone.trim().length < 4) {
+          setError('Mijoz telefon raqamini kiriting');
+          return;
+        }
+        if (address.trim().length < 3) {
+          setError('Manzilni kiriting');
+          return;
+        }
       }
     }
 
@@ -154,32 +180,20 @@ export function OrderComposer({ mode, rooms, onClose, onCreated }: Props) {
       quantity: quantityForApi(Number(line.qty)),
     }));
 
-    createMutation.mutate(
-      isDelivery
-        ? {
-            type: 'DELIVERY',
-            numberOfPeople,
-            note: note.trim() || null,
-            items,
-            customerName: customerName.trim(),
-            customerPhone: customerPhone.trim(),
-            address: address.trim(),
-          }
-        : {
-            type: 'DINE_IN',
-            roomId,
-            numberOfPeople,
-            note: note.trim() || null,
-            items,
-          },
-    );
+    saveMutation.mutate(items);
   };
 
   return (
     <Modal
       open
       onClose={onClose}
-      title={isDelivery ? 'Yangi saboy — uydan buyurtma' : 'Yangi buyurtma — zalga'}
+      title={
+        isAdding
+          ? `#${targetOrder!.orderNumber} ga mahsulot qo‘shish`
+          : isDelivery
+            ? 'Yangi saboy — uydan buyurtma'
+            : 'Yangi buyurtma — zalga'
+      }
       xl
     >
       <div className="grid gap-4 lg:grid-cols-[1.1fr_1fr]">
@@ -271,7 +285,19 @@ export function OrderComposer({ mode, rooms, onClose, onCreated }: Props) {
         </section>
 
         <section className="min-w-0">
-          {isDelivery ? (
+          {isAdding ? (
+            <div className="rounded-xl bg-paper/70 px-3 py-2.5 text-xs text-ink-soft">
+              <p className="font-semibold text-ink">Buyurtma #{targetOrder!.orderNumber}</p>
+              <p className="mt-0.5">
+                {targetOrder!.type === 'DELIVERY'
+                  ? `${targetOrder!.delivery?.customerName ?? 'Mijoz'} · ${targetOrder!.delivery?.address ?? ''}`
+                  : targetOrder!.roomName ?? 'Zal buyurtmasi'}
+              </p>
+              <p className="mt-0.5">
+                Mavjud summa: <span className="font-semibold text-ink">{formatUzs(targetOrder!.totalAmount)}</span>
+              </p>
+            </div>
+          ) : isDelivery ? (
             <div className="space-y-3">
               <div className="grid grid-cols-2 gap-3">
                 <Field label="Mijoz ismi">
@@ -317,29 +343,31 @@ export function OrderComposer({ mode, rooms, onClose, onCreated }: Props) {
             </div>
           )}
 
-          <div className="mt-3 flex items-center gap-2">
-            {isDelivery ? (
-              <>
-                <Badge tone="blue">
-                  <Truck size={11} /> Saboy
+          {!isAdding && (
+            <div className="mt-3 flex items-center gap-2">
+              {isDelivery ? (
+                <>
+                  <Badge tone="blue">
+                    <Truck size={11} /> Saboy
+                  </Badge>
+                  <label className="ml-auto flex items-center gap-1.5 text-[11px] text-ink-soft">
+                    Odam soni
+                    <input
+                      type="number"
+                      min={0}
+                      value={people}
+                      onChange={(e) => setPeople(e.target.value)}
+                      className="h-7 w-14 rounded-lg border border-line bg-white text-center text-xs outline-none focus:border-primary"
+                    />
+                  </label>
+                </>
+              ) : (
+                <Badge tone="amber">
+                  <UtensilsCrossed size={11} /> Zal buyurtmasi
                 </Badge>
-                <label className="ml-auto flex items-center gap-1.5 text-[11px] text-ink-soft">
-                  Odam soni
-                  <input
-                    type="number"
-                    min={0}
-                    value={people}
-                    onChange={(e) => setPeople(e.target.value)}
-                    className="h-7 w-14 rounded-lg border border-line bg-white text-center text-xs outline-none focus:border-primary"
-                  />
-                </label>
-              </>
-            ) : (
-              <Badge tone="amber">
-                <UtensilsCrossed size={11} /> Zal buyurtmasi
-              </Badge>
-            )}
-          </div>
+              )}
+            </div>
+          )}
 
           <div className="mt-3 rounded-xl bg-paper/70 p-3">
             <div className="mb-2 flex items-center justify-between">
@@ -386,14 +414,19 @@ export function OrderComposer({ mode, rooms, onClose, onCreated }: Props) {
               <span>Mahsulotlar</span>
               <span>{formatUzs(itemsTotal)}</span>
             </div>
-            <div className="flex justify-between text-ink-soft">
-              <span>Xizmat haqi</span>
-              <span>{formatUzs(feeAmount)}</span>
-            </div>
+            {!isAdding && (
+              <div className="flex justify-between text-ink-soft">
+                <span>Xizmat haqi</span>
+                <span>{formatUzs(feeAmount)}</span>
+              </div>
+            )}
             <div className="flex justify-between border-t border-line pt-1 text-sm font-bold">
-              <span>Jami</span>
+              <span>{isAdding ? 'Qo‘shimcha jami' : 'Jami'}</span>
               <span>{formatUzs(itemsTotal + feeAmount)}</span>
             </div>
+            {isAdding && (
+              <p className="text-[11px] text-ink-faint">Xizmat haqi buyurtma yaratilganda hisoblangan.</p>
+            )}
           </div>
 
           <div className="mt-3">
@@ -413,8 +446,8 @@ export function OrderComposer({ mode, rooms, onClose, onCreated }: Props) {
             <Button variant="secondary" onClick={onClose}>
               Bekor qilish
             </Button>
-            <Button loading={createMutation.isPending} onClick={submit} disabled={!feeQuery.isLoading && cart.length === 0}>
-              {isDelivery ? 'Saboyni saqlash' : 'Buyurtma yaratish'}
+            <Button loading={saveMutation.isPending} onClick={submit} disabled={cart.length === 0}>
+              {isAdding ? 'Mahsulotlarni qo‘shish' : isDelivery ? 'Saboyni saqlash' : 'Buyurtma yaratish'}
             </Button>
           </div>
         </section>

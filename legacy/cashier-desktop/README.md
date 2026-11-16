@@ -10,6 +10,7 @@ to‘lovlar va hisobotlar umumiy.
 - **Saboy** — uydan telefon orqali qilingan buyurtmalar; kassir mijoz ismi, telefoni,
   manzili va mahsulotlarini kiritadi. Bugungi va qarzdor saboylar ko‘rinadi.
 - **Yetkazish** — to‘lanmagan saboylar, kuryer holati va naqd pul topshirish.
+- **Qo‘shish** — mavjud zal yoki saboy buyurtmasiga keyinroq mahsulot qo‘shish.
 - To‘lov (naqd/karta), qismli to‘lov, qaytarish, 80 mm chek chop etish.
 - Kg/litr mahsulotlarda aniq miqdor (`1.82`, `2.3`), dona mahsulotlarda butun son.
 

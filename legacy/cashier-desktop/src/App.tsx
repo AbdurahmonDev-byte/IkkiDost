@@ -132,6 +132,7 @@ function Cashier({ onLogout }: { onLogout: () => void }) {
   const user = useAuth((s) => s.user)!;
   const [tab, setTab] = useState<Tab>('rooms');
   const [composerMode, setComposerMode] = useState<ComposerMode | null>(null);
+  const [addTarget, setAddTarget] = useState<OrderDto | null>(null);
   const [selectedSession, setSelectedSession] = useState<string | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<string | null>(null);
   const [search, setSearch] = useState('');
@@ -413,6 +414,7 @@ function Cashier({ onLogout }: { onLogout: () => void }) {
               userRole={user.role}
               onPay={() => setPaymentFor({ kind: 'session', id: session.id, outstanding: session.outstandingAmount, label: `Sessiya · ${session.orderCount} buyurtma` })}
               onReceipt={() => setReceiptFor({ kind: 'session', id: session.id })}
+              onAddItems={(o) => setAddTarget(o)}
               onReverse={(p) => setReverseTarget(p)}
               onClose={() => {
                 if (session.outstandingAmount > 0) setCloseOverride(true);
@@ -426,6 +428,7 @@ function Cashier({ onLogout }: { onLogout: () => void }) {
               payments={deliveryPayments}
               onPay={() => setPaymentFor({ kind: 'order', id: delivery.id, outstanding: delivery.outstandingAmount, label: `Buyurtma #${delivery.orderNumber}` })}
               onReceipt={() => setReceiptFor({ kind: 'order', id: delivery.id })}
+              onAddItems={() => setAddTarget(delivery)}
               onReverse={(p) => setReverseTarget(p)}
               onStatus={(status) => deliveryMutation.mutate({ id: delivery.delivery!.id, status })}
               busy={deliveryMutation.isPending}
@@ -507,16 +510,26 @@ function Cashier({ onLogout }: { onLogout: () => void }) {
         />
       )}
 
-      {composerMode && (
+      {(composerMode || addTarget) && (
         <OrderComposer
-          mode={composerMode}
+          mode={composerMode ?? (addTarget?.type === 'DELIVERY' ? 'DELIVERY' : 'DINE_IN')}
           rooms={roomsQuery.data ?? []}
-          onClose={() => setComposerMode(null)}
-          onCreated={(order) => {
+          targetOrder={addTarget ?? undefined}
+          onClose={() => {
             setComposerMode(null);
+            setAddTarget(null);
+          }}
+          onCreated={(order) => {
+            const wasAdding = Boolean(addTarget);
+            setComposerMode(null);
+            setAddTarget(null);
             setSearch('');
-            notify(`Buyurtma #${order.orderNumber} yaratildi`);
             invalidateAll();
+            if (wasAdding) {
+              notify(`#${order.orderNumber} buyurtmaga mahsulot qo‘shildi`);
+              return;
+            }
+            notify(`Buyurtma #${order.orderNumber} yaratildi`);
             if (order.type === 'DELIVERY') {
               setTab('saboy');
               setSelectedSession(null);
@@ -596,6 +609,7 @@ function SessionView({
   userRole,
   onPay,
   onReceipt,
+  onAddItems,
   onReverse,
   onClose,
   closing,
@@ -605,6 +619,7 @@ function SessionView({
   userRole: string;
   onPay: () => void;
   onReceipt: () => void;
+  onAddItems: (order: OrderDto) => void;
   onReverse: (p: PaymentDto) => void;
   onClose: () => void;
   closing: boolean;
@@ -659,7 +674,18 @@ function SessionView({
               <span className="font-mono text-xs font-bold">#{o.orderNumber}</span>
               <Badge tone={o.status === 'COMPLETED' ? 'neutral' : 'amber'}>{orderStatusLabel[o.status]}</Badge>
               <span className="text-[11px] text-ink-faint">{formatTime(o.createdAt)} · {o.createdByName}</span>
-              <span className="ml-auto text-sm font-semibold">{formatUzs(o.totalAmount)}</span>
+              {o.status !== 'CANCELLED' && o.status !== 'COMPLETED' && (
+                <button
+                  onClick={() => onAddItems(o)}
+                  className="ml-auto flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-semibold text-primary-700 hover:bg-primary-50"
+                  title="Bu buyurtmaga mahsulot qo‘shish"
+                >
+                  <Plus size={11} /> Qo‘shish
+                </button>
+              )}
+              <span className={cn('text-sm font-semibold', o.status === 'CANCELLED' || o.status === 'COMPLETED' ? 'ml-auto' : '')}>
+                {formatUzs(o.totalAmount)}
+              </span>
             </div>
             <ul className="mt-1.5 space-y-1">
               {o.items
@@ -721,6 +747,7 @@ function DeliveryView({
   payments,
   onPay,
   onReceipt,
+  onAddItems,
   onReverse,
   onStatus,
   busy,
@@ -729,6 +756,7 @@ function DeliveryView({
   payments: PaymentDto[];
   onPay: () => void;
   onReceipt: () => void;
+  onAddItems: () => void;
   onReverse: (p: PaymentDto) => void;
   onStatus: (s: DeliveryStatus) => void;
   busy: boolean;
@@ -745,6 +773,11 @@ function DeliveryView({
           <p className="text-xs text-ink-soft">{d.customerName} · {d.customerPhone}</p>
         </div>
         <div className="flex flex-wrap gap-2">
+          {order.status !== 'CANCELLED' && order.status !== 'COMPLETED' && (
+            <Button variant="secondary" onClick={onAddItems}>
+              <Plus size={15} /> Qo‘shish
+            </Button>
+          )}
           <Button variant="secondary" onClick={onReceipt}>
             <Printer size={15} /> Chek
           </Button>
