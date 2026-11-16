@@ -33,7 +33,7 @@ services:
       JWT_REFRESH_TTL: 30d
       PORT: 3000
       API_PREFIX: api
-      CORS_ORIGINS: https://ikkidost.abitcore.uz
+      CORS_ORIGINS: https://ikkidost.abitcore.uz,http://tauri.localhost,https://tauri.localhost,tauri://localhost
       UPLOAD_DIR: /app/apps/api/uploads
       MINI_APP_DIR: /app/apps/mini-app/dist
       MAX_IMAGE_SIZE_BYTES: 5242880
