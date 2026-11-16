@@ -43,5 +43,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: ikki-dost-kassir-windows
-          path: legacy/cashier-desktop/src-tauri/target/release/bundle/
+          path: |
+            legacy/cashier-desktop/src-tauri/target/release/bundle/msi/
+            legacy/cashier-desktop/src-tauri/target/release/ikki-dost-cashier.exe
           if-no-files-found: error
