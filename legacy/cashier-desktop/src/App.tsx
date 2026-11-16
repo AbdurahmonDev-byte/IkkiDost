@@ -10,6 +10,7 @@ import {
   LogOut,
   MapPin,
   Phone,
+  Plus,
   Printer,
   ReceiptText,
   RotateCcw,
@@ -30,13 +31,15 @@ import {
   formatQty,
   formatTime,
   formatUzs,
+  isToday,
   orderStatusLabel,
   paymentKindLabel,
   uuid,
 } from './lib/format';
+import { OrderComposer, type ComposerMode } from './components/OrderComposer';
 import { Badge, Button, Card, Empty, Field, Input, Modal, Select, Spinner, Textarea, cn } from './ui';
 
-type Tab = 'rooms' | 'delivery';
+type Tab = 'rooms' | 'saboy' | 'delivery';
 
 interface SessionDetail extends RoomSessionSummaryDto {
   orders: OrderDto[];
@@ -128,6 +131,7 @@ function Cashier({ onLogout }: { onLogout: () => void }) {
   const qc = useQueryClient();
   const user = useAuth((s) => s.user)!;
   const [tab, setTab] = useState<Tab>('rooms');
+  const [composerMode, setComposerMode] = useState<ComposerMode | null>(null);
   const [selectedSession, setSelectedSession] = useState<string | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<string | null>(null);
   const [search, setSearch] = useState('');
@@ -177,6 +181,14 @@ function Cashier({ onLogout }: { onLogout: () => void }) {
   const roomBills = (roomsQuery.data ?? []).filter((r) => r.activeSession && r.isActive);
   const deliveryBills = (ordersQuery.data ?? [])
     .filter((o) => o.type === 'DELIVERY' && o.outstandingAmount > 0 && o.status !== 'CANCELLED')
+    .sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt));
+  const saboyOrders = (ordersQuery.data ?? [])
+    .filter(
+      (o) =>
+        o.type === 'DELIVERY' &&
+        o.status !== 'CANCELLED' &&
+        (isToday(o.createdAt) || o.outstandingAmount > 0),
+    )
     .sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt));
 
   const invalidateAll = useCallback(() => {
@@ -249,9 +261,12 @@ function Cashier({ onLogout }: { onLogout: () => void }) {
 
   const filterRoom = (name: string) => !search.trim() || name.toLowerCase().includes(search.trim().toLowerCase());
   const filteredRooms = roomBills.filter((r) => filterRoom(r.name));
-  const filteredDeliveries = deliveryBills.filter(
-    (o) => !search.trim() || (o.delivery?.customerName ?? '').toLowerCase().includes(search.toLowerCase()) || (o.delivery?.customerPhone ?? '').includes(search),
-  );
+  const matchesSearch = (o: OrderDto) =>
+    !search.trim() ||
+    (o.delivery?.customerName ?? '').toLowerCase().includes(search.toLowerCase()) ||
+    (o.delivery?.customerPhone ?? '').includes(search);
+  const filteredDeliveries = deliveryBills.filter(matchesSearch);
+  const filteredSaboy = saboyOrders.filter(matchesSearch);
 
   return (
     <div className="flex h-full flex-col">
@@ -286,28 +301,20 @@ function Cashier({ onLogout }: { onLogout: () => void }) {
       <div className="flex min-h-0 flex-1">
         <aside className="flex w-[380px] shrink-0 flex-col border-r border-line bg-paper/60">
           <div className="border-b border-line bg-white/70 p-3">
-            <div className="flex gap-1.5">
-              <button
-                onClick={() => setTab('rooms')}
-                className={cn(
-                  'flex h-9 flex-1 items-center justify-center gap-1.5 rounded-xl text-sm font-semibold',
-                  tab === 'rooms' ? 'bg-primary text-white' : 'bg-white text-ink-soft ring-1 ring-line',
-                )}
-              >
-                <DoorOpen size={15} /> Zallar
-                <span className={cn('rounded-full px-1.5 text-[11px]', tab === 'rooms' ? 'bg-white/20' : 'bg-paper')}>{roomBills.length}</span>
-              </button>
-              <button
-                onClick={() => setTab('delivery')}
-                className={cn(
-                  'flex h-9 flex-1 items-center justify-center gap-1.5 rounded-xl text-sm font-semibold',
-                  tab === 'delivery' ? 'bg-primary text-white' : 'bg-white text-ink-soft ring-1 ring-line',
-                )}
-              >
-                <Truck size={15} /> Yetkazish
-                <span className={cn('rounded-full px-1.5 text-[11px]', tab === 'delivery' ? 'bg-white/20' : 'bg-paper')}>{deliveryBills.length}</span>
-              </button>
+            <div className="flex gap-1">
+              <TabButton active={tab === 'rooms'} onClick={() => setTab('rooms')} icon={<DoorOpen size={14} />} label="Zallar" count={roomBills.length} />
+              <TabButton active={tab === 'saboy'} onClick={() => setTab('saboy')} icon={<Phone size={14} />} label="Saboy" count={saboyOrders.length} />
+              <TabButton active={tab === 'delivery'} onClick={() => setTab('delivery')} icon={<Truck size={14} />} label="Yetkazish" count={deliveryBills.length} />
             </div>
+            {tab !== 'delivery' && (
+              <Button
+                size="sm"
+                className="mt-2.5 w-full"
+                onClick={() => setComposerMode(tab === 'saboy' ? 'DELIVERY' : 'DINE_IN')}
+              >
+                <Plus size={14} /> {tab === 'saboy' ? 'Yangi saboy' : 'Yangi buyurtma'}
+              </Button>
+            )}
             <div className="relative mt-2.5">
               <Search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-faint" />
               <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Xona yoki mijoz…" className="h-9 pl-8 text-xs" />
@@ -321,7 +328,7 @@ function Cashier({ onLogout }: { onLogout: () => void }) {
               </div>
             ) : tab === 'rooms' ? (
               filteredRooms.length === 0 ? (
-                <Empty title="Faol xona yo‘q" hint="Ofitsiant buyurtma ochganda bu yerda paydo bo‘ladi." />
+                <Empty title="Faol xona yo‘q" hint="«Yangi buyurtma» tugmasi bilan zalga buyurtma oching." />
               ) : (
                 <div className="space-y-2">
                   {filteredRooms.map((r) => {
@@ -357,38 +364,42 @@ function Cashier({ onLogout }: { onLogout: () => void }) {
                   })}
                 </div>
               )
-            ) : filteredDeliveries.length === 0 ? (
-              <Empty title="Yetkazish buyurtmasi yo‘q" hint="To‘lanmagan yetkazish buyurtmalari shu yerda." />
-            ) : (
-              <div className="space-y-2">
-                {filteredDeliveries.map((o) => {
-                  const active = selectedOrder === o.id;
-                  return (
-                    <button
+            ) : tab === 'saboy' ? (
+              filteredSaboy.length === 0 ? (
+                <Empty
+                  title="Saboy yo‘q"
+                  hint="Uydan telefon orqali buyurtma qabul qilinganda «Yangi saboy» bilan yozing."
+                />
+              ) : (
+                <div className="space-y-2">
+                  {filteredSaboy.map((o) => (
+                    <DeliveryCard
                       key={o.id}
-                      onClick={() => {
+                      order={o}
+                      active={selectedOrder === o.id}
+                      onSelect={() => {
                         setSelectedSession(null);
                         setSelectedOrder(o.id);
                       }}
-                      className={cn(
-                        'w-full rounded-xl bg-white p-3 text-left shadow-sm ring-1 transition',
-                        active ? 'ring-2 ring-primary' : 'ring-line/70 hover:ring-primary/40',
-                      )}
-                    >
-                      <div className="flex items-center justify-between">
-                        <p className="text-sm font-semibold">{o.delivery?.customerName ?? 'Mijoz'}</p>
-                        <Badge tone="amber">#{o.orderNumber}</Badge>
-                      </div>
-                      <p className="mt-0.5 flex items-center gap-1 text-[11px] text-ink-soft">
-                        <Phone size={10} /> {o.delivery?.customerPhone}
-                      </p>
-                      <div className="mt-1.5 flex items-center justify-between text-xs">
-                        <span className="text-ink-soft">{formatTime(o.createdAt)} · {deliveryStatusLabel[(o.delivery?.status ?? 'PENDING') as DeliveryStatus]}</span>
-                        <span className="font-semibold text-red-600">{formatUzs(o.outstandingAmount)}</span>
-                      </div>
-                    </button>
-                  );
-                })}
+                    />
+                  ))}
+                </div>
+              )
+            ) : filteredDeliveries.length === 0 ? (
+              <Empty title="Yetkazish buyurtmasi yo‘q" hint="To‘lanmagan saboylar shu yerda kuryerga beriladi." />
+            ) : (
+              <div className="space-y-2">
+                {filteredDeliveries.map((o) => (
+                  <DeliveryCard
+                    key={o.id}
+                    order={o}
+                    active={selectedOrder === o.id}
+                    onSelect={() => {
+                      setSelectedSession(null);
+                      setSelectedOrder(o.id);
+                    }}
+                  />
+                ))}
               </div>
             )}
           </div>
@@ -424,8 +435,11 @@ function Cashier({ onLogout }: { onLogout: () => void }) {
               <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-white shadow-card ring-1 ring-line/70">
                 <ReceiptText size={28} className="text-primary" />
               </div>
-              <p className="text-base font-semibold text-ink">Hisobni tanlang</p>
-              <p className="max-w-xs text-sm">Chap tomondagi xona yoki yetkazish buyurtmasini tanlang — hisob, to‘lov va chek shu yerda.</p>
+              <p className="text-base font-semibold text-ink">Hisobni tanlang yoki buyurtma yarating</p>
+              <p className="max-w-sm text-sm">
+                Chapdan xona yoki saboyni tanlang — hisob, to‘lov va chek shu yerda. Yangi zal buyurtmasi
+                «Yangi buyurtma», uydan qilingan qo‘ng‘iroq esa «Yangi saboy» orqali yoziladi.
+              </p>
             </div>
           )}
         </main>
@@ -492,7 +506,87 @@ function Cashier({ onLogout }: { onLogout: () => void }) {
           onClose={() => setReceiptFor(null)}
         />
       )}
+
+      {composerMode && (
+        <OrderComposer
+          mode={composerMode}
+          rooms={roomsQuery.data ?? []}
+          onClose={() => setComposerMode(null)}
+          onCreated={(order) => {
+            setComposerMode(null);
+            setSearch('');
+            notify(`Buyurtma #${order.orderNumber} yaratildi`);
+            invalidateAll();
+            if (order.type === 'DELIVERY') {
+              setTab('saboy');
+              setSelectedSession(null);
+              setSelectedOrder(order.id);
+            } else {
+              setTab('rooms');
+              setSelectedOrder(null);
+              setSelectedSession(order.roomSessionId);
+            }
+          }}
+        />
+      )}
     </div>
+  );
+}
+
+function DeliveryCard({ order, active, onSelect }: { order: OrderDto; active: boolean; onSelect: () => void }) {
+  const d = order.delivery;
+  const status = (d?.status ?? 'PENDING') as DeliveryStatus;
+  return (
+    <button
+      onClick={onSelect}
+      className={cn(
+        'w-full rounded-xl bg-white p-3 text-left shadow-sm ring-1 transition',
+        active ? 'ring-2 ring-primary' : 'ring-line/70 hover:ring-primary/40',
+      )}
+    >
+      <div className="flex items-center justify-between gap-2">
+        <p className="truncate text-sm font-semibold">{d?.customerName ?? 'Mijoz'}</p>
+        <Badge tone={order.outstandingAmount > 0 ? 'amber' : 'green'}>#{order.orderNumber}</Badge>
+      </div>
+      <p className="mt-0.5 flex items-center gap-1 text-[11px] text-ink-soft">
+        <Phone size={10} /> {d?.customerPhone}
+      </p>
+      <div className="mt-1.5 flex items-center justify-between gap-2 text-xs">
+        <span className="truncate text-ink-soft">
+          {formatTime(order.createdAt)} · {deliveryStatusLabel[status]}
+        </span>
+        <span className={cn('shrink-0 font-semibold', order.outstandingAmount > 0 ? 'text-red-600' : 'text-emerald-700')}>
+          {order.outstandingAmount > 0 ? formatUzs(order.outstandingAmount) : 'To‘langan'}
+        </span>
+      </div>
+    </button>
+  );
+}
+
+function TabButton({
+  active,
+  onClick,
+  icon,
+  label,
+  count,
+}: {
+  active: boolean;
+  onClick: () => void;
+  icon: React.ReactNode;
+  label: string;
+  count: number;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        'flex h-9 flex-1 items-center justify-center gap-1 rounded-xl px-1 text-xs font-semibold',
+        active ? 'bg-primary text-white' : 'bg-white text-ink-soft ring-1 ring-line',
+      )}
+    >
+      {icon} {label}
+      <span className={cn('rounded-full px-1.5 text-[10px]', active ? 'bg-white/20' : 'bg-paper')}>{count}</span>
+    </button>
   );
 }
 

@@ -273,3 +273,10 @@ Telegram Mini App served by the API at `/` (same origin as `/api`), Vite + React
 - NSIS bundling fails (NSIS 3.13 issue), so bundle target is `msi`.
 - Production CORS allows `http://tauri.localhost`, `https://tauri.localhost`, `tauri://localhost`.
 - Not yet runtime-tested on Windows; installer is unsigned (SmartScreen warning).
+
+## Desktop cashier order entry (ADR-031)
+- New «Saboy» tab: cashier records phone/home delivery orders (name, phone, address, items).
+- «Yangi buyurtma» creates room (dine-in) orders; existing room sessions are reused.
+- Shared product picker with decimal kg/litre quantities; service fee preview.
+- Verified in headless Chrome against local API: saboy order with 1.82 kg -> 81 900 so'm line, room order created on an open session.
+- Remaining: rebuild Windows artifact from this commit and test the installer on a Windows machine.

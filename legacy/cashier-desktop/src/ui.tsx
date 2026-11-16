@@ -99,12 +99,14 @@ export function Modal({
   title,
   children,
   wide,
+  xl,
 }: {
   open: boolean;
   onClose: () => void;
   title: string;
   children: ReactNode;
   wide?: boolean;
+  xl?: boolean;
 }) {
   useEffect(() => {
     if (!open) return;
@@ -115,7 +117,13 @@ export function Modal({
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 px-4 py-8" onMouseDown={onClose}>
-      <div className={cn('w-full animate-[fade-in_.15s_ease-out] rounded-2xl bg-white shadow-xl', wide ? 'max-w-2xl' : 'max-w-lg')} onMouseDown={(e) => e.stopPropagation()}>
+      <div
+        className={cn(
+          'w-full animate-[fade-in_.15s_ease-out] rounded-2xl bg-white shadow-xl',
+          xl ? 'max-w-5xl' : wide ? 'max-w-2xl' : 'max-w-lg',
+        )}
+        onMouseDown={(e) => e.stopPropagation()}
+      >
         <div className="flex items-center justify-between border-b border-line px-5 py-4">
           <h3 className="text-base font-semibold">{title}</h3>
           <button onClick={onClose} className="rounded-lg p-1 text-ink-soft hover:bg-black/5">

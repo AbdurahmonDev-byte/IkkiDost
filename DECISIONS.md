@@ -255,3 +255,8 @@
 - **Context:** Customers should not order delivery or call waiters from Telegram; orders are taken by staff at the room or by phone.
 - **Decision:** The Telegram bot only serves staff (Telegram ID login). Non-staff IDs receive a staff-only message. The Mini App order screen is available to OWNER, WAITER and CASHIER; CASHIER can start an order from the cashier workspace. The API no longer exposes `POST /public/orders` or `POST /public/call-waiter`. Quantities are decimal (up to 3 places) so kg/liter items can be entered exactly, e.g. `1.82`.
 - **Consequences:** Customer registration endpoints still exist but are unused by the apps. Delivery orders are created by staff with the customer's name, phone and address. Old customer orders remain in the database.
+
+## ADR-031: Windows cashier order entry and Saboy section
+- **Context:** The cashier works from the desktop app but could only take payments. Customers calling from home need their orders recorded by the cashier.
+- **Decision:** The desktop cashier can create orders for a room (DINE_IN) and for phone/home orders (DELIVERY, «Saboy»). The Saboy tab lists today's and still-unpaid delivery orders. The composer uses the same products, categories, service fee and decimal quantities (3 places) as the Mini App; the API and database are shared by bot, Mini App and desktop.
+- **Consequences:** Desktop and Mini App always show the same rooms, orders and payments. The desktop is still built for Windows through GitHub Actions; printing uses the WebView print dialog.
