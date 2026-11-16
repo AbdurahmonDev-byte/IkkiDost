@@ -5,7 +5,8 @@
   "description": "Ikki Do'st choyxonasi — complete business management ecosystem",
   "workspaces": [
     "apps/*",
-    "packages/*"
+    "packages/*",
+    "legacy/cashier-desktop"
   ],
   "scripts": {
     "dev:api": "npm run dev -w @ikki-dost/api",
