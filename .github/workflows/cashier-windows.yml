@@ -38,6 +38,7 @@ jobs:
           VITE_API_URL: https://ikkidost.abitcore.uz/api
         with:
           projectPath: legacy/cashier-desktop
+          tauriScript: npx tauri
 
       - uses: actions/upload-artifact@v4
         with:
