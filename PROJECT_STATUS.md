@@ -266,3 +266,10 @@ Telegram Mini App served by the API at `/` (same origin as `/api`), Vite + React
 - Mini App order flow is staff-only for OWNER, WAITER and CASHIER, with exact kg/liter quantities.
 - API e2e: 52/52 passing. Typecheck and Mini App build pass.
 - Remaining: Windows cashier `.exe` (Tauri app in `legacy/cashier-desktop` needs a rebuild and a Windows build machine).
+
+## Windows cashier build (2026-11-16)
+- `legacy/cashier-desktop` (Tauri 2) builds on GitHub Actions `windows-latest` via `.github/workflows/cashier-windows.yml`.
+- Produces `ikki-dost-cashier.exe` (8.6 MB) and `Ikki Do'st Kassir_0.1.0_x64_en-US.msi` (2.9 MB); artifact `ikki-dost-kassir-windows` on run 43877447520.
+- NSIS bundling fails (NSIS 3.13 issue), so bundle target is `msi`.
+- Production CORS allows `http://tauri.localhost`, `https://tauri.localhost`, `tauri://localhost`.
+- Not yet runtime-tested on Windows; installer is unsigned (SmartScreen warning).
