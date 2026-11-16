@@ -26,10 +26,10 @@ Ikki Do‘st choyxonasi xodimlari uchun yagona Telegram boti. Barcha qurilmalard
 
 ## Buyruqlar
 
-Mijozlar uyga yetkazish buyurtmasini Mini App orqali beradi. Zaldagi mijozlar
-telefondan buyurtma bermaydi; xizmat uchun ofitsiant chaqiradi.
+Bot faqat xodimlar uchun. Telegram ID si xodim hisobiga biriktirilmagan
+foydalanuvchi o‘z ID sini ko‘radi va uni ega orqali biriktirishi kerak.
 
-- `/start` — Botni ishga tushirish; staff Telegram ID orqali kiradi, ID biriktirilmagan bo‘lsa ega bilan bog‘lanadi; mijozdan yetkazish manzilini so‘raydi (lokatsiya yoki qo‘lda)
+- `/start` — Xodimni unga biriktirilgan Telegram ID orqali tizimga kiritish; ID biriktirilmagan bo‘lsa ega bilan bog‘lanish ko‘rsatmasini ko‘rsatish
 - `/logout` — Telegram hisobini tizimdan uzish
 - `/menu` — Foydalanuvchi roliga mos bosh menyu
 - `/rooms` — Xonalar ro‘yxati va bandlik holati

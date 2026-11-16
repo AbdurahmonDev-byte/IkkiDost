@@ -1,13 +1,7 @@
 import { Bot } from 'grammy';
 import { loadConfig } from './config.js';
-import { customerKeyboard } from './keyboards.js';
 import { handleCloseReason, registerRooms } from './handlers/rooms.js';
-import {
-  handleCustomerLocationMessage,
-  handleCustomerLocationText,
-  handleRegisterText,
-  registerAuth,
-} from './handlers/auth.js';
+import { registerAuth, replyStaffOnly } from './handlers/auth.js';
 import { registerDashboard } from './handlers/dashboard.js';
 import {
   handleDeliveryAddressLocation,
@@ -38,7 +32,7 @@ async function main() {
   const store = new Store(config.storePath);
   const refs = new Refs();
   const flows = new Map<string, Flow>();
-  const deps: Deps = { config, store, refs, flows, system: null, waiterCalls: new Map() };
+  const deps: Deps = { config, store, refs, flows };
 
   const bot = new Bot<ChatContext>(config.token);
 
@@ -52,7 +46,7 @@ async function main() {
     console.error('Botda kutilmagan xatolik:', err);
   });
 
-  // Register all role handlers
+  // Register all staff role handlers
   registerAuth(deps, bot);
   registerRooms(deps, bot);
   registerKitchen(deps, bot);
@@ -60,13 +54,11 @@ async function main() {
   registerOrder(deps, bot);
   registerDashboard(deps, bot);
 
-  // Telegram location messages: customer address prompt or staff delivery wizard.
+  // Telegram location messages for the staff delivery wizard.
   bot.on('message:location', async (ctx) => {
     if (!ctx.chat) return;
+    if (!store.get(ctx.chat.id)) return replyStaffOnly(ctx);
     const flow = flows.get(flowKey(ctx.chat.id));
-    if (flow?.kind === 'customer-location') {
-      return handleCustomerLocationMessage(deps, ctx);
-    }
     if (flow?.kind === 'delivery-address') {
       return handleDeliveryAddressLocation(deps, ctx, flow);
     }
@@ -76,19 +68,17 @@ async function main() {
   bot.on('message:text', async (ctx) => {
     if (!ctx.chat) return;
     const text = ctx.message.text.trim();
-    if (text.startsWith('/')) return; // Commands handled by bot.command
+    const session = store.get(ctx.chat.id);
+    if (text.startsWith('/')) {
+      // Known commands are handled by bot.command; reject removed/unknown ones.
+      if (!session) return replyStaffOnly(ctx);
+      return;
+    }
+    if (!session) return replyStaffOnly(ctx);
 
     const flow = flows.get(flowKey(ctx.chat.id));
     if (flow) {
       switch (flow.kind) {
-        case 'register-first-name':
-        case 'register-last-name':
-          return handleRegisterText(deps, ctx, flow, text);
-        case 'register-phone':
-          await ctx.reply('Iltimos, telefon raqamingizni pastdagi «📞 Telefon raqamni yuborish» tugmasi orqali yuboring.');
-          return;
-        case 'customer-location':
-          return handleCustomerLocationText(deps, ctx, text);
         case 'delivery-cash':
           return handleDeliveryCashText(deps, ctx, flow, text);
         case 'close-reason':
@@ -103,16 +93,7 @@ async function main() {
       }
     }
 
-    const session = store.get(ctx.chat.id);
-    if (!session) {
-      await ctx.reply(
-        '🍵 Ikki Do‘st choyxonasi botiga xush kelibsiz!\n\n' +
-          'Taomlar menyusi, buyurtma berish va ofitsiant chaqirish uchun quyidagi tugmani bosing:',
-        { reply_markup: customerKeyboard(config.miniAppUrl) },
-      );
-    } else {
-      await ctx.reply('Bosh menyuni ko‘rish uchun /menu buyrug‘ini bosing.');
-    }
+    await ctx.reply('Bosh menyuni ko‘rish uchun /menu buyrug‘ini bosing.');
   });
 
   // Start background notification polling
@@ -133,7 +114,7 @@ async function main() {
   // role checks happen inside each handler).
   try {
     await bot.api.setMyCommands([
-      { command: 'start', description: 'Boshlash / Mini App' },
+      { command: 'start', description: 'Telegram ID orqali kirish' },
       { command: 'menu', description: 'Bosh menyu' },
       { command: 'rooms', description: 'Xonalar va hisoblar' },
       { command: 'kitchen', description: 'Oshxona navbati' },
@@ -141,8 +122,6 @@ async function main() {
       { command: 'newdel', description: 'Yangi yetkazish yaratish' },
       { command: 'dash', description: 'Bugungi hisobot (ega)' },
       { command: 'me', description: 'Profil va rol' },
-      { command: 'register', description: 'Mijoz sifatida ro‘yxatdan o‘tish' },
-      { command: 'profile', description: 'Mijoz profili' },
       { command: 'logout', description: 'Hisobni uzish' },
       { command: 'help', description: 'Yordam' },
     ]);

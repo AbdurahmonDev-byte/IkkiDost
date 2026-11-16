@@ -260,3 +260,9 @@ Telegram Mini App served by the API at `/` (same origin as `/api`), Vite + React
 6. Register the Mini App URL via `/setmenubutton` on `@BotFather`.
 7. Build/sign the Android APK and the Windows cashier installer on suitable
    machines, then run the manual QA checklist in `docs/TESTING.md`.
+
+## Staff-only ordering (ADR-030)
+- Bot, Mini App and API no longer accept customer orders or waiter calls.
+- Mini App order flow is staff-only for OWNER, WAITER and CASHIER, with exact kg/liter quantities.
+- API e2e: 52/52 passing. Typecheck and Mini App build pass.
+- Remaining: Windows cashier `.exe` (Tauri app in `legacy/cashier-desktop` needs a rebuild and a Windows build machine).

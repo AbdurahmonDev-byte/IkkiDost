@@ -3,7 +3,6 @@ import {
   Body,
   Controller,
   Get,
-  NotFoundException,
   Param,
   Patch,
   Post,
@@ -16,13 +15,11 @@ import type { CustomerDto, OrderDto } from '@ikki-dost/shared-types';
 import {
   botCustomerLookupSchema,
   botUpdateCustomerSchema,
-  createPublicOrderSchema,
   registerCustomerSchema,
   updateCustomerSchema,
   verifyPhoneSchema,
   type BotCustomerLookupInput,
   type BotUpdateCustomerInput,
-  type CreatePublicOrderInput,
   type RegisterCustomerInput,
   type UpdateCustomerInput,
   type VerifyPhoneInput,
@@ -30,15 +27,8 @@ import {
 import { Public } from '../../common/decorators/public.decorator';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe';
 import { PrismaService } from '../prisma/prisma.service';
-import { NotificationsService } from '../notifications/notifications.service';
-import { RealtimeService } from '../realtime/realtime.service';
 import { isBotSecret } from '../auth/telegram';
 import { PublicService } from './public.service';
-
-interface CallWaiterInput {
-  roomId: string;
-  note?: string;
-}
 
 type PublicReq = {
   ip?: string;
@@ -57,8 +47,6 @@ export class PublicController {
   constructor(
     private prisma: PrismaService,
     private publicService: PublicService,
-    private notifications: NotificationsService,
-    private rt: RealtimeService,
   ) {}
 
   @Get('config')
@@ -223,57 +211,4 @@ export class PublicController {
     return this.publicService.getOrder(header(req, 'x-telegram-init-data'), id);
   }
 
-  @Post('orders')
-  @Throttle({ default: { limit: 20, ttl: 60_000 } })
-  @UsePipes(new ZodValidationPipe(createPublicOrderSchema))
-  async createOrder(@Body() input: CreatePublicOrderInput, @Req() req: PublicReq): Promise<OrderDto> {
-    const initData = header(req, 'x-telegram-init-data') ?? input.initData;
-    return this.publicService.createOrder(initData, input);
-  }
-
-  @Post('call-waiter')
-  @Throttle({ default: { limit: 6, ttl: 60_000 } })
-  async callWaiter(@Body() body: CallWaiterInput) {
-    if (!body.roomId) {
-      throw new BadRequestException('Xona ko‘rsatilmagan');
-    }
-
-    const room = await this.prisma.room.findUnique({
-      where: { id: body.roomId },
-    });
-
-    if (!room) {
-      throw new NotFoundException('Xona topilmadi');
-    }
-
-    const noteText = body.note ? `\nIzoh: ${body.note}` : '';
-    const alertBody = `${room.name} ofitsiantni chaqirmoqda!${noteText}`;
-
-    await Promise.all([
-      this.notifications.notifyRole('WAITER', {
-        type: 'WAITER_CALLED',
-        title: '🔔 Ofitsiant chaqirildi!',
-        body: alertBody,
-        data: { roomId: room.id, roomName: room.name, note: body.note },
-      }),
-      this.notifications.notifyRole('OWNER', {
-        type: 'WAITER_CALLED',
-        title: '🔔 Ofitsiant chaqirildi!',
-        body: alertBody,
-        data: { roomId: room.id, roomName: room.name, note: body.note },
-      }),
-    ]);
-
-    this.rt.emitToRoles(['WAITER', 'OWNER'], 'waiter:called' as never, {
-      roomId: room.id,
-      roomName: room.name,
-      note: body.note ?? null,
-      calledAt: new Date().toISOString(),
-    });
-
-    return {
-      success: true,
-      message: `${room.name} uchun ofitsiant chaqirildi!`,
-    };
-  }
 }

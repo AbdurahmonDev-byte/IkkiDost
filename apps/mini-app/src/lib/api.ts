@@ -1,7 +1,6 @@
 import { tg } from './telegram';
 import type {
   Category,
-  Customer,
   DeliveryDto,
   DeliveryStatus,
   OrderDto,
@@ -85,14 +84,6 @@ interface AuthResponse {
   user: Omit<StaffUser, 'accessToken' | 'refreshToken'>;
 }
 
-interface DeliveryInput {
-  type: 'DELIVERY';
-  numberOfPeople: number;
-  items: Array<{ productId: string; quantity: string; note?: string | null }>;
-  note?: string | null;
-  address: string;
-}
-
 export const api = {
   // ===== Public / customer =====
   getConfig: () => request<PublicConfig>('/public/config'),
@@ -111,29 +102,6 @@ export const api = {
 
   updateRoom: (token: string, id: string, input: { name?: string; isActive?: boolean }) =>
     request<Room>(`/rooms/${id}`, { method: 'PATCH', body: JSON.stringify(input) }, token),
-
-  /** Registered customer attached to the current Telegram identity (or null). */
-  getMe: () => request<{ customer: Customer | null }>('/public/me'),
-
-  registerCustomer: (input: { firstName: string; lastName: string; phone: string }) =>
-    request<{ customer: Customer; verificationSent: boolean; botUrl: string }>('/public/register', {
-      method: 'POST',
-      body: JSON.stringify(input),
-    }),
-
-  updateMe: (input: { firstName?: string; lastName?: string; phone?: string; deliveryAddress?: string | null }) =>
-    request<{ customer: Customer }>('/public/me', { method: 'PATCH', body: JSON.stringify(input) }),
-
-  createOrder: (input: DeliveryInput) =>
-    request<OrderDto>('/public/orders', { method: 'POST', body: JSON.stringify(input) }),
-
-  callWaiter: (roomId: string, note?: string) =>
-    request<{ success: boolean; message: string }>('/public/call-waiter', {
-      method: 'POST',
-      body: JSON.stringify({ roomId, note }),
-    }),
-
-  getOrder: (id: string) => request<OrderDto>(`/public/orders/${id}`),
 
   // ===== Staff auth =====
   login: (username: string, password: string) =>

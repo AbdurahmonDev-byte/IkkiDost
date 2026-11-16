@@ -114,20 +114,6 @@ export interface DeliveryDto {
   updatedAt: string;
 }
 
-export interface CustomerDto {
-  id: string;
-  telegramId: string;
-  telegramUsername: string | null;
-  firstName: string;
-  lastName: string;
-  fullName: string;
-  phone: string;
-  phoneVerified: boolean;
-  deliveryAddress: string | null;
-  createdAt: string;
-  updatedAt: string;
-}
-
 export interface OrderDto {
   id: string;
   orderNumber: number;

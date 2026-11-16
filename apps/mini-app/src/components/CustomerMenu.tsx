@@ -1,90 +1,104 @@
 import React, { useMemo, useState } from 'react';
 import {
-  Bell,
   ArrowUpRight,
   Check,
   ChefHat,
   FileEdit,
-  MapPin,
   Minus,
   Plus,
-  ReceiptText,
   Search,
   ShoppingBag,
+  Truck,
   Utensils,
   X,
 } from 'lucide-react';
-import { money, orderStatusLabel, qty, statusColor } from '../lib/format';
+import { lineTotal, money, qty, isMassUnit, formatQtyInput } from '../lib/format';
 import { menuImageFor } from '../lib/menuImages';
 import { tg } from '../lib/telegram';
-import type { CartItem, Category, Customer, OrderDto, Product, Room } from '../lib/types';
+import type { CartItem, Category, OrderType, Product, Room } from '../lib/types';
+import { QuantityStepper } from './QuantityStepper';
 
 interface Props {
   categories: Category[];
   products: Product[];
-  customer: Customer | null;
-  isStaff: boolean;
-  orderType: 'DINE_IN' | 'DELIVERY';
+  orderType: OrderType;
   selectedRoom: Room | null;
+  rooms: Room[];
   cart: CartItem[];
-  onUpdateCartQty: (productId: string, delta: number) => void;
+  onSetCartQty: (productId: string, quantity: number) => void;
   onUpdateCartNote: (productId: string, note: string) => void;
   onOpenCart: () => void;
-  onOpenCallWaiter: () => void;
-  onShowReceipt: (order: OrderDto) => void;
-  activeOrder: OrderDto | null;
+  onSelectRoom: (room: Room | null) => void;
+  onSelectOrderType: (type: OrderType) => void;
 }
 
 export const CustomerMenu: React.FC<Props> = ({
   categories,
   products,
-  customer,
-  isStaff,
   orderType,
   selectedRoom,
+  rooms,
   cart,
-  onUpdateCartQty,
+  onSetCartQty,
   onUpdateCartNote,
   onOpenCart,
-  onOpenCallWaiter,
-  onShowReceipt,
-  activeOrder,
+  onSelectRoom,
+  onSelectOrderType,
 }) => {
   const [selectedCatId, setSelectedCatId] = useState<string | null>(null);
+  const [listMode, setListMode] = useState<'menu' | 'featured'>('menu');
+  const [featuredIndex, setFeaturedIndex] = useState(0);
   const [search, setSearch] = useState('');
   const [editingNoteFor, setEditingNoteFor] = useState<string | null>(null);
   const [tempNote, setTempNote] = useState('');
 
+  const featuredList = useMemo(() => {
+    const active = products.filter((product) => product.status === 'ACTIVE');
+    const mainCategory = categories.find((category) => category.name.toLowerCase().includes('asosiy'));
+    const withImage = active.filter((product) => menuImageFor(product));
+    const mainFirst = [
+      ...withImage.filter((product) => product.categoryId === mainCategory?.id),
+      ...withImage.filter((product) => product.categoryId !== mainCategory?.id),
+    ];
+    const list = mainFirst.length > 0 ? mainFirst : active;
+    return list.slice(0, 5);
+  }, [categories, products]);
+
+  const featuredProduct = featuredList[featuredIndex] ?? featuredList[0] ?? null;
+  const featuredImage = featuredProduct ? menuImageFor(featuredProduct) : null;
+
   const filteredProducts = useMemo(() => {
     const term = search.trim().toLowerCase();
-    return products.filter((p) => {
-      if (selectedCatId && p.categoryId !== selectedCatId) return false;
+    const source = listMode === 'featured' ? featuredList : products;
+    return source.filter((p) => {
+      if (listMode === 'menu' && selectedCatId && p.categoryId !== selectedCatId) return false;
       if (term && !p.name.toLowerCase().includes(term)) return false;
       return true;
     });
-  }, [products, selectedCatId, search]);
+  }, [products, featuredList, listMode, selectedCatId, search]);
 
-  const featuredProduct = useMemo(() => {
-    const active = products.filter((product) => product.status === 'ACTIVE');
-    const mainCategory = categories.find((category) => category.name.toLowerCase().includes('asosiy'));
-    return active.find((product) => product.categoryId === mainCategory?.id && menuImageFor(product))
-      ?? active.find((product) => menuImageFor(product))
-      ?? active[0];
-  }, [categories, products]);
+  const totalCartCount = cart.length;
+  const totalCartSum = cart.reduce(
+    (sum, item) => sum + lineTotal(item.product.price, item.quantity),
+    0,
+  );
 
-  const featuredImage = featuredProduct ? menuImageFor(featuredProduct) : null;
-
-  const totalCartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
-  const totalCartSum = cart.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
+  const showFeaturedList = () => {
+    tg.selection();
+    setListMode('featured');
+    document.getElementById('menu-list')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
 
   const handleAdd = (product: Product) => {
     tg.haptic('light');
-    onUpdateCartQty(product.id, 1);
+    const current = cart.find((item) => item.product.id === product.id)?.quantity ?? 0;
+    onSetCartQty(product.id, current + (isMassUnit(product.unit) ? 0.5 : 1));
   };
 
   const handleMinus = (product: Product) => {
     tg.haptic('light');
-    onUpdateCartQty(product.id, -1);
+    const current = cart.find((item) => item.product.id === product.id)?.quantity ?? 0;
+    onSetCartQty(product.id, current - (isMassUnit(product.unit) ? 0.1 : 1));
   };
 
   const saveNote = (productId: string) => {
@@ -92,26 +106,41 @@ export const CustomerMenu: React.FC<Props> = ({
     setEditingNoteFor(null);
   };
 
-  const isDineIn = isStaff && orderType === 'DINE_IN';
+  const isDineIn = orderType === 'DINE_IN';
 
   return (
     <div className="customer-menu space-y-5 pb-32 text-white">
-      <section className="relative -mx-4 overflow-hidden bg-[#090b0c] px-4 pb-6 pt-1 animate-rise">
+      <section id="featured" className="relative -mx-4 overflow-hidden bg-[#090b0c] px-4 pb-6 pt-1 animate-rise">
         <div className="flex items-center justify-between px-1 pb-4">
           <div>
             <p className="text-[9px] font-bold uppercase tracking-[0.22em] text-[#caa96b]">IKKI DO‘ST · CHOYXONASI</p>
-            <h1 className="mt-1 text-[19px] font-semibold text-[#f4f0e8]">
-              {customer?.firstName ? `Yoqimli ishtaha, ${customer.firstName}` : 'Yoqimli ishtaha!'}
-            </h1>
+            <h1 className="mt-1 text-[19px] font-semibold text-[#f4f0e8]">Yangi buyurtma</h1>
           </div>
-          <span className="flex h-9 w-9 items-center justify-center rounded-full border border-white/10 text-[#caa96b]">
-            <Bell className="h-4 w-4" />
+          <span className="flex items-center gap-1 rounded-full border border-white/10 px-3 py-1.5 text-[10px] font-bold text-[#caa96b]">
+            Xodimlar uchun
           </span>
         </div>
 
         <div className="flex items-center gap-5 border-b border-white/10 px-1 pb-3 text-[11px] font-semibold">
-          <span className="border-b border-[#d1ad6b] pb-3 text-[#f2d9a4]">Menyu</span>
-          <span className="pb-3 text-white/40">Tavsiya</span>
+          <button
+            type="button"
+            onClick={() => {
+              tg.selection();
+              setListMode('menu');
+            }}
+            aria-pressed={listMode === 'menu'}
+            className={`tap pb-3 ${listMode === 'menu' ? 'border-b border-[#d1ad6b] text-[#f2d9a4]' : 'text-white/40 hover:text-white/70'}`}
+          >
+            Menyu
+          </button>
+          <button
+            type="button"
+            onClick={showFeaturedList}
+            aria-pressed={listMode === 'featured'}
+            className={`tap pb-3 ${listMode === 'featured' ? 'border-b border-[#d1ad6b] text-[#f2d9a4]' : 'text-white/40 hover:text-white/70'}`}
+          >
+            Tavsiya
+          </button>
           <span className="ml-auto flex items-center gap-1 pb-3 text-[10px] font-medium text-emerald-300">
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" /> Ochiq
           </span>
@@ -156,15 +185,31 @@ export const CustomerMenu: React.FC<Props> = ({
             >
               <Plus className="h-3.5 w-3.5" /> Buyurtmaga qo‘shish
             </button>
-            <div className="mt-4 flex items-center gap-1.5" aria-label="Tavsiya qilingan taom">
-              <span className="h-1.5 w-5 rounded-full bg-[#d2b273]" />
-              <span className="h-1.5 w-1.5 rounded-full bg-white/20" />
-              <span className="h-1.5 w-1.5 rounded-full bg-white/20" />
+            <div className="mt-4 flex items-center gap-1.5" aria-label="Tavsiya qilingan taomlar">
+              {featuredList.map((product, index) => (
+                <button
+                  key={product.id}
+                  type="button"
+                  onClick={() => {
+                    setFeaturedIndex(index);
+                    tg.selection();
+                  }}
+                  aria-label={product.name}
+                  aria-current={index === featuredIndex}
+                  className={`tap h-1.5 rounded-full transition-all ${
+                    index === featuredIndex ? 'w-5 bg-[#d2b273]' : 'w-1.5 bg-white/20 hover:bg-white/40'
+                  }`}
+                />
+              ))}
             </div>
           </div>
         )}
 
-        <div className="mt-4 flex items-center justify-between rounded-2xl border border-white/[0.08] bg-white/[0.035] p-3">
+        <button
+          type="button"
+          onClick={showFeaturedList}
+          className="tap mt-4 flex w-full items-center justify-between rounded-2xl border border-white/[0.08] bg-white/[0.035] p-3 text-left hover:bg-white/[0.06]"
+        >
           <div className="flex min-w-0 items-center gap-3">
             <div className="h-12 w-12 shrink-0 overflow-hidden rounded-xl bg-[#1a1d1e]">
               {featuredImage ? (
@@ -179,73 +224,59 @@ export const CustomerMenu: React.FC<Props> = ({
             </div>
           </div>
           <ArrowUpRight className="h-4 w-4 shrink-0 text-[#caa96b]" />
-        </div>
+        </button>
       </section>
 
-      {(!isStaff || isDineIn) && (
-        <button
-          onClick={onOpenCallWaiter}
-          className="tap flex w-full items-center gap-3 rounded-2xl border border-white/10 bg-[#141718] p-3.5 text-left"
-        >
-          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#d2b273]/10 text-[#d2b273]">
-            <Bell className="h-5 w-5" />
-          </span>
-          <span className="min-w-0 flex-1">
-            <span className="block text-[13px] font-black leading-tight text-white">
-              Ofitsiantni chaqirish
-            </span>
-            <span className="mt-0.5 block truncate text-[11px] font-medium text-white/45">
-              Xona tanlang yoki xizmat so‘rang
-            </span>
-          </span>
-          <span className="shrink-0 rounded-full bg-[#d2b273]/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-[#e2c98e]">
-            {selectedRoom ? selectedRoom.name : isStaff ? 'Xona' : 'Zal'}
-          </span>
-        </button>
-      )}
-
-      {/* Active order tracker */}
-      {activeOrder && (
-        <div className="relative overflow-hidden rounded-[26px] bg-gradient-to-br from-stone-900 via-stone-900 to-stone-800 p-4 text-white shadow-xl shadow-stone-900/20">
-          <div className="pointer-events-none absolute -right-8 -top-10 h-28 w-28 rounded-full bg-white/5" />
-          <div className="relative">
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
-                <span className="relative flex h-2.5 w-2.5">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-                  <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
-                </span>
-                <span className="text-sm font-black">Buyurtma #{activeOrder.orderNumber}</span>
-              </div>
-              <span
-                className={`rounded-full border px-2.5 py-1 text-[10px] font-black uppercase ${statusColor[activeOrder.status]}`}
-              >
-                {orderStatusLabel[activeOrder.status]}
-              </span>
-            </div>
-
-            <div className="mt-3 flex items-center justify-between gap-2 text-xs text-stone-300">
-              <span>
-                {activeOrder.items.length} taom ·{' '}
-                <span className="font-black text-white">{money(activeOrder.totalAmount)}</span>
-              </span>
-              <button
-                onClick={() => onShowReceipt(activeOrder)}
-                className="tap inline-flex items-center gap-1 rounded-xl bg-white/10 px-2.5 py-1.5 text-[11px] font-bold text-white hover:bg-white/20"
-              >
-                <ReceiptText className="h-3.5 w-3.5" /> Chek
-              </button>
-            </div>
-
-            {activeOrder.delivery && (
-              <div className="mt-2 flex items-start gap-1.5 rounded-2xl bg-black/20 px-3 py-2 text-[11px] text-stone-300">
-                <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-                <span className="truncate">{activeOrder.delivery.address}</span>
-              </div>
-            )}
-          </div>
+      {/* Staff order destination: room dine-in or phone delivery. */}
+      <div className="space-y-2.5 rounded-2xl border border-white/10 bg-[#141718] p-3.5">
+        <div className="grid grid-cols-2 gap-2">
+          {(['DINE_IN', 'DELIVERY'] as const).map((type) => (
+            <button
+              key={type}
+              type="button"
+              onClick={() => {
+                tg.selection();
+                onSelectOrderType(type);
+              }}
+              aria-pressed={orderType === type}
+              className={`tap flex items-center justify-center gap-1.5 rounded-xl px-3 py-2.5 text-xs font-black ${
+                orderType === type
+                  ? 'bg-[#d2b273] text-[#15120d]'
+                  : 'bg-white/5 text-white/55 hover:bg-white/10'
+              }`}
+            >
+              {type === 'DINE_IN' ? <ShoppingBag className="h-3.5 w-3.5" /> : <Truck className="h-3.5 w-3.5" />}
+              {type === 'DINE_IN' ? 'Xona' : 'Yetkazish'}
+            </button>
+          ))}
         </div>
-      )}
+        {isDineIn ? (
+          <label className="block">
+            <span className="mb-1 block text-[10px] font-bold uppercase tracking-wide text-white/40">
+              Qaysi xonaga?
+            </span>
+            <select
+              value={selectedRoom?.id ?? ''}
+              onChange={(e) => {
+                const room = rooms.find((item) => item.id === e.target.value) ?? null;
+                onSelectRoom(room);
+              }}
+              className="w-full rounded-xl border border-white/10 bg-[#202425] px-3 py-2.5 text-xs font-bold text-white outline-none focus:border-[#d2b273]"
+            >
+              <option value="">Xona tanlang</option>
+              {rooms.map((room) => (
+                <option key={room.id} value={room.id}>
+                  {room.name}{room.isOccupied ? ' · band' : ' · bo‘sh'}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : (
+          <p className="text-[11px] font-medium leading-relaxed text-white/45">
+            Telefon orqali olingan buyurtma: savatda mijoz ismi, telefoni va manzilini kiriting.
+          </p>
+        )}
+      </div>
 
       {/* Search */}
       <div className="flex items-center gap-2.5 rounded-2xl border border-white/10 bg-[#141718] px-4 py-3 focus-within:border-[#d2b273]/60">
@@ -268,40 +299,44 @@ export const CustomerMenu: React.FC<Props> = ({
       </div>
 
       {/* Categories */}
-      <div className="no-scrollbar -mx-1 flex gap-2 overflow-x-auto px-1 py-0.5">
-        <button
-          onClick={() => {
-            setSelectedCatId(null);
-            tg.selection();
-          }}
-          className={`tap shrink-0 rounded-full px-4 py-2 text-xs font-extrabold ${
-            selectedCatId === null
-              ? 'bg-[#d2b273] text-[#15120d]'
-              : 'border border-white/10 bg-white/[0.04] text-white/60 hover:bg-white/[0.08]'
-          }`}
-        >
-          Barchasi
-        </button>
-        {categories.map((c) => (
+      {listMode === 'menu' && (
+        <div className="no-scrollbar -mx-1 flex gap-2 overflow-x-auto px-1 py-0.5">
           <button
-            key={c.id}
             onClick={() => {
-              setSelectedCatId(c.id);
+              setSelectedCatId(null);
               tg.selection();
             }}
             className={`tap shrink-0 rounded-full px-4 py-2 text-xs font-extrabold ${
-              selectedCatId === c.id
+              selectedCatId === null
                 ? 'bg-[#d2b273] text-[#15120d]'
                 : 'border border-white/10 bg-white/[0.04] text-white/60 hover:bg-white/[0.08]'
             }`}
           >
-            {c.name}
+            Barchasi
           </button>
-        ))}
-      </div>
+          {categories.map((c) => (
+            <button
+              key={c.id}
+              onClick={() => {
+                setSelectedCatId(c.id);
+                tg.selection();
+              }}
+              className={`tap shrink-0 rounded-full px-4 py-2 text-xs font-extrabold ${
+                selectedCatId === c.id
+                  ? 'bg-[#d2b273] text-[#15120d]'
+                  : 'border border-white/10 bg-white/[0.04] text-white/60 hover:bg-white/[0.08]'
+              }`}
+            >
+              {c.name}
+            </button>
+          ))}
+        </div>
+      )}
 
-      <div className="flex items-center justify-between px-1">
-        <h2 className="text-[13px] font-semibold tracking-wide text-white/90">Barcha taomlar</h2>
+      <div id="menu-list" className="flex scroll-mt-4 items-center justify-between px-1">
+        <h2 className="text-[13px] font-semibold tracking-wide text-white/90">
+          {listMode === 'featured' ? 'Tavsiya etilganlar' : 'Barcha taomlar'}
+        </h2>
         <span className="text-[10px] font-medium text-white/40">{filteredProducts.length} ta</span>
       </div>
 
@@ -341,7 +376,7 @@ export const CustomerMenu: React.FC<Props> = ({
                   )}
                   {inCartQty > 0 && (
                     <span className="absolute right-2 top-2 flex h-6 min-w-6 items-center justify-center rounded-full bg-gradient-to-br from-brand-500 to-brand-700 px-1.5 text-[11px] font-black text-white shadow-md">
-                      {inCartQty}
+                      {isMassUnit(product.unit) ? formatQtyInput(inCartQty) : inCartQty}
                     </span>
                   )}
                 </div>
@@ -372,6 +407,32 @@ export const CustomerMenu: React.FC<Props> = ({
                         >
                           <Check className="h-3.5 w-3.5" />
                         </button>
+                      </div>
+                    ) : isMassUnit(product.unit) ? (
+                      <div className="space-y-1.5">
+                        <QuantityStepper
+                          tone="dark"
+                          value={inCartQty}
+                          unit={product.unit}
+                          onChange={(next) => onSetCartQty(product.id, next)}
+                        />
+                        {inCartQty > 0 && (
+                          <button
+                            onClick={() => {
+                              setEditingNoteFor(product.id);
+                              setTempNote(cartItem?.note || '');
+                            }}
+                            className={`tap flex w-full items-center justify-center gap-1 truncate rounded-xl px-2 py-1.5 text-[10px] font-bold ${
+                              cartItem?.note
+                                ? 'bg-amber-400/20 text-amber-200'
+                                : 'bg-white/5 text-white/45'
+                            }`}
+                            title="Izoh"
+                          >
+                            <FileEdit className="h-3.5 w-3.5 shrink-0" />
+                            <span className="truncate">{cartItem?.note || 'Izoh'}</span>
+                          </button>
+                        )}
                       </div>
                     ) : inCartQty > 0 ? (
                       <div className="flex items-center justify-between gap-1">

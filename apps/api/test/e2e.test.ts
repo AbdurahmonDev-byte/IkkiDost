@@ -172,120 +172,18 @@ describe('Telegram identity and customer registration', () => {
     }
   });
 
-  it('requires verified registration and only permits public delivery orders', async () => {
-    const customerInitData = telegramInitData('777700003', 'Telegram', 'Name');
-    const originalFetch = globalThis.fetch;
-    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
-      if (String(input).startsWith('https://api.telegram.org/')) {
-        return new Response(JSON.stringify({ ok: true }), { status: 200 });
-      }
-      return originalFetch(input, init);
-    }) as typeof fetch;
-
-    try {
-      const registration = await req(ctx, 'POST', '/public/register', {
-        initData: customerInitData,
-        firstName: 'Rasmiy',
-        lastName: 'Mijoz',
-        phone: '+998901234567',
-      });
-      expect(registration.status).toBe(201);
-      expect(registration.body.customer.fullName).toBe('Rasmiy Mijoz');
-      expect(registration.body.customer.phoneVerified).toBe(false);
-      expect(registration.body.verificationSent).toBe(true);
-
-      const orderInput = {
-        type: 'DELIVERY',
-        numberOfPeople: 1,
-        items: [{ productId: productChoy.id, quantity: '1' }],
-        address: 'Toshkent, Chilonzor 12-uy',
-        initData: customerInitData,
-      };
-      const unverifiedOrder = await req(ctx, 'POST', '/public/orders', orderInput);
-      expect(unverifiedOrder.status, JSON.stringify(unverifiedOrder.body)).toBe(403);
-      expect(unverifiedOrder.body.details.code).toBe('PHONE_NOT_VERIFIED');
-
-      const verified = await fetch(`${ctx.baseUrl}/public/verify-phone`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-bot-secret': testBotToken,
-        },
-        body: JSON.stringify({
-          telegramId: '777700003',
-          contactUserId: '777700003',
-          phone: '+998901234567',
-        }),
-      });
-      expect(verified.status).toBe(201);
-
-      const deliveryOrder = await req(ctx, 'POST', '/public/orders', orderInput);
-      expect(deliveryOrder.status).toBe(201);
-      expect(deliveryOrder.body.delivery.customerName).toBe('Rasmiy Mijoz');
-      expect(deliveryOrder.body.customerId).toBe(registration.body.customer.id);
-
-      const dineInOrder = await req(ctx, 'POST', '/public/orders', {
-        ...orderInput,
-        type: 'DINE_IN',
-      });
-      expect(dineInOrder.status).toBe(400);
-    } finally {
-      globalThis.fetch = originalFetch;
-    }
-  });
-});
-
-describe('Customer delivery location', () => {
-  const initData = telegramInitData('777700006', 'Lokatsiya', 'Mijoz');
-  const mapLink = 'https://maps.google.com/?q=41.299496,69.240073';
-
-  it('bot saves the location and the profile prefills it', async () => {
-    const registered = await fetch(`${ctx.baseUrl}/public/register/bot`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-bot-secret': testBotToken },
-      body: JSON.stringify({
-        telegramId: '777700006',
-        firstName: 'Lokatsiya',
-        lastName: 'Mijoz',
-        phone: '+998901112233',
-      }),
-    });
-    expect(registered.status).toBe(201);
-
-    const patched = await fetch(`${ctx.baseUrl}/public/customers/bot`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json', 'x-bot-secret': testBotToken },
-      body: JSON.stringify({ telegramId: '777700006', deliveryAddress: mapLink }),
-    });
-    expect(patched.status).toBe(200);
-    const patchedBody = (await patched.json()) as { customer: { deliveryAddress: string | null } };
-    expect(patchedBody.customer.deliveryAddress).toBe(mapLink);
-
-    const me = await fetch(`${ctx.baseUrl}/public/me`, {
-      headers: { 'X-Telegram-Init-Data': initData },
-    });
-    expect(me.status).toBe(200);
-    const meBody = (await me.json()) as { customer: { deliveryAddress: string | null } };
-    expect(meBody.customer.deliveryAddress).toBe(mapLink);
-  });
-
-  it('persists the order address for the next Mini App visit', async () => {
-    const address = 'Toshkent, Yunusobod 7-kvartal, 21-uy';
+  it('does not accept customer orders or waiter calls from the public API', async () => {
     const order = await req(ctx, 'POST', '/public/orders', {
       type: 'DELIVERY',
       numberOfPeople: 1,
       items: [{ productId: productChoy.id, quantity: '1' }],
-      address,
-      initData,
+      address: 'Toshkent, Chilonzor 12-uy',
+      initData: telegramInitData('777700003', 'Telegram', 'Name'),
     });
-    expect(order.status, JSON.stringify(order.body)).toBe(201);
-    expect(order.body.delivery.address).toBe(address);
+    expect(order.status).toBe(404);
 
-    const me = await fetch(`${ctx.baseUrl}/public/me`, {
-      headers: { 'X-Telegram-Init-Data': initData },
-    });
-    const meBody = (await me.json()) as { customer: { deliveryAddress: string | null } };
-    expect(meBody.customer.deliveryAddress).toBe(address);
+    const call = await req(ctx, 'POST', '/public/call-waiter', { roomId: 'any' });
+    expect(call.status).toBe(404);
   });
 });
 

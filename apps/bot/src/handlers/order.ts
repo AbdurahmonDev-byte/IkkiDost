@@ -2,7 +2,7 @@ import { InlineKeyboard, type Context } from 'grammy';
 import { api } from '../api.js';
 import { money, qty, unitShort } from '../format.js';
 import { orderReceipt, receiptMessage } from '../receipt.js';
-import { flowKey, type Actor, type Deps, type OrderFlow } from '../state.js';
+import { flowKey, type Deps, type OrderFlow } from '../state.js';
 import type { CategoryDto, ProductDto, ServiceFeeConfigDto } from '../types.js';
 import { expired } from './auth.js';
 import { handleError, stale } from './rooms.js';
@@ -20,14 +20,6 @@ const CACHE_TTL = 60_000;
 async function menuData(deps: Deps, chatId: number): Promise<MenuCache> {
   if (cache && Date.now() - cache.at < CACHE_TTL) return cache;
   const fetcher = async (): Promise<MenuCache> => {
-    if (deps.system) {
-      const [categories, products, fee] = await Promise.all([
-        deps.system.get<CategoryDto[]>('/categories'),
-        deps.system.get<ProductDto[]>('/products'),
-        deps.system.get<ServiceFeeConfigDto>('/settings/service-fee').catch(() => null),
-      ]);
-      return { at: Date.now(), categories, products, fee };
-    }
     const [categories, products, fee] = await Promise.all([
       api.categories(deps.config, deps.store, chatId),
       api.products(deps.config, deps.store, chatId),
@@ -226,7 +218,6 @@ export function registerOrder(deps: Deps, bot: import('../state.js').AppBot) {
         kind: 'order',
         data: {
           mode: 'DINE_IN',
-          actor: 'staff',
           roomId,
           roomName: room?.name,
           people: 1,
@@ -377,9 +368,6 @@ export function registerOrder(deps: Deps, bot: import('../state.js').AppBot) {
     }));
 
     try {
-      if (flow.actor !== 'staff') {
-        throw new Error('Mijozlar buyurtmani Mini App orqali beradi');
-      }
       let order;
       if (flow.mode === 'DINE_IN') {
         order = await api.createDineInOrder(config, store, chatId, {
@@ -419,10 +407,9 @@ export async function handleNoteText(deps: Deps, ctx: Context, flow: OrderFlow, 
   return renderConfirm(deps, ctx, flow, false);
 }
 
-export async function startDeliveryWizard(deps: Deps, ctx: Context, actor: Actor, customer: { name: string; phone: string; address: string }): Promise<void> {
+export async function startDeliveryWizard(deps: Deps, ctx: Context, customer: { name: string; phone: string; address: string }): Promise<void> {
   const flow: OrderFlow = {
     mode: 'DELIVERY',
-    actor,
     customer,
     people: 1,
     stage: 'people',

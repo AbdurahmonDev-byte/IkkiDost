@@ -27,6 +27,7 @@ type PaymentTarget = { id: string; label: string; outstanding: number; sessionId
 interface Props {
   token: string;
   onShowReceipt: (order: OrderDto) => void;
+  onStartOrder?: () => void;
   onMenuChanged?: () => void;
 }
 
@@ -49,7 +50,7 @@ const units: Array<{ value: MeasurementUnit; label: string }> = [
   { value: 'OTHER', label: 'Boshqa' },
 ];
 
-export const CashierScreen: React.FC<Props> = ({ token, onShowReceipt, onMenuChanged }) => {
+export const CashierScreen: React.FC<Props> = ({ token, onShowReceipt, onStartOrder, onMenuChanged }) => {
   const [view, setView] = useState<CashierView>('overview');
   const [orders, setOrders] = useState<OrderDto[]>([]);
   const [rooms, setRooms] = useState<Room[]>([]);
@@ -275,6 +276,16 @@ export const CashierScreen: React.FC<Props> = ({ token, onShowReceipt, onMenuCha
         onRefresh={() => void fetchAll()}
         loading={loading}
       />
+
+      {onStartOrder && (
+        <button
+          type="button"
+          onClick={onStartOrder}
+          className="tap flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-br from-brand-500 to-brand-700 py-3 text-xs font-black text-white shadow-lg shadow-brand-600/25"
+        >
+          <Plus className="h-4 w-4" /> Yangi buyurtma olish
+        </button>
+      )}
 
       <nav className="no-scrollbar -mx-1 flex gap-1.5 overflow-x-auto px-1 py-0.5">
         {views.map(({ id, label, icon: Icon }) => (

@@ -7,38 +7,33 @@ import {
   Loader2,
   Lock,
   LogOut,
-  ReceiptText,
   Truck,
   UtensilsCrossed,
   Wallet,
 } from 'lucide-react';
 import { api } from './lib/api';
+import { roundQty } from './lib/format';
 import { tg } from './lib/telegram';
 import type {
   CartItem,
   Category,
-  Customer,
   OrderDto,
   Product,
-  PublicConfig,
   Room,
   ServiceFeeConfig,
   StaffUser,
 } from './lib/types';
 import { CustomerMenu } from './components/CustomerMenu';
 import { CartModal } from './components/CartModal';
-import { CallWaiterModal } from './components/CallWaiterModal';
 import { KitchenScreen } from './components/KitchenScreen';
 import { WaiterScreen } from './components/WaiterScreen';
 import { DeliveryScreen } from './components/DeliveryScreen';
 import { OwnerScreen } from './components/OwnerScreen';
 import { CashierScreen } from './components/CashierScreen';
 import { StaffLoginModal } from './components/StaffLoginModal';
-import { RegistrationScreen } from './components/RegistrationScreen';
 import { ReceiptModal } from './components/ReceiptModal';
 
 const STAFF_KEY = 'ikki_dost_staff';
-const LAST_ORDER_KEY = 'ikki_dost_last_order';
 
 type Tab = 'customer' | 'waiter' | 'kitchen' | 'delivery' | 'cashier' | 'owner';
 
@@ -51,7 +46,7 @@ const roleLabel: Record<StaffUser['role'], string> = {
 };
 
 const tabHint: Record<Tab, string> = {
-  customer: 'Mijoz oynasi: menyu, savat va buyurtma berish.',
+  customer: 'Yangi buyurtma: taomlarni tanlang, savatda tasdiqlang. Xona bo‘yicha buyurtma uchun “Xonalar” tabini oching.',
   waiter: 'Xonalar va faol buyurtmalar. Yangi buyurtma uchun xonani tanlang.',
   kitchen: 'Navbatdagi taomlar. “Boshlash” va “Tayyor” orqali holatni yangilang.',
   delivery: 'Yetkazishlar. Buyurtmani qabul qiling, yo‘lga chiqing va naqd pulni kiriting.',
@@ -88,23 +83,17 @@ function defaultTab(role: StaffUser['role']): Tab {
 }
 
 export const App: React.FC = () => {
-  const [config, setConfig] = useState<PublicConfig | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [rooms, setRooms] = useState<Room[]>([]);
   const [serviceFeeConfig, setServiceFeeConfig] = useState<ServiceFeeConfig | null>(null);
 
-  const [customer, setCustomer] = useState<Customer | null>(null);
-  const [customerLoaded, setCustomerLoaded] = useState(false);
-
   const [cart, setCart] = useState<CartItem[]>([]);
-  const [orderType, setOrderType] = useState<'DINE_IN' | 'DELIVERY'>('DELIVERY');
+  const [orderType, setOrderType] = useState<'DINE_IN' | 'DELIVERY'>('DINE_IN');
   const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
-  const [activeOrder, setActiveOrder] = useState<OrderDto | null>(null);
   const [receiptOrder, setReceiptOrder] = useState<OrderDto | null>(null);
 
   const [isCartOpen, setIsCartOpen] = useState(false);
-  const [isCallWaiterOpen, setIsCallWaiterOpen] = useState(false);
   const [isStaffLoginOpen, setIsStaffLoginOpen] = useState(false);
 
   const [staffUser, setStaffUser] = useState<StaffUser | null>(() => readStaff());
@@ -120,29 +109,14 @@ export const App: React.FC = () => {
   const telegramAvailable = Boolean(tg.app?.initData);
 
   const loadMenu = async () => {
-    const [menuRes, roomsRes, cfg] = await Promise.all([
-      api.getMenu(),
-      api.getRooms(),
-      api.getConfig().catch(() => null),
-    ]);
+    const [menuRes, roomsRes] = await Promise.all([api.getMenu(), api.getRooms()]);
     setCategories(menuRes.categories);
     setProducts(menuRes.products);
     setServiceFeeConfig(menuRes.serviceFee);
     setRooms(roomsRes);
-    if (cfg) setConfig(cfg);
   };
 
-  const refreshCustomer = async () => {
-    if (!tg.app?.initData) {
-      setCustomerLoaded(true);
-      return;
-    }
-    const res = await api.getMe();
-    setCustomer(res.customer);
-    setCustomerLoaded(true);
-  };
-
-  // Boot: data, customer, Telegram staff auto-login.
+  // Boot: menu data + passwordless Telegram staff login.
   useEffect(() => {
     if (bootRan.current) return;
     bootRan.current = true;
@@ -150,12 +124,11 @@ export const App: React.FC = () => {
 
     const boot = async () => {
       try {
-        await Promise.all([loadMenu(), refreshCustomer()]);
+        await loadMenu();
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Ma’lumotlarni yuklab bo‘lmadi');
       }
 
-      // Passwordless staff login when the Mini App runs inside Telegram.
       if (tg.app?.initData) {
         try {
           const res = await api.telegramLogin();
@@ -168,20 +141,7 @@ export const App: React.FC = () => {
           saveStaff(user);
           setActiveTab(defaultTab(user.role));
         } catch {
-          // TELEGRAM_NOT_LINKED is expected for ordinary customers.
-        }
-      }
-
-      // Restore the last customer order (delivery tracking).
-      if (tg.app?.initData) {
-        try {
-          const savedId = localStorage.getItem(LAST_ORDER_KEY);
-          if (savedId) {
-            const order = await api.getOrder(savedId);
-            setActiveOrder(order);
-          }
-        } catch {
-          localStorage.removeItem(LAST_ORDER_KEY);
+          // TELEGRAM_NOT_LINKED means this Telegram ID is not registered as staff.
         }
       }
 
@@ -191,21 +151,6 @@ export const App: React.FC = () => {
     boot();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  // Poll the active customer order until it is finished.
-  useEffect(() => {
-    if (!activeOrder || !tg.app?.initData) return;
-    if (activeOrder.status === 'COMPLETED' || activeOrder.status === 'CANCELLED') return;
-    const timer = setInterval(async () => {
-      try {
-        const fresh = await api.getOrder(activeOrder.id);
-        setActiveOrder(fresh);
-      } catch {
-        // keep the last known state on transient errors
-      }
-    }, 5000);
-    return () => clearInterval(timer);
-  }, [activeOrder?.id, activeOrder?.status]);
 
   const staffMode =
     staffUser?.role === 'OWNER' || staffUser?.role === 'WAITER' || staffUser?.role === 'CASHIER';
@@ -229,7 +174,9 @@ export const App: React.FC = () => {
     if (role === 'OWNER') {
       list.push({ id: 'owner', label: 'Ega', icon: Crown });
     }
-    list.unshift({ id: 'customer', label: 'Menyu', icon: UtensilsCrossed });
+    if (role === 'OWNER' || role === 'WAITER' || role === 'CASHIER') {
+      list.unshift({ id: 'customer', label: 'Yangi buyurtma', icon: UtensilsCrossed });
+    }
     return list;
   }, [staffUser?.role]);
 
@@ -248,20 +195,17 @@ export const App: React.FC = () => {
     setActiveTab('customer');
   };
 
-  const handleUpdateCartQty = (productId: string, delta: number) => {
+  const handleSetCartQty = (productId: string, quantity: number) => {
+    const nextQuantity = roundQty(quantity);
     setCart((prev) => {
+      if (nextQuantity <= 0) return prev.filter((i) => i.product.id !== productId);
       const existing = prev.find((i) => i.product.id === productId);
-      if (!existing && delta > 0) {
-        const product = products.find((p) => p.id === productId);
-        if (!product) return prev;
-        return [...prev, { product, quantity: delta }];
-      }
       if (existing) {
-        const newQty = existing.quantity + delta;
-        if (newQty <= 0) return prev.filter((i) => i.product.id !== productId);
-        return prev.map((i) => (i.product.id === productId ? { ...i, quantity: newQty } : i));
+        return prev.map((i) => (i.product.id === productId ? { ...i, quantity: nextQuantity } : i));
       }
-      return prev;
+      const product = products.find((p) => p.id === productId);
+      if (!product) return prev;
+      return [...prev, { product, quantity: nextQuantity }];
     });
   };
 
@@ -274,23 +218,7 @@ export const App: React.FC = () => {
   };
 
   const handleOrderSuccess = (order: OrderDto) => {
-    setActiveOrder(order);
     setReceiptOrder(order);
-    if (customer && order.type === 'DELIVERY') {
-      try {
-        localStorage.setItem(LAST_ORDER_KEY, order.id);
-      } catch {
-        // ignore storage errors
-      }
-    }
-  };
-
-  const openRegistration = () => {
-    if (!telegramAvailable) {
-      tg.alert('Buyurtma berish uchun Mini App’ni Telegram orqali oching.');
-      return;
-    }
-    setActiveTab('customer');
   };
 
   if (booting) {
@@ -307,29 +235,22 @@ export const App: React.FC = () => {
     );
   }
 
-  const registrationNeeded =
-    activeTab === 'customer' &&
-    !staffMode &&
-    telegramAvailable &&
-    customerLoaded &&
-    (!customer || !customer.phoneVerified);
-
   return (
-    <div className={`app-shell ${activeTab === 'customer' && !registrationNeeded ? 'app-shell--culinary' : ''}`}>
+    <div className={`app-shell ${activeTab === 'customer' ? 'app-shell--culinary' : ''}`}>
       <div className="mx-auto min-h-screen max-w-xl px-4 pb-10 pt-3">
         {/* Brand header */}
-        <header className={`sticky top-0 z-30 -mx-4 mb-4 border-b px-4 py-3 backdrop-blur-xl ${activeTab === 'customer' && !registrationNeeded ? 'border-white/10 bg-[#090b0c]/90' : 'border-stone-200/50 dark:border-stone-800/50 bg-[#fdf9f2]/85 dark:bg-[#12100e]/90'}`}>
+        <header className={`sticky top-0 z-30 -mx-4 mb-4 border-b px-4 py-3 backdrop-blur-xl ${activeTab === 'customer' ? 'border-white/10 bg-[#090b0c]/90' : 'border-stone-200/50 dark:border-stone-800/50 bg-[#fdf9f2]/85 dark:bg-[#12100e]/90'}`}>
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2.5">
               <div className="relative flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-500 to-brand-700 text-xl shadow-lg shadow-brand-600/30">
                 <span>🫖</span>
-                <span className={`absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 ${activeTab === 'customer' && !registrationNeeded ? 'border-[#090b0c]' : 'border-[#fdf9f2]'} bg-emerald-500`} />
+                <span className={`absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 ${activeTab === 'customer' ? 'border-[#090b0c]' : 'border-[#fdf9f2]'} bg-emerald-500`} />
               </div>
               <div>
-                <h1 className={`text-[17px] font-black leading-tight tracking-tight ${activeTab === 'customer' && !registrationNeeded ? 'text-white' : 'text-stone-900 dark:text-stone-100'}`}>
+                <h1 className={`text-[17px] font-black leading-tight tracking-tight ${activeTab === 'customer' ? 'text-white' : 'text-stone-900 dark:text-stone-100'}`}>
                   Ikki Do‘st
                 </h1>
-                <p className={`text-[9.5px] font-black uppercase tracking-[0.18em] ${activeTab === 'customer' && !registrationNeeded ? 'text-[#caa96b]' : 'text-[#a97c33] dark:text-[#caa96b]'}`}>
+                <p className={`text-[9.5px] font-black uppercase tracking-[0.18em] ${activeTab === 'customer' ? 'text-[#caa96b]' : 'text-[#a97c33] dark:text-[#caa96b]'}`}>
                   Choyxonasi
                 </p>
               </div>
@@ -338,22 +259,22 @@ export const App: React.FC = () => {
             <div className="flex items-center gap-1">
               {staffUser ? (
                 <>
-                  <div className={`flex items-center gap-2 rounded-2xl border py-1.5 pl-1.5 pr-3 shadow-sm ${activeTab === 'customer' && !registrationNeeded ? 'border-white/10 bg-white/5' : 'border-stone-200/70 dark:border-stone-800/70 bg-white/90 dark:bg-stone-900/90'}`}>
+                  <div className={`flex items-center gap-2 rounded-2xl border py-1.5 pl-1.5 pr-3 shadow-sm ${activeTab === 'customer' ? 'border-white/10 bg-white/5' : 'border-stone-200/70 dark:border-stone-800/70 bg-white/90 dark:bg-stone-900/90'}`}>
                     <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-stone-800 to-stone-950 text-[11px] font-black text-white">
                       {staffUser.fullName.slice(0, 1).toUpperCase()}
                     </div>
                     <div className="leading-tight">
-                      <p className={`max-w-[96px] truncate text-[11px] font-black ${activeTab === 'customer' && !registrationNeeded ? 'text-white' : 'text-stone-900 dark:text-stone-100'}`}>
+                      <p className={`max-w-[96px] truncate text-[11px] font-black ${activeTab === 'customer' ? 'text-white' : 'text-stone-900 dark:text-stone-100'}`}>
                         {staffUser.fullName}
                       </p>
-                      <p className={`text-[9px] font-bold uppercase tracking-wide ${activeTab === 'customer' && !registrationNeeded ? 'text-[#caa96b]' : 'text-brand-600 dark:text-brand-300'}`}>
+                      <p className={`text-[9px] font-bold uppercase tracking-wide ${activeTab === 'customer' ? 'text-[#caa96b]' : 'text-brand-600 dark:text-brand-300'}`}>
                         {roleLabel[staffUser.role]}
                       </p>
                     </div>
                   </div>
                   <button
                     onClick={handleLogout}
-                    className={`tap rounded-xl p-2 transition-colors ${activeTab === 'customer' && !registrationNeeded ? 'text-white/45 hover:bg-white/10 hover:text-rose-300' : 'text-stone-500 hover:bg-white dark:hover:bg-stone-800 hover:text-rose-600'}`}
+                    className={`tap rounded-xl p-2 transition-colors ${activeTab === 'customer' ? 'text-white/45 hover:bg-white/10 hover:text-rose-300' : 'text-stone-500 hover:bg-white dark:hover:bg-stone-800 hover:text-rose-600'}`}
                     title="Chiqish"
                   >
                     <LogOut className="h-4 w-4" />
@@ -362,7 +283,7 @@ export const App: React.FC = () => {
               ) : (
                 <button
                   onClick={() => setIsStaffLoginOpen(true)}
-                  className={`tap flex items-center gap-1.5 rounded-2xl border px-3 py-2 text-xs font-bold shadow-sm ${activeTab === 'customer' && !registrationNeeded ? 'border-white/10 bg-white/5 text-white/80' : 'border-stone-200/80 dark:border-stone-800/80 bg-white/90 dark:bg-stone-900/90 text-stone-700 dark:text-stone-300 hover:bg-white dark:hover:bg-stone-800'}`}
+                  className={`tap flex items-center gap-1.5 rounded-2xl border px-3 py-2 text-xs font-bold shadow-sm ${activeTab === 'customer' ? 'border-white/10 bg-white/5 text-white/80' : 'border-stone-200/80 dark:border-stone-800/80 bg-white/90 dark:bg-stone-900/90 text-stone-700 dark:text-stone-300 hover:bg-white dark:hover:bg-stone-800'}`}
                 >
                   <Lock className="h-3.5 w-3.5 text-brand-600 dark:text-brand-300" />
                   <span>Xodimlar</span>
@@ -388,8 +309,8 @@ export const App: React.FC = () => {
                     }}
                     className={`tap flex shrink-0 items-center gap-1.5 rounded-2xl px-3.5 py-2.5 text-xs font-bold ${
                       active
-                        ? activeTab === 'customer' && !registrationNeeded ? 'bg-[#d2b273] text-[#15120d]' : 'bg-gradient-to-br from-brand-500 to-brand-700 text-white shadow-lg shadow-brand-600/25'
-                        : activeTab === 'customer' && !registrationNeeded ? 'border border-white/10 bg-white/5 text-white/65 hover:bg-white/10' : 'border border-stone-200/70 dark:border-stone-800/70 bg-white/80 dark:bg-stone-900/80 text-stone-600 dark:text-stone-300 shadow-sm hover:bg-white dark:hover:bg-stone-800 hover:text-stone-900 dark:hover:text-stone-100'
+                        ? activeTab === 'customer' ? 'bg-[#d2b273] text-[#15120d]' : 'bg-gradient-to-br from-brand-500 to-brand-700 text-white shadow-lg shadow-brand-600/25'
+                        : activeTab === 'customer' ? 'border border-white/10 bg-white/5 text-white/65 hover:bg-white/10' : 'border border-stone-200/70 dark:border-stone-800/70 bg-white/80 dark:bg-stone-900/80 text-stone-600 dark:text-stone-300 shadow-sm hover:bg-white dark:hover:bg-stone-800 hover:text-stone-900 dark:hover:text-stone-100'
                     }`}
                   >
                     <Icon className="h-3.5 w-3.5" />
@@ -398,7 +319,7 @@ export const App: React.FC = () => {
                 );
               })}
             </nav>
-            <div className={`flex items-start gap-2 rounded-2xl border px-3 py-2.5 text-[11px] font-medium leading-relaxed ${activeTab === 'customer' && !registrationNeeded ? 'border-white/10 bg-white/5 text-white/65' : 'border-brand-200/60 dark:border-brand-400/25 bg-brand-50/70 dark:bg-brand-400/10 text-brand-900 dark:text-brand-100'}`}>
+            <div className={`flex items-start gap-2 rounded-2xl border px-3 py-2.5 text-[11px] font-medium leading-relaxed ${activeTab === 'customer' ? 'border-white/10 bg-white/5 text-white/65' : 'border-brand-200/60 dark:border-brand-400/25 bg-brand-50/70 dark:bg-brand-400/10 text-brand-900 dark:text-brand-100'}`}>
               <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-brand-600 dark:text-brand-300" />
               <span>
                 {staffUser.role === 'OWNER' && activeTab === 'customer'
@@ -416,47 +337,48 @@ export const App: React.FC = () => {
           </div>
         )}
 
-        {!telegramAvailable && activeTab === 'customer' && (
-          <div className={`mb-3 rounded-2xl border px-4 py-3 text-xs font-medium ${activeTab === 'customer' && !registrationNeeded ? 'border-white/10 bg-white/5 text-white/55' : 'border-sky-200 dark:border-sky-400/25 bg-sky-50 dark:bg-sky-400/10 text-sky-800 dark:text-sky-300'}`}>
-            Buyurtma berish uchun Mini App’ni Telegram orqali oching. Brauzerda faqat menyuni
-            ko‘rish mumkin.
-          </div>
+        <main>
+        {!staffUser && (
+          <section className="surface-soft flex flex-col items-center px-6 py-12 text-center">
+            <div className="icon-tile bg-gradient-to-br from-brand-500 to-brand-700 text-white">
+              <Lock className="h-6 w-6" />
+            </div>
+            <h2 className="mt-4 text-lg font-black text-stone-900 dark:text-stone-100">
+              Faqat xodimlar uchun
+            </h2>
+            <p className="mt-2 text-xs leading-relaxed text-stone-500 dark:text-stone-400">
+              Mijoz o‘zi buyurtma bermaydi. Ofitsiant va kassir xona buyurtmasini, kuryer esa
+              yetkazishni shu ilova orqali boshqaradi. Telegram ID ega tomonidan biriktirilgan
+              bo‘lsa, Telegram’dan avtomatik kirasiz.
+            </p>
+            <button
+              type="button"
+              onClick={() => setIsStaffLoginOpen(true)}
+              className="btn-primary mt-5 w-full py-3"
+            >
+              <Lock className="h-4 w-4" /> Xodim sifatida kirish
+            </button>
+          </section>
         )}
 
-        <main>
-        {activeTab === 'customer' &&
-          (registrationNeeded ? (
-            <RegistrationScreen
-              config={config}
-              customer={customer}
-              telegramName={
-                tg.user
-                  ? { firstName: tg.user.first_name, lastName: tg.user.last_name }
-                  : null
-              }
-              onRegistered={(c) => {
-                setCustomer(c);
-                refreshCustomer().catch(() => undefined);
-              }}
-              onRefresh={refreshCustomer}
-            />
-          ) : (
+        {activeTab === 'customer' && staffUser && staffMode && (
             <CustomerMenu
               categories={categories}
               products={products}
-              customer={customer}
-              isStaff={Boolean(staffUser) && staffMode}
               orderType={orderType}
               selectedRoom={selectedRoom}
+              rooms={rooms}
               cart={cart}
-              onUpdateCartQty={handleUpdateCartQty}
+              onSetCartQty={handleSetCartQty}
               onUpdateCartNote={handleUpdateCartNote}
               onOpenCart={() => setIsCartOpen(true)}
-              onOpenCallWaiter={() => setIsCallWaiterOpen(true)}
-              onShowReceipt={setReceiptOrder}
-              activeOrder={activeOrder}
+              onSelectRoom={setSelectedRoom}
+              onSelectOrderType={(type) => {
+                setOrderType(type);
+                if (type === 'DELIVERY') setSelectedRoom(null);
+              }}
             />
-          ))}
+        )}
 
         {activeTab === 'waiter' && staffUser && (
           <WaiterScreen
@@ -480,6 +402,10 @@ export const App: React.FC = () => {
           <CashierScreen
             token={staffUser.accessToken}
             onShowReceipt={setReceiptOrder}
+            onStartOrder={() => {
+              setOrderType('DINE_IN');
+              setActiveTab('customer');
+            }}
             onMenuChanged={() => { loadMenu().catch(() => undefined); }}
           />
         )}
@@ -498,26 +424,15 @@ export const App: React.FC = () => {
         isOpen={isCartOpen}
         onClose={() => setIsCartOpen(false)}
         items={cart}
-        onUpdateQty={handleUpdateCartQty}
+        onSetQty={handleSetCartQty}
         onUpdateNote={handleUpdateCartNote}
         onRemove={handleRemoveFromCart}
         onClear={() => setCart([])}
         orderType={orderType}
         selectedRoom={selectedRoom}
         serviceFeeConfig={serviceFeeConfig}
-        mode={staffMode ? 'staff' : 'customer'}
         token={staffUser?.accessToken}
-        customer={customer}
         onOrderSuccess={handleOrderSuccess}
-        onRequireVerification={openRegistration}
-      />
-
-      <CallWaiterModal
-        isOpen={isCallWaiterOpen}
-        rooms={rooms}
-        room={selectedRoom}
-        onSelectRoom={setSelectedRoom}
-        onClose={() => setIsCallWaiterOpen(false)}
       />
 
       <StaffLoginModal
@@ -528,17 +443,6 @@ export const App: React.FC = () => {
       />
 
       <ReceiptModal order={receiptOrder} onClose={() => setReceiptOrder(null)} />
-
-      {/* Customer receipt shortcut when an order is active */}
-      {customer && activeOrder && !staffUser && (
-        <button
-          onClick={() => setReceiptOrder(activeOrder)}
-          className="tap fixed bottom-24 right-4 z-30 flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-500 to-brand-700 text-white shadow-xl shadow-brand-700/30"
-          title="Elektron chek"
-        >
-          <ReceiptText className="h-5 w-5" />
-        </button>
-      )}
       </div>
     </div>
   );

@@ -17,6 +17,31 @@ export const unitShort: Record<MeasurementUnit, string> = {
   OTHER: '',
 };
 
+/** Units that are measured by mass/volume and allow decimal amounts. */
+export function isMassUnit(unit: MeasurementUnit): boolean {
+  return unit === 'KG' || unit === 'LITER';
+}
+
+/** Keep quantities at up to 3 decimals, matching the API quantity schema. */
+export function roundQty(quantity: number): number {
+  return Math.round(quantity * 1000) / 1000;
+}
+
+/** Plain decimal string for the API ("1.82", "0.75"), never floats like 0.30000000000000004. */
+export function quantityForApi(quantity: number): string {
+  return String(roundQty(quantity));
+}
+
+/** Short input value without unit ("1.82"). */
+export function formatQtyInput(quantity: number): string {
+  return quantity > 0 ? quantityForApi(quantity) : '';
+}
+
+/** Line total rounded to integer UZS (same rule as the API). */
+export function lineTotal(price: number, quantity: number): number {
+  return Math.round(price * quantity);
+}
+
 export function qty(quantity: number | string, unit: MeasurementUnit): string {
   const raw = typeof quantity === 'string' ? quantity.trim() : String(quantity);
   const cleaned = raw.replace(/\s*(kg|l|dona|porsiya|por\.)$/i, '').trim();

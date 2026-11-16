@@ -4,7 +4,6 @@ import type {
   AuthTokens,
   AuthUser,
   CategoryDto,
-  CustomerDto,
   DashboardSummaryDto,
   DeliveryDto,
   DeliveryStatus,
@@ -76,47 +75,12 @@ async function botRequest<T>(config: BotConfig, method: string, path: string, bo
   return rawRequest<T>(config, method, path, body, undefined, { 'x-bot-secret': config.token });
 }
 
-export async function login(
-  config: BotConfig,
-  username: string,
-  password: string,
-): Promise<AuthTokens & { user: AuthUser }> {
-  return rawRequest(config, 'POST', '/auth/login', { username, password });
-}
-
 /** Staff login by the Telegram ID assigned to the employee by the owner. */
 export async function telegramBotLogin(
   config: BotConfig,
   telegramId: string,
 ): Promise<AuthTokens & { user: AuthUser }> {
   return botRequest(config, 'POST', '/auth/telegram/bot', { telegramId });
-}
-
-export async function registerCustomerBot(
-  config: BotConfig,
-  input: { telegramId: string; telegramUsername?: string | null; firstName: string; lastName: string; phone: string },
-): Promise<{ customer: CustomerDto }> {
-  return botRequest(config, 'POST', '/public/register/bot', input);
-}
-
-export async function lookupCustomerBot(config: BotConfig, telegramId: string): Promise<CustomerDto | null> {
-  const res = await botRequest<{ customer: CustomerDto | null }>(config, 'POST', '/public/customers/lookup', { telegramId });
-  return res.customer;
-}
-
-export async function verifyPhoneBot(
-  config: BotConfig,
-  input: { telegramId: string; phone: string; contactUserId: string },
-): Promise<{ customer: CustomerDto }> {
-  return botRequest(config, 'POST', '/public/verify-phone', input);
-}
-
-/** Bot-only profile patch — used to save the customer's delivery location. */
-export async function updateCustomerBot(
-  config: BotConfig,
-  input: { telegramId: string; deliveryAddress?: string | null; firstName?: string; lastName?: string },
-): Promise<{ customer: CustomerDto }> {
-  return botRequest(config, 'PATCH', '/public/customers/bot', input);
 }
 
 export async function logout(config: BotConfig, session: Session): Promise<void> {
@@ -167,79 +131,6 @@ export async function call<T>(
 
 const get = <T>(c: BotConfig, s: Store, id: number | string, p: string) => call<T>(c, s, id, 'GET', p);
 const post = <T>(c: BotConfig, s: Store, id: number | string, p: string, b?: unknown) => call<T>(c, s, id, 'POST', p, b);
-
-/**
- * Dedicated staff account (e.g. `bot`) used to place orders on behalf of
- * unauthenticated Telegram customers. Keeps backend RBAC and audit intact —
- * every customer order is createdBy "Telegram Bot" and carries the customer's
- * identity in the note / customer fields.
- */
-export class SystemClient {
-  private tokens: AuthTokens | null = null;
-  private refreshing: Promise<boolean> | null = null;
-
-  constructor(
-    private config: BotConfig,
-    private username: string,
-    private password: string,
-  ) {}
-
-  get ready(): boolean {
-    return this.tokens !== null;
-  }
-
-  async ensure(): Promise<boolean> {
-    if (this.tokens) return true;
-    try {
-      const result = await login(this.config, this.username, this.password);
-      this.tokens = { accessToken: result.accessToken, refreshToken: result.refreshToken };
-      return true;
-    } catch {
-      this.tokens = null;
-      return false;
-    }
-  }
-
-  private async refresh(): Promise<boolean> {
-    if (!this.tokens) return this.ensure();
-    if (this.refreshing) return this.refreshing;
-    const current = this.tokens;
-    this.refreshing = (async () => {
-      try {
-        const tokens = await rawRequest<AuthTokens>(this.config, 'POST', '/auth/refresh', {
-          refreshToken: current.refreshToken,
-        });
-        this.tokens = tokens;
-        return true;
-      } catch {
-        this.tokens = null;
-        return this.ensure();
-      } finally {
-        this.refreshing = null;
-      }
-    })();
-    return this.refreshing;
-  }
-
-  async request<T>(method: string, path: string, body?: unknown): Promise<T> {
-    if (!(await this.ensure())) throw new ApiError(503, 'Bot xodim hisobi sozlanmagan (BOT_USERNAME/BOT_PASSWORD)');
-    try {
-      return await rawRequest<T>(this.config, method, path, body, this.tokens!.accessToken);
-    } catch (error) {
-      if (error instanceof ApiError && error.statusCode === 401 && (await this.refresh())) {
-        return rawRequest<T>(this.config, method, path, body, this.tokens!.accessToken);
-      }
-      throw error;
-    }
-  }
-
-  get<T>(path: string) {
-    return this.request<T>('GET', path);
-  }
-  post<T>(path: string, body?: unknown) {
-    return this.request<T>('POST', path, body);
-  }
-}
 
 // ===== Typed wrappers used by the flows =====
 
@@ -312,8 +203,4 @@ export const api = {
   dashboard: (c: BotConfig, s: Store, id: number | string) => get<DashboardSummaryDto>(c, s, id, '/reports/dashboard'),
 
   notifications: (c: BotConfig, s: Store, id: number | string) => get<NotificationDto[]>(c, s, id, '/notifications'),
-
-  publicRooms: (c: BotConfig) => rawRequest<Array<{ id: string; name: string }>>(c, 'GET', '/public/rooms'),
-  callWaiter: (c: BotConfig, roomId: string, note?: string) =>
-    rawRequest<{ success: boolean; message: string }>(c, 'POST', '/public/call-waiter', { roomId, note }),
 };

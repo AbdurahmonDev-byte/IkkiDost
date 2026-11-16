@@ -2,7 +2,6 @@ import { BadRequestException, ForbiddenException, Injectable, NotFoundException 
 import type { CustomerDto, OrderDto } from '@ikki-dost/shared-types';
 import type {
   BotUpdateCustomerInput,
-  CreatePublicOrderInput,
   RegisterCustomerInput,
   UpdateCustomerInput,
 } from '@ikki-dost/validation';
@@ -184,56 +183,6 @@ export class PublicService {
       },
     });
     return toCustomerDto(customer);
-  }
-
-  async createOrder(initData: string | undefined, input: CreatePublicOrderInput): Promise<OrderDto> {
-    const tg = this.telegram(initData);
-    const customer = await this.prisma.customer.findUnique({ where: { telegramId: tg.id } });
-    if (!customer) {
-      throw new ForbiddenException({
-        message: 'Buyurtma berish uchun avval ro‘yxatdan o‘ting',
-        details: { code: 'CUSTOMER_NOT_REGISTERED' },
-      });
-    }
-    if (!customer.phoneVerifiedAt) {
-      throw new ForbiddenException({
-        message: 'Telefon raqamingiz tasdiqlanmagan. Botda raqamni tasdiqlang.',
-        details: { code: 'PHONE_NOT_VERIFIED' },
-      });
-    }
-
-    const actorUser =
-      (await this.prisma.user.findFirst({ where: { username: 'bot', isActive: true } })) ||
-      (await this.prisma.user.findFirst({ where: { role: 'WAITER', isActive: true } })) ||
-      (await this.prisma.user.findFirst({ where: { role: 'OWNER', isActive: true } }));
-    if (!actorUser) throw new BadRequestException('Tizimda faol xodim topilmadi');
-
-    // Remember the latest address so the Mini App/bot can prefill the next order.
-    if (input.address.trim() && input.address.trim() !== customer.deliveryAddress) {
-      await this.prisma.customer.update({
-        where: { id: customer.id },
-        data: { deliveryAddress: input.address.trim() },
-      });
-    }
-
-    return this.orders.create(
-      {
-        type: 'DELIVERY',
-        numberOfPeople: input.numberOfPeople,
-        note: input.note ?? null,
-        items: input.items,
-        customerName: `${customer.firstName} ${customer.lastName}`.trim(),
-        customerPhone: customer.phone,
-        address: input.address,
-      },
-      {
-        id: actorUser.id,
-        fullName: `Mijoz (${customer.firstName} ${customer.lastName})`.trim(),
-        role: 'WAITER',
-        canCreateDelivery: true,
-      },
-      customer.id,
-    );
   }
 
   async getOrder(initData: string | undefined, orderId: string): Promise<OrderDto> {

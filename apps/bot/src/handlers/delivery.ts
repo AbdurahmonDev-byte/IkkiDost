@@ -1,7 +1,7 @@
 import { InlineKeyboard, type Context } from 'grammy';
 import { api } from '../api.js';
 import { dateTime, deliveryNext, deliveryStatusLabel, isDeliveryActive, money, qty } from '../format.js';
-import { flowKey, type Actor, type Deps } from '../state.js';
+import { flowKey, type Deps } from '../state.js';
 import { expired, locationToAddress } from './auth.js';
 import { handleError, stale } from './rooms.js';
 import { startDeliveryWizard } from './order.js';
@@ -295,7 +295,7 @@ export function registerDelivery(deps: Deps, bot: import('../state.js').AppBot) 
       if (edit) return ctx.answerCallbackQuery({ text: 'Ruxsat yo‘q', show_alert: true });
       return ctx.reply('🛵 Yangi yetkazishni faqat ofitsiant va ega yaratadi.');
     }
-    flows.set(flowKey(ctx.chat.id), { kind: 'delivery-name', actor: 'staff' });
+    flows.set(flowKey(ctx.chat.id), { kind: 'delivery-name' });
     const text = '🛵 Yangi yetkazish\n\n1/3 — Mijoz ismini yozing:';
     if (edit) {
       await ctx.answerCallbackQuery();
@@ -313,7 +313,7 @@ export function registerDelivery(deps: Deps, bot: import('../state.js').AppBot) 
 export async function handleDeliveryText(
   deps: Deps,
   ctx: Context,
-  flow: { kind: string; actor: Actor; name?: string; phone?: string },
+  flow: { kind: string; name?: string; phone?: string },
   text: string,
 ): Promise<void> {
   const { flows } = deps;
@@ -325,7 +325,7 @@ export async function handleDeliveryText(
       await ctx.reply('❌ Ism kiriting:');
       return;
     }
-    flows.set(flowKey(chatId), { kind: 'delivery-phone', actor: flow.actor, name: value });
+    flows.set(flowKey(chatId), { kind: 'delivery-phone', name: value });
     await ctx.reply(`2/3 — ${value} telefon raqamini yozing (masalan: +998901234567):`);
     return;
   }
@@ -334,7 +334,7 @@ export async function handleDeliveryText(
       await ctx.reply('❌ Telefon noto‘g‘ri. Qayta yozing:');
       return;
     }
-    flows.set(flowKey(chatId), { kind: 'delivery-address', actor: flow.actor, name: flow.name!, phone: value });
+    flows.set(flowKey(chatId), { kind: 'delivery-address', name: flow.name!, phone: value });
     await ctx.reply(
       '3/3 — Yetkazish manzilini yuboring.\n\nLokatsiyani yuborishingiz yoki manzilni qo‘lda yozishingiz mumkin.',
       { reply_markup: locationRequestKeyboard() },
@@ -346,7 +346,7 @@ export async function handleDeliveryText(
       await ctx.reply('❌ Manzil juda qisqa. Qayta yozing:');
       return;
     }
-    await startDeliveryWizard(deps, ctx, flow.actor, { name: flow.name!, phone: flow.phone!, address: value });
+    await startDeliveryWizard(deps, ctx, { name: flow.name!, phone: flow.phone!, address: value });
   }
 }
 
@@ -354,11 +354,11 @@ export async function handleDeliveryText(
 export async function handleDeliveryAddressLocation(
   deps: Deps,
   ctx: Context,
-  flow: { kind: string; actor: Actor; name?: string; phone?: string },
+  flow: { kind: string; name?: string; phone?: string },
 ): Promise<void> {
   const location = ctx.message?.location;
   if (!location || !flow.name || !flow.phone) return;
-  await startDeliveryWizard(deps, ctx, flow.actor, {
+  await startDeliveryWizard(deps, ctx, {
     name: flow.name,
     phone: flow.phone,
     address: locationToAddress(location.latitude, location.longitude),

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import {
   AlertCircle,
   CheckCircle2,
@@ -7,83 +7,66 @@ import {
   MapPin,
   Minus,
   Plus,
-  ShieldCheck,
   ShoppingBag,
   Trash2,
   Users,
   X,
 } from 'lucide-react';
 import { api } from '../lib/api';
-import { money, qty } from '../lib/format';
+import { lineTotal, money, qty, quantityForApi } from '../lib/format';
 import { tg } from '../lib/telegram';
-import type { CartItem, Customer, OrderDto, Room, ServiceFeeConfig } from '../lib/types';
+import type { CartItem, OrderDto, OrderType, Room, ServiceFeeConfig } from '../lib/types';
+import { QuantityStepper } from './QuantityStepper';
 
 interface Props {
   isOpen: boolean;
   onClose: () => void;
   items: CartItem[];
-  onUpdateQty: (productId: string, delta: number) => void;
+  onSetQty: (productId: string, quantity: number) => void;
   onUpdateNote: (productId: string, note: string) => void;
   onRemove: (productId: string) => void;
   onClear: () => void;
-  orderType: 'DINE_IN' | 'DELIVERY';
+  orderType: OrderType;
   selectedRoom: Room | null;
   serviceFeeConfig: ServiceFeeConfig | null;
-  /** Customers always order delivery; staff may create dine-in orders. */
-  mode: 'customer' | 'staff';
   token?: string;
-  customer: Customer | null;
   onOrderSuccess: (order: OrderDto) => void;
-  onRequireVerification?: () => void;
 }
 
-const ADDRESS_KEY = 'ikki_dost_delivery_address';
 
 export const CartModal: React.FC<Props> = ({
   isOpen,
   onClose,
   items,
-  onUpdateQty,
+  onSetQty,
   onUpdateNote,
   onRemove,
   onClear,
   orderType,
   selectedRoom,
   serviceFeeConfig,
-  mode,
   token,
-  customer,
   onOrderSuccess,
-  onRequireVerification,
 }) => {
   const [people, setPeople] = useState(2);
   const [generalNote, setGeneralNote] = useState('');
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
-  const [address, setAddress] = useState(() => localStorage.getItem(ADDRESS_KEY) || '');
+  const [address, setAddress] = useState('');
   const [editingNoteFor, setEditingNoteFor] = useState<string | null>(null);
   const [tempNote, setTempNote] = useState('');
   const [loading, setLoading] = useState(false);
   const [locating, setLocating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Customers order delivery only — prefill from the registered profile.
-  useEffect(() => {
-    if (customer) {
-      setCustomerName(customer.fullName);
-      setCustomerPhone(customer.phone);
-      const saved = customer.deliveryAddress || localStorage.getItem(ADDRESS_KEY) || '';
-      setAddress((current) => (current.trim() ? current : saved));
-    }
-  }, [customer?.id, customer?.deliveryAddress]);
-
   if (!isOpen) return null;
 
-  const isCustomer = mode === 'customer';
-  const effectiveType: 'DINE_IN' | 'DELIVERY' = isCustomer ? 'DELIVERY' : orderType;
-  const canOrder = customer?.phoneVerified === true;
+  const effectiveType = orderType;
 
-  const itemsSubtotal = items.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
+  const itemsSubtotal = items.reduce(
+    (sum, item) => sum + lineTotal(item.product.price, item.quantity),
+    0,
+  );
 
   let serviceFeeAmount = 0;
   if (serviceFeeConfig?.enabled) {
@@ -134,8 +117,8 @@ export const CartModal: React.FC<Props> = ({
   const handleSubmit = async () => {
     if (items.length === 0) return;
 
-    if (isCustomer && !canOrder) {
-      onRequireVerification?.();
+    if (!token) {
+      setError('Buyurtma berish uchun xodim sifatida kiring');
       return;
     }
 
@@ -164,42 +147,29 @@ export const CartModal: React.FC<Props> = ({
 
     const payloadItems = items.map((i) => ({
       productId: i.product.id,
-      quantity: String(i.quantity),
+      quantity: quantityForApi(i.quantity),
       note: i.note ? i.note.trim() : null,
     }));
 
     try {
-      let order: OrderDto;
-      if (isCustomer) {
-        order = await api.createOrder({
-          type: 'DELIVERY',
-          numberOfPeople: 1,
-          items: payloadItems,
-          note: generalNote.trim() || null,
-          address: address.trim(),
-        });
-        localStorage.setItem(ADDRESS_KEY, address.trim());
-      } else {
-        if (!token) throw new Error('Sessiya topilmadi');
-        order =
-          effectiveType === 'DINE_IN'
-            ? await api.createStaffOrder(token, {
-                type: 'DINE_IN',
-                roomId: selectedRoom!.id,
-                numberOfPeople: people,
-                items: payloadItems,
-                note: generalNote.trim() || null,
-              })
-            : await api.createStaffOrder(token, {
-                type: 'DELIVERY',
-                numberOfPeople: 1,
-                items: payloadItems,
-                note: generalNote.trim() || null,
-                customerName: customerName.trim(),
-                customerPhone: customerPhone.trim(),
-                address: address.trim(),
-              });
-      }
+      const order: OrderDto =
+        effectiveType === 'DINE_IN'
+          ? await api.createStaffOrder(token, {
+              type: 'DINE_IN',
+              roomId: selectedRoom!.id,
+              numberOfPeople: people,
+              items: payloadItems,
+              note: generalNote.trim() || null,
+            })
+          : await api.createStaffOrder(token, {
+              type: 'DELIVERY',
+              numberOfPeople: 1,
+              items: payloadItems,
+              note: generalNote.trim() || null,
+              customerName: customerName.trim(),
+              customerPhone: customerPhone.trim(),
+              address: address.trim(),
+            });
 
       tg.hapticSuccess();
       onClear();
@@ -246,9 +216,7 @@ export const CartModal: React.FC<Props> = ({
                     ? selectedRoom
                       ? `🏠 ${selectedRoom.name}`
                       : 'Xona tanlanmagan'
-                    : isCustomer
-                      ? '🛵 Uyga yetkazish'
-                      : '🛵 Yetkazib berish'}
+                    : '🛵 Yetkazib berish'}
                 </p>
               </div>
             </div>
@@ -288,7 +256,7 @@ export const CartModal: React.FC<Props> = ({
                     </p>
                   </div>
                   <span className="shrink-0 text-sm font-black text-brand-700 dark:text-brand-200">
-                    {money(item.product.price * item.quantity)}
+                    {money(lineTotal(item.product.price, item.quantity))}
                   </span>
                 </div>
 
@@ -331,23 +299,13 @@ export const CartModal: React.FC<Props> = ({
                       )}
 
                       <div className="flex shrink-0 items-center gap-1.5">
-                        <button
-                          onClick={() => onUpdateQty(item.product.id, -1)}
-                          className="tap flex h-7 w-7 items-center justify-center rounded-lg border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 text-stone-700 dark:text-stone-300 shadow-sm"
-                          aria-label="Kamaytirish"
-                        >
-                          <Minus className="h-3.5 w-3.5" />
-                        </button>
-                        <span className="w-8 text-center text-xs font-black text-stone-800 dark:text-stone-200">
-                          {qty(item.quantity, item.product.unit)}
-                        </span>
-                        <button
-                          onClick={() => onUpdateQty(item.product.id, 1)}
-                          className="tap flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-brand-500 to-brand-700 text-white shadow-sm"
-                          aria-label="Qo‘shish"
-                        >
-                          <Plus className="h-3.5 w-3.5" />
-                        </button>
+                        <QuantityStepper
+                          value={item.quantity}
+                          unit={item.product.unit}
+                          onChange={(next) =>
+                            next <= 0 ? onRemove(item.product.id) : onSetQty(item.product.id, next)
+                          }
+                        />
                         <button
                           onClick={() => onRemove(item.product.id)}
                           className="ml-0.5 rounded-lg p-1.5 text-stone-300 dark:text-stone-600 transition-colors hover:bg-rose-50 dark:hover:bg-rose-400/15 hover:text-rose-500"
@@ -410,39 +368,23 @@ export const CartModal: React.FC<Props> = ({
                   <MapPin className="h-4 w-4" />
                 </span>
                 <h4 className="text-[12px] font-black text-sky-900 dark:text-sky-300">
-                  {isCustomer ? 'Buyurtma ma’lumotlari' : 'Mijoz ma’lumotlari'}
+                  Mijoz ma’lumotlari
                 </h4>
               </div>
-              {isCustomer ? (
-                <div className="flex items-center gap-2 rounded-xl border border-sky-200 dark:border-sky-400/25 bg-white dark:bg-stone-900 px-3 py-2.5">
-                  <ShieldCheck className="h-4 w-4 shrink-0 text-emerald-600" />
-                  <div className="min-w-0">
-                    <p className="truncate text-[12px] font-black text-stone-900 dark:text-stone-100">
-                      {customer?.fullName || 'Ro‘yxatdan o‘tilmagan'}
-                    </p>
-                    <p className="truncate text-[10.5px] font-medium text-stone-500 dark:text-stone-400">
-                      {customer?.phone || '—'}
-                    </p>
-                  </div>
-                </div>
-              ) : (
-                <>
-                  <input
-                    type="text"
-                    value={customerName}
-                    onChange={(e) => setCustomerName(e.target.value)}
-                    placeholder="Mijoz ismi"
-                    className="field-mini border-sky-200 dark:border-sky-400/25 bg-white dark:bg-stone-900 focus:border-sky-400"
-                  />
-                  <input
-                    type="tel"
-                    value={customerPhone}
-                    onChange={(e) => setCustomerPhone(e.target.value)}
-                    placeholder="Telefon (+998 90 123 45 67)"
-                    className="field-mini border-sky-200 dark:border-sky-400/25 bg-white dark:bg-stone-900 focus:border-sky-400"
-                  />
-                </>
-              )}
+              <input
+                type="text"
+                value={customerName}
+                onChange={(e) => setCustomerName(e.target.value)}
+                placeholder="Mijoz ismi"
+                className="field-mini border-sky-200 dark:border-sky-400/25 bg-white dark:bg-stone-900 focus:border-sky-400"
+              />
+              <input
+                type="tel"
+                value={customerPhone}
+                onChange={(e) => setCustomerPhone(e.target.value)}
+                placeholder="Telefon (+998 90 123 45 67)"
+                className="field-mini border-sky-200 dark:border-sky-400/25 bg-white dark:bg-stone-900 focus:border-sky-400"
+              />
               <button
                 type="button"
                 onClick={requestLocation}
@@ -459,14 +401,6 @@ export const CartModal: React.FC<Props> = ({
                 placeholder="Yetkazish manzili (ko‘cha, uy, mo‘ljal)"
                 className="field-mini border-sky-200 dark:border-sky-400/25 bg-white dark:bg-stone-900 focus:border-sky-400"
               />
-              {isCustomer && !canOrder && (
-                <button
-                  onClick={onRequireVerification}
-                  className="tap flex w-full items-center justify-center gap-1.5 rounded-xl bg-amber-500 py-2.5 text-[11px] font-bold text-amber-950 shadow-sm hover:bg-amber-400"
-                >
-                  <ShieldCheck className="h-3.5 w-3.5" /> Avval ro‘yxatdan o‘ting
-                </button>
-              )}
             </div>
           )}
 

@@ -15,20 +15,8 @@ export interface Session {
   linkedAt: string;
 }
 
-/** Registered Telegram customer (remote delivery orders). */
-export interface CustomerProfile {
-  id?: string;
-  fullName?: string;
-  phone?: string;
-  phoneVerified?: boolean;
-  address?: string;
-  lastReceipt?: string;
-  lastOrderAt?: string;
-}
-
 interface Persisted {
   sessions: Record<string, Session>;
-  customers: Record<string, CustomerProfile>;
 }
 
 /**
@@ -36,7 +24,7 @@ interface Persisted {
  * write cycle with an atomic rename is safe enough for a small teahouse.
  */
 export class Store {
-  private data: Persisted = { sessions: {}, customers: {} };
+  private data: Persisted = { sessions: {} };
   private writing = false;
   private queued = false;
 
@@ -44,26 +32,12 @@ export class Store {
     try {
       const raw = fs.readFileSync(file, 'utf8');
       const parsed = JSON.parse(raw) as Persisted;
-      if (parsed && typeof parsed.sessions === 'object') this.data = parsed;
-      if (!this.data.customers || typeof this.data.customers !== 'object') this.data.customers = {};
+      if (parsed && typeof parsed.sessions === 'object') {
+        this.data = { sessions: parsed.sessions };
+      }
     } catch {
       // First run.
     }
-  }
-
-  customer(chatId: number | string): CustomerProfile {
-    const key = String(chatId);
-    if (!this.data.customers[key]) {
-      this.data.customers[key] = {};
-      this.persist();
-    }
-    return this.data.customers[key];
-  }
-
-  patchCustomer(chatId: number | string, patch: Partial<CustomerProfile>): void {
-    const key = String(chatId);
-    this.data.customers[key] = { ...this.customer(key), ...patch };
-    this.persist();
   }
 
   get(chatId: number | string): Session | undefined {
@@ -127,7 +101,7 @@ export class Refs {
     const chat = String(chatId);
     let map = this.byChat.get(chat);
     if (!map) {
-      map = new Map();
+      map = new Map<string, string>();
       this.byChat.set(chat, map);
     }
     for (const [key, value] of map) if (value === id) return key;
