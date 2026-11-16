@@ -143,31 +143,63 @@ body {
   padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 1rem);
 }
 
-/* Print only the receipt, hide everything else. */
+/* Print only the receipt. The modal is portalled to <body>, so hiding the
+   app root is enough to remove every other screen and avoid blank pages. */
 @media print {
-  body * {
-    visibility: hidden;
+  @page {
+    margin: 0;
   }
-  .receipt-print,
-  .receipt-print * {
-    visibility: visible;
+
+  html,
+  body {
+    background: #fff !important;
   }
-  .receipt-print {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 100%;
-    max-width: none;
-    padding: 0;
-    box-shadow: none;
+
+  body > *:not(.receipt-overlay) {
+    display: none !important;
   }
+
+  .receipt-overlay {
+    position: static !important;
+    display: block !important;
+    overflow: visible !important;
+    background: #fff !important;
+    padding: 0 !important;
+    backdrop-filter: none !important;
+  }
+
+  .receipt-modal {
+    display: block !important;
+    width: 100% !important;
+    max-width: none !important;
+    max-height: none !important;
+    overflow: visible !important;
+    border-radius: 0 !important;
+    background: #fff !important;
+    box-shadow: none !important;
+    animation: none !important;
+    transform: none !important;
+  }
+
+  .receipt-body {
+    display: block !important;
+    overflow: visible !important;
+    padding: 0 !important;
+    background: #fff !important;
+  }
+
   .receipt-no-print {
     display: none !important;
   }
-  .receipt-overlay {
-    position: static !important;
-    background: transparent !important;
-    backdrop-filter: none !important;
-    padding: 0 !important;
+
+  .receipt-print {
+    width: min(100%, 100mm) !important;
+    max-width: 100% !important;
+    margin: 0 auto !important;
+    padding: 5mm 4mm !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
   }
 }

@@ -1,4 +1,5 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 import { CheckCircle2, Printer, ReceiptText, X } from 'lucide-react';
 import { money, orderStatusLabel, qty } from '../lib/format';
 import type { OrderDto } from '../lib/types';
@@ -26,9 +27,9 @@ export const ReceiptModal: React.FC<Props> = ({ order, onClose }) => {
   const paid = order.paidAmount ?? 0;
   const outstanding = order.outstandingAmount ?? Math.max(0, order.totalAmount - paid);
 
-  return (
+  return createPortal(
     <div className="receipt-overlay fixed inset-0 z-[60] flex items-end justify-center bg-stone-950/55 p-0 backdrop-blur-sm sm:items-center sm:p-4">
-      <div className="flex max-h-[92vh] w-full max-w-md flex-col overflow-hidden rounded-t-[30px] bg-[#fffdfa] dark:bg-[#151311] shadow-2xl animate-rise sm:rounded-[30px]">
+      <div className="receipt-modal flex max-h-[92vh] w-full max-w-md flex-col overflow-hidden rounded-t-[30px] bg-[#fffdfa] dark:bg-[#151311] shadow-2xl animate-rise sm:rounded-[30px]">
         <div className="receipt-no-print relative overflow-hidden border-b border-stone-100 dark:border-stone-800 px-4 py-3.5">
           <div className="pointer-events-none absolute -right-10 -top-16 h-32 w-32 rounded-full bg-emerald-200/50 dark:bg-emerald-400/10 blur-2xl" />
           <div className="relative flex items-center justify-between gap-3">
@@ -55,7 +56,7 @@ export const ReceiptModal: React.FC<Props> = ({ order, onClose }) => {
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto bg-[#f6f1e8] dark:bg-[#100e0c] p-3 sm:p-4">
+        <div className="receipt-body flex-1 overflow-y-auto bg-[#f6f1e8] dark:bg-[#100e0c] p-3 sm:p-4">
           <div className="receipt-print mx-auto max-w-[330px] rounded-sm bg-white p-5 font-mono text-[11px] leading-relaxed text-stone-900 shadow-[0_10px_30px_-18px_rgba(60,40,20,0.6)]">
             <div className="text-center">
               <div className="mx-auto mb-2 flex h-11 w-11 items-center justify-center rounded-full bg-stone-900 text-lg text-white">
@@ -173,6 +174,7 @@ export const ReceiptModal: React.FC<Props> = ({ order, onClose }) => {
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 };
