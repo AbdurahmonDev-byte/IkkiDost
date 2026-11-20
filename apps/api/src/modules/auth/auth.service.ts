@@ -7,6 +7,9 @@ import { PrismaService } from '../prisma/prisma.service';
 import type { AccessTokenPayload } from '../../common/guards/jwt-auth.guard';
 import { validateTelegramInitData, type TelegramUser } from './telegram';
 
+/** Dedicated account used by the login-free desktop cashier. */
+export const KIOSK_USERNAME = 'kassa';
+
 function sha256(input: string): string {
   return createHash('sha256').update(input).digest('hex');
 }
@@ -151,6 +154,31 @@ export class AuthService {
     const authUser = this.toAuthUser(updated);
     const tokens = await this.issueTokens(updated.id, randomUUID(), meta);
     return { ...tokens, user: authUser };
+  }
+
+  /**
+   * Login-free entry for the desktop cashier (“kassa”) terminal. Every kiosk
+   * session acts as one dedicated CASHIER account (username `kassa`), so
+   * payments stay attributed and the owner can stop the terminal by
+   * deactivating that employee. The account has a random password, so it can
+   * never be used through the username/password login.
+   */
+  async loginKiosk(meta?: { userAgent?: string; ip?: string }): Promise<AuthTokens & { user: AuthUser }> {
+    let user = await this.prisma.user.findUnique({ where: { username: KIOSK_USERNAME } });
+    if (!user) {
+      user = await this.prisma.user.create({
+        data: {
+          username: KIOSK_USERNAME,
+          passwordHash: await argon2.hash(randomUUID() + randomUUID()),
+          fullName: 'Kassa',
+          role: 'CASHIER',
+        },
+      });
+    }
+    if (!user.isActive) throw new UnauthorizedException('Kassa hisobi o‘chirilgan. Ega bilan bog‘laning.');
+    if (user.role !== 'CASHIER') throw new UnauthorizedException('Kassa hisobi kassir emas');
+    const tokens = await this.issueTokens(user.id, randomUUID(), meta);
+    return { ...tokens, user: this.toAuthUser(user) };
   }
 
   /** Refresh-token rotation with reuse detection: reusing an old token revokes its whole family. */

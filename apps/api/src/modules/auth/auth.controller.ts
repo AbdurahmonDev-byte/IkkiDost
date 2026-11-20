@@ -18,7 +18,7 @@ import { AuthService } from './auth.service';
 import { Public } from '../../common/decorators/public.decorator';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe';
 import { CurrentUser, type RequestUser } from '../../common/decorators/current-user.decorator';
-import { isBotSecret, validateTelegramInitData, type TelegramUser } from './telegram';
+import { isBotSecret, kioskAllowed, validateTelegramInitData, type TelegramUser } from './telegram';
 
 type ReqMeta = { ip?: string; headers: Record<string, string> };
 
@@ -58,6 +58,15 @@ export class AuthController {
       userAgent: 'telegram-bot',
       ip: req.ip,
     });
+  }
+
+  /** Login-free desktop cashier terminal (see AuthService.loginKiosk). */
+  @Public()
+  @Throttle({ default: { limit: 30, ttl: 60_000 } })
+  @Post('kiosk')
+  async kiosk(@Req() req: ReqMeta): Promise<AuthTokens & { user: AuthUser }> {
+    if (!kioskAllowed(req.headers)) throw new UnauthorizedException('Kassa terminaliga ruxsat berilmagan');
+    return this.auth.loginKiosk({ userAgent: 'cashier-kiosk', ip: req.ip });
   }
 
   /**

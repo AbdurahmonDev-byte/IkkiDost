@@ -1,7 +1,10 @@
 import type { DeliveryStatus, MeasurementUnit, OrderStatus, PaymentKind } from '@ikki-dost/shared-types';
 
 export function formatUzs(value: number): string {
-  return new Intl.NumberFormat('uz-UZ').format(Math.round(value)) + ' so‘m';
+  // Manual grouping: WebView locales differ, the till must always show “140 000”.
+  const n = Math.round(value);
+  const digits = String(Math.abs(n)).replace(/\B(?=(\d{3})+(?!\d))/g, '\u00a0');
+  return `${n < 0 ? '-' : ''}${digits}\u00a0so‘m`;
 }
 
 /** Kg and litre products are sold by exact mass, not whole units. */

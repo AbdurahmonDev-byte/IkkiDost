@@ -111,6 +111,24 @@ export function validateTelegramInitData(
 }
 
 /** Constant-time check of the shared bot secret used by bot-only endpoints. */
+/**
+ * Desktop cashier kiosk access. Disabled unless CASHIER_KIOSK=on. When
+ * CASHIER_KIOSK_KEY is set, the request must carry it in `x-kiosk-key`
+ * (the Windows build embeds it), so random internet callers are refused.
+ */
+export function kioskAllowed(headers: Record<string, unknown>): boolean {
+  if ((process.env.CASHIER_KIOSK ?? '').trim().toLowerCase() !== 'on') return false;
+  const expected = process.env.CASHIER_KIOSK_KEY?.trim() ?? '';
+  if (!expected) return true;
+  const provided = String(headers['x-kiosk-key'] ?? '');
+  if (provided.length !== expected.length) return false;
+  try {
+    return timingSafeEqual(Buffer.from(provided), Buffer.from(expected));
+  } catch {
+    return false;
+  }
+}
+
 export function isBotSecret(headers: Record<string, unknown>): boolean {
   const expected = process.env.BOT_TOKEN?.trim() ?? '';
   if (!expected) return false;

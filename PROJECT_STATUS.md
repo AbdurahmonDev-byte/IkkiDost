@@ -311,3 +311,28 @@ Telegram Mini App served by the API at `/` (same origin as `/api`), Vite + React
 - **CI:** the Windows cashier workflow also runs on `claude/**` branches and on
   `package-lock.json` changes. The installer is still unsigned and not yet
   runtime-tested on a real Windows machine.
+
+## Cashier desktop 0.3.0 — login-free POS terminal (2026-11-20, ADR-033)
+- **No login/password:** the app connects itself through `POST /api/auth/kiosk` as the
+  dedicated CASHIER account `kassa` (created on first use, random password, cannot
+  use the password login). Server switch `CASHIER_KIOSK=on`; optional shared key
+  `CASHIER_KIOSK_KEY` (sent as `x-kiosk-key`, embedded at build time from the GitHub
+  secret of the same name). Deactivating «Kassa» in the owner panel stops the terminal.
+  Expired sessions reconnect automatically.
+- **POS layout:** top bar with Zal / Saboy / Bugun, today's cash/card/total and a clock.
+  Zal = room tiles (free/busy, total, debt, time open). Opening a room shows the menu
+  (category chips, search, large product tiles) next to a ticket panel: sent items,
+  unsent draft with −/+ and a keypad for exact kg/litre, people count for a new bill,
+  chef note, totals, «Oshxonaga yuborish», «To‘lov», «Chek», «Yopish».
+- **Payment dialog:** Naqd/Karta buttons, keypad amount (defaults to the full debt),
+  «Mijoz berdi» with change (qaytim), quick banknotes, and «To‘lovdan keyin xonani
+  yopish» for a full room payment. Unsent items are sent before paying.
+- **Saboy:** tiles for today's/unpaid phone orders and «Yangi saboy» (name, phone,
+  address on the ticket); status advance and cancel (only while unpaid).
+- **Bugun:** today's totals by method and every payment with reversal (reason required).
+- Removed: login screen, «Kuryer» tab, the separate Yetkazish list.
+- Verified in headless Chrome against the local API: kiosk auto-connect, 2 × Табака +
+  1.82 kg Оқ балиқ sent to the kitchen, cash payment of 225 900 with 500 000 given
+  (change 274 100 shown), room auto-closed; new saboy auto-sent and
+  paid by card; API tests 55/55 (kiosk refused when off, key enforced, stops when
+  `kassa` is deactivated).
