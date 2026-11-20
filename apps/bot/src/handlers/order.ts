@@ -131,6 +131,8 @@ async function renderQty(deps: Deps, ctx: Context, flow: OrderFlow, product: Pro
     .row()
     .text('✅ Savatga qo‘shish', 'o:q:d')
     .row()
+    .text('✍️ Aniq miqdor yozish', 'o:q:t')
+    .row()
     .text('⬅️ Orqaga', 'o:back');
   const text =
     `${product.name}\nNarxi: ${money(product.price)} / ${unitShort[product.unit] || 'dona'}\n\n` +
@@ -206,7 +208,7 @@ export function registerOrder(deps: Deps, bot: import('../state.js').AppBot) {
   bot.callbackQuery(/^o:start:(.+)$/, async (ctx) => {
     const session = store.get(ctx.chat.id);
     if (!session) return expired(deps, ctx);
-    if (session.role !== 'OWNER' && session.role !== 'WAITER') {
+    if (session.role !== 'OWNER' && session.role !== 'WAITER' && session.role !== 'CASHIER') {
       return ctx.answerCallbackQuery({ text: 'Ruxsat yo‘q', show_alert: true });
     }
     const roomId = refs.unref(ctx.chat.id, ctx.match[1]);
@@ -282,9 +284,21 @@ export function registerOrder(deps: Deps, bot: import('../state.js').AppBot) {
   });
 
   // Qty stepper.
-  bot.callbackQuery(/^o:q:([+\-nd])$/, async (ctx) => {
+  bot.callbackQuery(/^o:q:([+\-ndt])$/, async (ctx) => {
     const flow = getFlow(ctx.chat.id);
     if (!flow || !flow.currentProductId) return stale(ctx);
+    if (ctx.match[1] === 't') {
+      flow.awaitingQty = true;
+      await ctx.answerCallbackQuery();
+      const data = await menuData(deps, ctx.chat.id);
+      const product = data.products.find((p) => p.id === flow.currentProductId);
+      const hint = product && (product.unit === 'KG' || product.unit === 'LITER') ? '1.82' : '3';
+      await ctx.reply(
+        `✍️ ${product?.name ?? 'Mahsulot'} miqdorini yozing (${unitShort[product?.unit ?? 'PIECE'] || 'dona'}).\nMasalan: ${hint}`,
+      );
+      return;
+    }
+    flow.awaitingQty = false;
     const data = await menuData(deps, ctx.chat.id);
     const product = data.products.find((p) => p.id === flow.currentProductId);
     if (!product) return stale(ctx);
@@ -398,6 +412,40 @@ export function registerOrder(deps: Deps, bot: import('../state.js').AppBot) {
       return handleError(deps, ctx, error);
     }
   });
+}
+
+/** Parses a typed quantity: "1.82", "1,82", "2" → number with ≤3 decimals. */
+export function parseQuantity(text: string): number | null {
+  const normalized = text.trim().replace(',', '.').replace(/\s+/g, '');
+  if (!/^\d{1,4}(\.\d{1,3})?$/.test(normalized)) return null;
+  const n = Number(normalized);
+  return n > 0 ? n : null;
+}
+
+/** Text router: exact quantity typed while the qty stage is waiting for it. */
+export async function handleQtyText(deps: Deps, ctx: Context, flow: OrderFlow, text: string): Promise<void> {
+  const data = await menuData(deps, ctx.chat!.id);
+  const product = data.products.find((p) => p.id === flow.currentProductId);
+  if (!product) {
+    flow.awaitingQty = false;
+    flow.stage = 'menu';
+    return renderMenu(deps, ctx, flow, false);
+  }
+  const n = parseQuantity(text);
+  const fractional = product.unit === 'KG' || product.unit === 'LITER';
+  if (n === null || (!fractional && !Number.isInteger(n))) {
+    await ctx.reply(
+      fractional
+        ? '❌ Miqdor noto‘g‘ri. Masalan: 1.82 (ko‘pi bilan 3 xona kasr):'
+        : '❌ Bu mahsulot uchun butun son kiriting. Masalan: 3',
+    );
+    return;
+  }
+  flow.lines[product.id] = n;
+  flow.awaitingQty = false;
+  flow.currentProductId = undefined;
+  flow.stage = 'menu';
+  return renderMenu(deps, ctx, flow, false);
 }
 
 /** Called by the text router when the wizard waits for a chef note. */

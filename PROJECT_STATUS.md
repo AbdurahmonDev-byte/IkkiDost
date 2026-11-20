@@ -285,3 +285,29 @@ Telegram Mini App served by the API at `/` (same origin as `/api`), Vite + React
 - «Qo'shish» on a room order (session) and on a Saboy/delivery order opens the product picker in append mode.
 - Verified against local API: saboy 87 900 -> 111 900 so'm after adding 2 l Fanta; room order updated too.
 - Service fee is not recalculated when appending (order fee stays as snapshotted at creation).
+
+## Bot payments and cashier desktop 0.2.0 (2026-11-20, ADR-032)
+- **Bot — payments:** OWNER/CASHIER see «💰 To‘lov qabul qilish» on room bills and
+  delivery orders with a balance; full payment per method (Naqd/Karta) or a typed
+  partial amount. Each attempt sends a fresh idempotency key; the API's overpayment
+  rejection protects against double taps.
+- **Bot — cashier role:** CASHIER can take room orders, create deliveries, open
+  `/dash`, and close a session with debt by giving a reason (same as the API rule).
+- **Bot — fixes:** the chef note typed in the order wizard was ignored (now saved);
+  «✍️ Aniq miqdor yozish» accepts exact kg/litre amounts such as `1,82`; the
+  «Manzilni qo‘lda yozish» / «O‘tkazib yuborish» reply buttons were saved as the
+  delivery address (now handled, reply keyboard removed); receipt shows «Xodim».
+- **Bot — structure:** `createBot()` lives in `apps/bot/src/bot.ts`, so the bot can be
+  driven with fake Telegram updates. Verified against a local API: cashier
+  Telegram-ID login, partial 20 000 + full card payment, 1.82 kg order with chef
+  note, new delivery via the manual-address button, cashier dashboard.
+- **Cashier desktop 0.2.0:** «Kuryer» tab lists couriers' collected cash with a
+  «To‘lov qilindi» confirmation (also shown on the delivery bill); header shows
+  today's cash/card/total; payment lists no longer freeze at app start (session
+  payments come from the session detail, saboy payments from the order's day);
+  the working day rolls over at midnight; queries refetch after a token refresh;
+  CASHIER can close a session with debt by giving a reason; readable Uzbek date.
+  Verified in headless Chrome against the local API.
+- **CI:** the Windows cashier workflow also runs on `claude/**` branches and on
+  `package-lock.json` changes. The installer is still unsigned and not yet
+  runtime-tested on a real Windows machine.

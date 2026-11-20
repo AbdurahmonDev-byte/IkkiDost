@@ -4,6 +4,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
 export const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+export const TOKENS_REFRESHED = 'ikki:tokens-refreshed';
 export const SOCKET_URL = API_URL.replace(/\/api\/?$/, '');
 
 interface AuthState {
@@ -55,7 +56,10 @@ export const api = new ApiClient({
       if (!ok) {
         useAuth.getState().clear();
         window.location.reload();
+        return;
       }
+      // The failed request is not retried by the client; ask screens to refetch.
+      window.dispatchEvent(new Event(TOKENS_REFRESHED));
     });
   },
 });

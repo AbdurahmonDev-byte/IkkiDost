@@ -165,8 +165,14 @@ export function helpText(role?: string): string {
     lines.push('🛵 Yetkazish — faol yetkazish buyurtmalari');
   }
   if (role === 'OWNER' || role === 'CHEF') lines.push('👨‍🍳 Oshxona — tayyorlanayotgan taomlar');
-  if (role === 'OWNER' || role === 'WAITER') lines.push('➕ Yangi yetkazish — mijoz va buyurtma kiritish');
-  if (role === 'OWNER') lines.push('📊 Hisobot — bugungi ko‘rsatkichlar');
-  lines.push('', 'To‘lovlar faqat kassa ilovasida yoki ega tomonidan qabul qilinadi.');
+  if (role === 'OWNER' || role === 'WAITER' || role === 'CASHIER') {
+    lines.push('➕ Yangi yetkazish — mijoz va buyurtma kiritish');
+  }
+  if (role === 'OWNER' || role === 'CASHIER') {
+    lines.push('📊 Hisobot — bugungi ko‘rsatkichlar');
+    lines.push('💰 To‘lov — xona yoki yetkazish hisobida «To‘lov qabul qilish» (to‘liq yoki qisman)');
+  } else {
+    lines.push('', 'To‘lovlar kassir yoki ega tomonidan qabul qilinadi.');
+  }
   return lines.join('\n');
 }

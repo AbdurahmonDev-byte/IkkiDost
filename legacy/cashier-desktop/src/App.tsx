@@ -21,13 +21,14 @@ import {
   WifiOff,
   XCircle,
 } from 'lucide-react';
-import type { DeliveryStatus, OrderDto, PaymentDto, PaymentMethodDto, RoomSessionSummaryDto } from '@ikki-dost/shared-types';
-import { api, useAuth } from './lib/api';
+import type { DeliveryDto, DeliveryStatus, OrderDto, PaymentDto, PaymentMethodDto, RoomSessionSummaryDto } from '@ikki-dost/shared-types';
+import { TOKENS_REFRESHED, api, useAuth } from './lib/api';
 import { useRealtime } from './lib/realtime';
 import {
   deliveryStatusLabel,
   elapsed,
   formatDateTime,
+  formatLongDate,
   formatQty,
   formatTime,
   formatUzs,
@@ -39,7 +40,11 @@ import {
 import { OrderComposer, type ComposerMode } from './components/OrderComposer';
 import { Badge, Button, Card, Empty, Field, Input, Modal, Select, Spinner, Textarea, cn } from './ui';
 
-type Tab = 'rooms' | 'saboy' | 'delivery';
+type Tab = 'rooms' | 'saboy' | 'delivery' | 'cash';
+
+function startOfDay(date = new Date()): Date {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+}
 
 interface SessionDetail extends RoomSessionSummaryDto {
   orders: OrderDto[];
@@ -154,16 +159,33 @@ function Cashier({ onLogout }: { onLogout: () => void }) {
   }, [qc]);
   const { connected } = useRealtime(onRealtime);
 
+  useEffect(() => {
+    window.addEventListener(TOKENS_REFRESHED, onRealtime);
+    return () => window.removeEventListener(TOKENS_REFRESHED, onRealtime);
+  }, [onRealtime]);
+
+  // The working day rolls over at midnight even if the app stays open.
+  const [dayStart, setDayStart] = useState(() => startOfDay().toISOString());
+  useEffect(() => {
+    const id = setInterval(() => {
+      const next = startOfDay().toISOString();
+      setDayStart((cur) => (cur === next ? cur : next));
+    }, 60_000);
+    return () => clearInterval(id);
+  }, []);
+
   const roomsQuery = useQuery({ queryKey: ['rooms'], queryFn: () => api.rooms(), refetchInterval: 15_000 });
   const ordersQuery = useQuery({ queryKey: ['orders'], queryFn: () => api.orders(), refetchInterval: 15_000 });
   const methodsQuery = useQuery({ queryKey: ['payment-methods'], queryFn: () => api.paymentMethods() });
-  const dayRange = useMemo(() => {
-    const now = new Date();
-    return { from: new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString(), to: now.toISOString() };
-  }, []);
+  // No upper bound: payments made after the app was opened must show up too.
   const paymentsQuery = useQuery({
-    queryKey: ['payments-today', dayRange],
-    queryFn: () => api.payments(dayRange),
+    queryKey: ['payments-today', dayStart],
+    queryFn: () => api.payments({ from: dayStart }),
+    refetchInterval: 20_000,
+  });
+  const deliveriesQuery = useQuery({
+    queryKey: ['deliveries'],
+    queryFn: () => api.deliveries(),
     refetchInterval: 20_000,
   });
 
@@ -177,8 +199,29 @@ function Cashier({ onLogout }: { onLogout: () => void }) {
     queryFn: () => api.order(selectedOrder!),
     enabled: !!selectedOrder,
   });
+  // Payments of the selected saboy/delivery order, including earlier days.
+  const orderCreatedAt = orderQuery.data?.createdAt;
+  const orderPaymentsQuery = useQuery({
+    queryKey: ['order-payments', selectedOrder, orderCreatedAt],
+    queryFn: () => api.payments({ from: startOfDay(new Date(orderCreatedAt!)).toISOString() }),
+    enabled: !!selectedOrder && !!orderCreatedAt,
+  });
 
   const methods = methodsQuery.data ?? [];
+  const cashPending = (deliveriesQuery.data ?? [])
+    .filter((d) => d.status === 'DELIVERED' && (d.cashCollectedAmount ?? 0) > 0 && !d.cashHandedOverAt)
+    .sort((a, b) => +new Date(b.updatedAt) - +new Date(a.updatedAt));
+  const todayTotals = useMemo(() => {
+    const totals = { cash: 0, card: 0, other: 0, count: 0 };
+    for (const p of paymentsQuery.data ?? []) {
+      if (p.reversedAt) continue;
+      totals.count += 1;
+      if (p.methodKind === 'CASH') totals.cash += p.amount;
+      else if (p.methodKind === 'CARD') totals.card += p.amount;
+      else totals.other += p.amount;
+    }
+    return totals;
+  }, [paymentsQuery.data]);
   const roomBills = (roomsQuery.data ?? []).filter((r) => r.activeSession && r.isActive);
   const deliveryBills = (ordersQuery.data ?? [])
     .filter((o) => o.type === 'DELIVERY' && o.outstandingAmount > 0 && o.status !== 'CANCELLED')
@@ -198,6 +241,8 @@ function Cashier({ onLogout }: { onLogout: () => void }) {
     void qc.invalidateQueries({ queryKey: ['session'] });
     void qc.invalidateQueries({ queryKey: ['order'] });
     void qc.invalidateQueries({ queryKey: ['payments-today'] });
+    void qc.invalidateQueries({ queryKey: ['order-payments'] });
+    void qc.invalidateQueries({ queryKey: ['deliveries'] });
   }, [qc]);
 
   const payMutation = useMutation({
@@ -245,20 +290,28 @@ function Cashier({ onLogout }: { onLogout: () => void }) {
     onError: (e) => notify(e instanceof Error ? e.message : 'Yangilanmadi'),
   });
 
+  const handoverMutation = useMutation({
+    mutationFn: (d: DeliveryDto) => api.handoverDeliveryCash(d.id),
+    onSuccess: (d) => {
+      notify(`To‘lov qilindi: #${d.orderNumber} · ${formatUzs(d.cashCollectedAmount ?? 0)} kassaga qabul qilindi`);
+      invalidateAll();
+    },
+    onError: (e) => notify(e instanceof Error ? e.message : 'Naqdni qabul qilib bo‘lmadi'),
+  });
+
   const session = sessionQuery.data;
   const delivery = orderQuery.data;
 
-  const sessionPayments = useMemo(() => {
-    if (!session) return [];
-    const orderIds = new Set(session.orders.map((o) => o.id));
-    const all = paymentsQuery.data ?? [];
-    return all.filter((p) => p.roomSessionId === session.id || (p.orderId && orderIds.has(p.orderId)));
-  }, [session, paymentsQuery.data]);
+  // The session detail already carries every payment of the session.
+  const sessionPayments = session?.payments ?? [];
 
   const deliveryPayments = useMemo(() => {
     if (!delivery) return [];
-    return (paymentsQuery.data ?? []).filter((p) => p.orderId === delivery.id);
-  }, [delivery, paymentsQuery.data]);
+    return (orderPaymentsQuery.data ?? []).filter((p) => p.orderId === delivery.id);
+  }, [delivery, orderPaymentsQuery.data]);
+  const deliveryCashPending = delivery?.delivery
+    ? cashPending.find((d) => d.id === delivery.delivery!.id) ?? null
+    : null;
 
   const filterRoom = (name: string) => !search.trim() || name.toLowerCase().includes(search.trim().toLowerCase());
   const filteredRooms = roomBills.filter((r) => filterRoom(r.name));
@@ -277,7 +330,14 @@ function Cashier({ onLogout }: { onLogout: () => void }) {
         </div>
         <div>
           <p className="text-sm font-bold leading-tight">Ikki Do‘st — Kassir</p>
-          <p className="text-[11px] text-ink-faint">{new Date().toLocaleDateString('uz-UZ', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+          <p className="text-[11px] text-ink-faint">{formatLongDate(new Date())}</p>
+        </div>
+        <div className="ml-6 hidden items-center gap-4 rounded-xl bg-paper px-3 py-1.5 text-xs lg:flex" title="Bugun qabul qilingan to‘lovlar">
+          <span className="text-ink-faint">Bugun:</span>
+          <span className="flex items-center gap-1"><Banknote size={13} className="text-emerald-600" /> {formatUzs(todayTotals.cash)}</span>
+          <span className="flex items-center gap-1"><CreditCard size={13} className="text-sky-600" /> {formatUzs(todayTotals.card)}</span>
+          {todayTotals.other > 0 && <span>Boshqa: {formatUzs(todayTotals.other)}</span>}
+          <span className="font-bold text-ink">Jami: {formatUzs(todayTotals.cash + todayTotals.card + todayTotals.other)}</span>
         </div>
         <div className="ml-auto flex items-center gap-3">
           <span className="flex items-center gap-1.5 text-xs text-ink-soft">
@@ -306,8 +366,9 @@ function Cashier({ onLogout }: { onLogout: () => void }) {
               <TabButton active={tab === 'rooms'} onClick={() => setTab('rooms')} icon={<DoorOpen size={14} />} label="Zallar" count={roomBills.length} />
               <TabButton active={tab === 'saboy'} onClick={() => setTab('saboy')} icon={<Phone size={14} />} label="Saboy" count={saboyOrders.length} />
               <TabButton active={tab === 'delivery'} onClick={() => setTab('delivery')} icon={<Truck size={14} />} label="Yetkazish" count={deliveryBills.length} />
+              <TabButton active={tab === 'cash'} onClick={() => setTab('cash')} icon={<Banknote size={14} />} label="Kuryer" count={cashPending.length} />
             </div>
-            {tab !== 'delivery' && (
+            {(tab === 'rooms' || tab === 'saboy') && (
               <Button
                 size="sm"
                 className="mt-2.5 w-full"
@@ -327,6 +388,38 @@ function Cashier({ onLogout }: { onLogout: () => void }) {
               <div className="flex justify-center py-10">
                 <Spinner />
               </div>
+            ) : tab === 'cash' ? (
+              cashPending.length === 0 ? (
+                <Empty title="Topshiriladigan naqd yo‘q" hint="Kuryer yetkazib, naqd pulni qayd etganda shu yerda chiqadi." />
+              ) : (
+                <div className="space-y-2">
+                  {cashPending.map((d) => (
+                    <div key={d.id} className="rounded-xl bg-white p-3 shadow-sm ring-1 ring-line/70">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-sm font-semibold">#{d.orderNumber} · {d.customerName}</p>
+                        <span className="text-sm font-bold text-emerald-700">{formatUzs(d.cashCollectedAmount ?? 0)}</span>
+                      </div>
+                      <p className="mt-1 text-xs text-ink-soft">
+                        Kuryer: {d.assignedToName ?? '—'}
+                        {d.cashCollectedAt ? ` · ${formatTime(d.cashCollectedAt)}` : ''}
+                      </p>
+                      <Button
+                        size="sm"
+                        variant="success"
+                        className="mt-2 w-full"
+                        loading={handoverMutation.isPending && handoverMutation.variables?.id === d.id}
+                        onClick={() => {
+                          if (window.confirm(`Kuryer ${formatUzs(d.cashCollectedAmount ?? 0)} naqd pulni topshirdimi?`)) {
+                            handoverMutation.mutate(d);
+                          }
+                        }}
+                      >
+                        <CheckCircle2 size={14} /> To‘lov qilindi
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )
             ) : tab === 'rooms' ? (
               filteredRooms.length === 0 ? (
                 <Empty title="Faol xona yo‘q" hint="«Yangi buyurtma» tugmasi bilan zalga buyurtma oching." />
@@ -432,6 +525,9 @@ function Cashier({ onLogout }: { onLogout: () => void }) {
               onReverse={(p) => setReverseTarget(p)}
               onStatus={(status) => deliveryMutation.mutate({ id: delivery.delivery!.id, status })}
               busy={deliveryMutation.isPending}
+              cashPending={deliveryCashPending}
+              onHandover={(d) => handoverMutation.mutate(d)}
+              handoverBusy={handoverMutation.isPending}
             />
           ) : (
             <div className="flex h-full flex-col items-center justify-center gap-2 text-center text-ink-soft">
@@ -477,7 +573,7 @@ function Cashier({ onLogout }: { onLogout: () => void }) {
 
       <Modal open={closeOverride} onClose={() => setCloseOverride(false)} title="Qarz bilan yopish">
         <p className="text-sm text-ink-soft">
-          Sessiyada qarz bor. Faqat ega sabab kiritib yopishi mumkin. Sabab audit jurnaliga yoziladi.
+          Sessiyada qarz bor. Qarz bilan yopish uchun sabab kiriting — sabab audit jurnaliga yoziladi.
         </p>
         <div className="mt-3">
           <Field label="Sabab (majburiy)">
@@ -593,7 +689,7 @@ function TabButton({
     <button
       onClick={onClick}
       className={cn(
-        'flex h-9 flex-1 items-center justify-center gap-1 rounded-xl px-1 text-xs font-semibold',
+        'flex h-9 min-w-0 flex-1 items-center justify-center gap-1 rounded-xl px-1 text-[11px] font-semibold',
         active ? 'bg-primary text-white' : 'bg-white text-ink-soft ring-1 ring-line',
       )}
     >
@@ -638,7 +734,7 @@ function SessionView({
           <Button variant="secondary" onClick={onPay} disabled={session.outstandingAmount <= 0}>
             <CreditCard size={15} /> To‘lov
           </Button>
-          <Button variant="success" loading={closing} onClick={onClose} disabled={session.outstandingAmount > 0 && userRole !== 'OWNER'}>
+          <Button variant="success" loading={closing} onClick={onClose} disabled={session.outstandingAmount > 0 && userRole !== 'OWNER' && userRole !== 'CASHIER'}>
             <CheckCircle2 size={15} /> Yopish
           </Button>
         </div>
@@ -661,9 +757,9 @@ function SessionView({
         </div>
       </div>
 
-      {session.outstandingAmount > 0 && userRole !== 'OWNER' && (
+      {session.outstandingAmount > 0 && (
         <p className="border-b border-amber-200 bg-amber-50 px-5 py-2 text-xs text-amber-800">
-          Qarz mavjud — yopish uchun avval to‘liq to‘lov qiling yoki ega sabab bilan yopsin.
+          Qarz mavjud — avval to‘liq to‘lov qiling yoki «Yopish» orqali sabab ko‘rsatib qarz bilan yoping.
         </p>
       )}
 
@@ -751,6 +847,9 @@ function DeliveryView({
   onReverse,
   onStatus,
   busy,
+  cashPending,
+  onHandover,
+  handoverBusy,
 }: {
   order: OrderDto;
   payments: PaymentDto[];
@@ -760,6 +859,9 @@ function DeliveryView({
   onReverse: (p: PaymentDto) => void;
   onStatus: (s: DeliveryStatus) => void;
   busy: boolean;
+  cashPending: DeliveryDto | null;
+  onHandover: (d: DeliveryDto) => void;
+  handoverBusy: boolean;
 }) {
   const d = order.delivery!;
   const next = NEXT_STATUS[d.status];
@@ -806,6 +908,18 @@ function DeliveryView({
           <p className={cn('text-lg font-bold', order.outstandingAmount > 0 ? 'text-red-600' : 'text-emerald-700')}>{formatUzs(order.outstandingAmount)}</p>
         </div>
       </div>
+
+      {cashPending && (
+        <div className="flex flex-wrap items-center gap-3 border-b border-emerald-200 bg-emerald-50 px-5 py-3 text-sm">
+          <Banknote size={16} className="text-emerald-700" />
+          <span className="flex-1 text-emerald-900">
+            Kuryer {cashPending.assignedToName ?? ''} naqd <b>{formatUzs(cashPending.cashCollectedAmount ?? 0)}</b> oldi — kassaga topshirilmagan.
+          </span>
+          <Button size="sm" variant="success" loading={handoverBusy} onClick={() => onHandover(cashPending)}>
+            <CheckCircle2 size={14} /> To‘lov qilindi
+          </Button>
+        </div>
+      )}
 
       <div className="flex flex-wrap items-center gap-2 border-b border-line px-5 py-2.5 text-xs">
         <Badge tone={d.status === 'DELIVERED' ? 'green' : d.status === 'CANCELLED' ? 'red' : 'amber'}>{deliveryStatusLabel[d.status]}</Badge>

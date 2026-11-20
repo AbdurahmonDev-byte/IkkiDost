@@ -6,8 +6,9 @@ import { receiptMessage, sessionReceipt } from '../receipt.js';
 import { flowKey, type Deps } from '../state.js';
 import { expired } from './auth.js';
 import type { RoomDto } from '../types.js';
+import { canTakePayments, payButton } from './payments.js';
 
-const canTakeOrders = (role: string) => role === 'OWNER' || role === 'WAITER';
+const canTakeOrders = (role: string) => role === 'OWNER' || role === 'WAITER' || role === 'CASHIER';
 const canClose = (role: string) => role === 'OWNER' || role === 'CASHIER';
 
 function roomLine(room: RoomDto): string {
@@ -98,7 +99,13 @@ export function registerRooms(deps: Deps, bot: import('../state.js').AppBot) {
           }
         }
         if (detail.orders.length > 3) text += `\n… va yana ${detail.orders.length - 3} ta buyurtma`;
-        if (detail.outstandingAmount > 0) text += '\n\n⚠️ To‘lov kassada qabul qilinadi.';
+        if (detail.outstandingAmount > 0) {
+          if (canTakePayments(session.role)) {
+            payButton(kb, deps, ctx.chat.id, 'session', detail.id, detail.outstandingAmount);
+          } else {
+            text += '\n\n⚠️ To‘lov kassada qabul qilinadi.';
+          }
+        }
 
         if (canTakeOrders(session.role)) kb.text('➕ Taom qo‘shish', `o:start:${ctx.match[1]}`).row();
         kb.text('🧾 Chek', `r:rcpt:${refs.ref(ctx.chat.id, detail.id)}`);
@@ -162,13 +169,6 @@ export function registerRooms(deps: Deps, bot: import('../state.js').AppBot) {
       if (detail.status !== 'OPEN') {
         await ctx.answerCallbackQuery({ text: 'Sessiya allaqachon yopilgan', show_alert: true });
         return showRooms(ctx, true);
-      }
-      if (detail.outstandingAmount > 0 && session.role !== 'OWNER') {
-        await ctx.answerCallbackQuery({
-          text: `Qarz ${money(detail.outstandingAmount)}. Faqat ega yopishi mumkin.`,
-          show_alert: true,
-        });
-        return;
       }
       const kb = new InlineKeyboard()
         .text('✅ Ha, yopish', `r:closeyes:${ctx.match[1]}`)

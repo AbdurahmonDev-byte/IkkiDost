@@ -43,6 +43,13 @@ export function formatDateTime(iso: string): string {
   });
 }
 
+const MONTHS = ['yanvar', 'fevral', 'mart', 'aprel', 'may', 'iyun', 'iyul', 'avgust', 'sentabr', 'oktabr', 'noyabr', 'dekabr'];
+
+/** "20-noyabr, 2026" — uz-UZ month names are missing in most WebViews. */
+export function formatLongDate(date: Date): string {
+  return `${date.getDate()}-${MONTHS[date.getMonth()]}, ${date.getFullYear()}`;
+}
+
 export function formatTime(iso: string): string {
   return new Date(iso).toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' });
 }

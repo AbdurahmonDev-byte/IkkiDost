@@ -9,6 +9,8 @@ import type {
   DeliveryStatus,
   NotificationDto,
   OrderDto,
+  PaymentDto,
+  PaymentMethodDto,
   ProductDto,
   RoomDto,
   RoomSessionDetailDto,
@@ -199,6 +201,17 @@ export const api = {
   handoverDeliveryCash: (c: BotConfig, s: Store, id: number | string, deliveryId: string) =>
     post<DeliveryDto>(c, s, id, `/deliveries/${deliveryId}/handover`, {}),
   order: (c: BotConfig, s: Store, id: number | string, orderId: string) => get<OrderDto>(c, s, id, `/orders/${orderId}`),
+
+  paymentMethods: (c: BotConfig, s: Store, id: number | string) =>
+    get<PaymentMethodDto[]>(c, s, id, '/payments/methods'),
+  pay: (
+    c: BotConfig,
+    s: Store,
+    id: number | string,
+    target: 'session' | 'order',
+    targetId: string,
+    input: { amount: number; methodId: string; idempotencyKey: string; note?: string | null },
+  ) => post<PaymentDto>(c, s, id, `/payments/${target}/${targetId}`, input),
 
   dashboard: (c: BotConfig, s: Store, id: number | string) => get<DashboardSummaryDto>(c, s, id, '/reports/dashboard'),
 

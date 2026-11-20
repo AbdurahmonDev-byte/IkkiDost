@@ -260,3 +260,8 @@
 - **Context:** The cashier works from the desktop app but could only take payments. Customers calling from home need their orders recorded by the cashier.
 - **Decision:** The desktop cashier can create orders for a room (DINE_IN) and for phone/home orders (DELIVERY, «Saboy»). The Saboy tab lists today's and still-unpaid delivery orders. The composer uses the same products, categories, service fee and decimal quantities (3 places) as the Mini App; the API and database are shared by bot, Mini App and desktop.
 - **Consequences:** Desktop and Mini App always show the same rooms, orders and payments. The desktop is still built for Windows through GitHub Actions; printing uses the WebView print dialog.
+
+## ADR-032: Payments in the Telegram bot and courier cash in the desktop cashier
+- **Context:** The cashier needs to accept money away from the desk, and the desktop app could not confirm courier cash handovers that the bot and Mini App already supported.
+- **Decision:** The bot gets a payment screen for OWNER/CASHIER (full amount per method or typed partial amount) using the existing `/payments/session/:id` and `/payments/order/:id` endpoints. CASHIER has the same bot rights as in the API (orders, deliveries, dashboard, debt close with reason). The desktop cashier adds a «Kuryer» tab using `POST /deliveries/:id/handover` (new `ApiClient.handoverDeliveryCash`) and daily payment totals.
+- **Consequences:** No API or schema change. Money still flows only through the audited payments pipeline; overpayment is rejected server-side, so repeated bot taps cannot double-charge. Desktop version is 0.2.0 so the MSI upgrades the 0.1.0 install.

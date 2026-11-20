@@ -2,10 +2,11 @@ name: Cashier Windows build
 
 on:
   push:
-    branches: [main]
+    branches: [main, 'claude/**']
     paths:
       - 'legacy/cashier-desktop/**'
       - 'packages/**'
+      - 'package-lock.json'
       - '.github/workflows/cashier-windows.yml'
   workflow_dispatch:
 

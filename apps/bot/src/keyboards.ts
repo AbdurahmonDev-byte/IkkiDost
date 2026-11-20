@@ -21,23 +21,26 @@ export function homeKeyboard(role: BotRole, miniAppUrl: string): InlineKeyboard 
   if (role === 'OWNER' || role === 'CHEF') {
     kb.text('👨‍🍳 Oshxona', 'm:kitchen').row();
   }
-  if (role === 'OWNER' || role === 'WAITER') {
+  if (role === 'OWNER' || role === 'WAITER' || role === 'CASHIER') {
     kb.text('➕ Yangi yetkazish', 'm:newdel').row();
   }
-  if (role === 'OWNER') {
+  if (role === 'OWNER' || role === 'CASHIER') {
     kb.text('📊 Hisobot', 'm:dash').row();
   }
   kb.text('ℹ️ Yordam', 'm:help');
   return kb;
 }
 
+export const MANUAL_ADDRESS = '✍️ Manzilni qo‘lda yozish';
+export const SKIP_ADDRESS = '⏭ O‘tkazib yuborish';
+
 /** Reply keyboard for the staff delivery-address wizard. */
 export function locationRequestKeyboard() {
   return {
     keyboard: [
       [{ text: '📍 Lokatsiyani yuborish', request_location: true }],
-      [{ text: '✍️ Manzilni qo‘lda yozish' }],
-      [{ text: '⏭ O‘tkazib yuborish' }],
+      [{ text: MANUAL_ADDRESS }],
+      [{ text: SKIP_ADDRESS }],
     ],
     resize_keyboard: true,
     one_time_keyboard: true,
