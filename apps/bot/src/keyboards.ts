@@ -14,18 +14,14 @@ export function homeKeyboard(role: BotRole, miniAppUrl: string): InlineKeyboard 
   }
 
   if (role === 'OWNER' || role === 'WAITER' || role === 'CASHIER') {
-    kb.text('🏠 Xonalar', 'm:rooms');
-    kb.text('🛵 Yetkazish', 'm:delivery');
-    kb.row();
+    kb.text('🏠 Zal', 'm:rooms').text('📞 Saboy', 'm:delivery').row();
+    kb.text('➕ Yangi saboy', 'm:newdel').row();
+  }
+  if (role === 'OWNER' || role === 'CASHIER') {
+    kb.text('💵 Bugungi kassa', 'm:today').text('📊 Hisobot', 'm:dash').row();
   }
   if (role === 'OWNER' || role === 'CHEF') {
     kb.text('👨‍🍳 Oshxona', 'm:kitchen').row();
-  }
-  if (role === 'OWNER' || role === 'WAITER' || role === 'CASHIER') {
-    kb.text('➕ Yangi yetkazish', 'm:newdel').row();
-  }
-  if (role === 'OWNER' || role === 'CASHIER') {
-    kb.text('📊 Hisobot', 'm:dash').row();
   }
   kb.text('ℹ️ Yordam', 'm:help');
   return kb;

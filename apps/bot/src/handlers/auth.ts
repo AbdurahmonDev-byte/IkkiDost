@@ -161,16 +161,17 @@ export function helpText(role?: string): string {
     lines.push('🛵 Mening yetkazishlarim — tayyor buyurtmalarni qabul qilish va yetkazish');
   }
   if (role === 'OWNER' || role === 'WAITER' || role === 'CASHIER') {
-    lines.push('🏠 Xonalar — band/bo‘sh xonalar, hisob, taom qo‘shish');
-    lines.push('🛵 Yetkazish — faol yetkazish buyurtmalari');
+    lines.push('🏠 Zal — xonani bosing: chek, mahsulot qo‘shish, to‘lov, yopish');
+    lines.push('📞 Saboy — telefon orqali buyurtmalar');
   }
   if (role === 'OWNER' || role === 'CHEF') lines.push('👨‍🍳 Oshxona — tayyorlanayotgan taomlar');
   if (role === 'OWNER' || role === 'WAITER' || role === 'CASHIER') {
-    lines.push('➕ Yangi yetkazish — mijoz va buyurtma kiritish');
+    lines.push('➕ Yangi saboy — mijoz va buyurtma kiritish');
   }
   if (role === 'OWNER' || role === 'CASHIER') {
+    lines.push('💵 Bugungi kassa (/bugun) — naqd, karta, jami va oxirgi to‘lovlar');
     lines.push('📊 Hisobot — bugungi ko‘rsatkichlar');
-    lines.push('💰 To‘lov — xona yoki yetkazish hisobida «To‘lov qabul qilish» (to‘liq yoki qisman)');
+    lines.push('💰 To‘lov — xonada «💰 To‘lov»: to‘liq, qisman yoki mijoz bergan pul bilan qaytim');
   } else {
     lines.push('', 'To‘lovlar kassir yoki ega tomonidan qabul qilinadi.');
   }

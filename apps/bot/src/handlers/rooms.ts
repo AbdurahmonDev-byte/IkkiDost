@@ -1,22 +1,41 @@
 import { InlineKeyboard, type Context } from 'grammy';
 import { ApiError, api, SessionExpiredError } from '../api.js';
-import { money, orderStatusLabel, time } from '../format.js';
+import { money, qty, time, uzs } from '../format.js';
 import { backHome } from '../keyboards.js';
 import { receiptMessage, sessionReceipt } from '../receipt.js';
 import { flowKey, type Deps } from '../state.js';
 import { expired } from './auth.js';
-import type { RoomDto } from '../types.js';
-import { canTakePayments, payButton } from './payments.js';
+import type { OrderDto, OrderItemDto, RoomDto } from '../types.js';
+import { canTakePayments } from './payments.js';
 
 const canTakeOrders = (role: string) => role === 'OWNER' || role === 'WAITER' || role === 'CASHIER';
 const canClose = (role: string) => role === 'OWNER' || role === 'CASHIER';
 
-function roomLine(room: RoomDto): string {
-  if (!room.activeSession) return `🫖 ${room.name} — bo‘sh`;
+/** Compact tile label: 🟢 free, 🟡 busy with debt, ✅ busy and paid. */
+function roomTile(room: RoomDto): string {
   const s = room.activeSession;
-  const debt = s.outstandingAmount > 0 ? ` · qarz ${money(s.outstandingAmount)}` : '';
-  return `🪑 ${room.name} — ${s.orderCount} buyurtma · ${money(s.totalAmount)}${debt}`;
+  if (!s) return `🟢 ${room.name}`;
+  return `${s.outstandingAmount > 0 ? '🟡' : '✅'} ${room.name} · ${uzs(s.totalAmount)}`;
 }
+
+/** Same products across the bill's orders are summed into one ticket line. */
+function ticketLines(orders: OrderDto[]): string[] {
+  const lines = new Map<string, { name: string; unit: OrderItemDto['productUnit']; qty: number; total: number }>();
+  for (const order of orders) {
+    for (const item of order.items) {
+      if (item.status === 'CANCELLED') continue;
+      const key = `${item.productName}|${item.unitPrice}`;
+      const cur = lines.get(key) ?? { name: item.productName, unit: item.productUnit, qty: 0, total: 0 };
+      cur.qty = Math.round((cur.qty + Number(item.quantity)) * 1000) / 1000;
+      cur.total += item.lineTotal;
+      lines.set(key, cur);
+    }
+  }
+  return [...lines.values()].map((l) => `• ${l.name} × ${qty(l.qty, l.unit)} — ${uzs(l.total)}`);
+}
+
+/** Lets other handlers (order, payments) reopen a room ticket. */
+export let showRoomRef: ((ctx: Context, roomId: string, edit: boolean) => Promise<unknown>) | null = null;
 
 export function registerRooms(deps: Deps, bot: import('../state.js').AppBot) {
   const { config, store, refs, flows } = deps;
@@ -30,20 +49,79 @@ export function registerRooms(deps: Deps, bot: import('../state.js').AppBot) {
     }
     try {
       const rooms = await api.rooms(config, store, ctx.chat.id);
+      const active = rooms.filter((r) => r.isActive);
       const kb = new InlineKeyboard();
-      for (const room of rooms) {
-        kb.text(roomLine(room), `r:open:${refs.ref(ctx.chat.id, room.id)}`).row();
-      }
-      kb.text('🔄 Yangilash', 'm:rooms').row().text('⬅️ Bosh menyu', 'm:home');
-      const text = rooms.length
-        ? '🏠 Xonalar\n\nBand xonani tanlang yoki bo‘sh xonaga buyurtma oching:'
-        : '🏠 Xonalar topilmadi. Ega admin panelda qo‘shishi mumkin.';
+      active.forEach((room, i) => {
+        kb.text(roomTile(room), `r:open:${refs.ref(ctx.chat!.id, room.id)}`);
+        if (i % 2 === 1) kb.row();
+      });
+      if (active.length % 2 === 1) kb.row();
+      kb.text('🔄 Yangilash', 'm:rooms').text('⬅️ Bosh menyu', 'm:home');
+      const busy = active.filter((r) => r.activeSession).length;
+      const text = active.length
+        ? `🏠 Zal — bo‘sh: ${active.length - busy}, band: ${busy}\n\n🟢 bo‘sh · 🟡 qarz bor · ✅ to‘langan\nXonani tanlang:`
+        : '🏠 Xonalar topilmadi. Ega Mini App’da qo‘shishi mumkin.';
       if (edit) await ctx.editMessageText(text, { reply_markup: kb });
       else await ctx.reply(text, { reply_markup: kb });
     } catch (error) {
       return handleError(deps, ctx, error);
     }
   }
+
+  /** Room “ticket”: the whole bill and POS-style actions. */
+  async function showRoom(ctx: Context, roomId: string, edit: boolean) {
+    const chatId = ctx.chat!.id;
+    const session = store.get(chatId)!;
+    const rooms = await api.rooms(config, store, chatId);
+    const room = rooms.find((r) => r.id === roomId);
+    if (!room) return stale(ctx);
+    const roomKey = refs.ref(chatId, room.id);
+    const kb = new InlineKeyboard();
+    let text: string;
+
+    if (!room.activeSession) {
+      text = `🟢 ${room.name} — bo‘sh\n\nYangi hisob ochish uchun mahsulot qo‘shing.`;
+      if (canTakeOrders(session.role)) kb.text('➕ Buyurtma ochish', `o:start:${roomKey}`).row();
+    } else {
+      const detail = await api.roomSession(config, store, chatId, room.activeSession.id);
+      const orders = detail.orders.slice().sort((a, b) => +new Date(a.createdAt) - +new Date(b.createdAt));
+      const fee = orders.reduce((sum, o) => sum + o.serviceFeeAmount, 0);
+      let items = ticketLines(orders);
+      if (items.length > 40) items = [...items.slice(0, 40), `… va yana ${items.length - 40} ta`];
+      text =
+        `🪑 ${room.name} · ochilgan ${time(detail.openedAt)}\n` +
+        '━━━━━━━━━━━━━━\n' +
+        (items.length ? items.join('\n') : '(mahsulot yo‘q)') +
+        (fee > 0 ? `\n• Xizmat haqi — ${uzs(fee)}` : '') +
+        '\n━━━━━━━━━━━━━━\n' +
+        `Jami: ${money(detail.totalAmount)}\nTo‘langan: ${money(detail.paidAmount)}\n` +
+        `${detail.outstandingAmount > 0 ? '🔴' : '🟢'} Qarz: ${money(detail.outstandingAmount)}`;
+
+      const sessionKey = refs.ref(chatId, detail.id);
+      if (canTakeOrders(session.role)) kb.text('➕ Mahsulot qo‘shish', `o:start:${roomKey}`);
+      if (detail.outstandingAmount > 0 && canTakePayments(session.role)) {
+        kb.text('💰 To‘lov', `p:open:s:${sessionKey}`);
+      }
+      kb.row();
+      kb.text('🧾 Chek', `r:rcpt:${sessionKey}`);
+      if (canClose(session.role)) kb.text('🔒 Yopish', `r:close:${sessionKey}`);
+      kb.row();
+
+      // Waiters confirm dishes the kitchen marked ready.
+      if (canTakeOrders(session.role)) {
+        const ready = orders.flatMap((o) => o.items.filter((i) => i.status === 'READY').map((i) => ({ o, i })));
+        for (const { o, i } of ready.slice(0, 4)) {
+          kb.text(`✅ ${shortName(i.productName)} · berildi`, `r:svc:${refs.ref(chatId, o.id)}:${refs.ref(chatId, i.id)}`).row();
+        }
+      }
+      if (detail.outstandingAmount > 0 && !canTakePayments(session.role)) text += '\n\n⚠️ To‘lov kassada qabul qilinadi.';
+    }
+
+    kb.text('🔄 Yangilash', `r:open:${roomKey}`).text('⬅️ Zal', 'm:rooms');
+    if (edit) await ctx.editMessageText(text, { reply_markup: kb });
+    else await ctx.reply(text, { reply_markup: kb });
+  }
+  showRoomRef = showRoom;
 
   bot.callbackQuery('m:rooms', async (ctx) => {
     if (!ctx.chat) return;
@@ -59,65 +137,8 @@ export function registerRooms(deps: Deps, bot: import('../state.js').AppBot) {
     if (!session) return expired(deps, ctx);
     const roomId = refs.unref(ctx.chat.id, ctx.match[1]);
     if (!roomId) return stale(ctx);
-
     try {
-      const rooms = await api.rooms(config, store, ctx.chat.id);
-      const room = rooms.find((r) => r.id === roomId);
-      if (!room) return stale(ctx);
-
-      const kb = new InlineKeyboard();
-      let text = `🚪 ${room.name}\n\n`;
-
-      if (!room.activeSession) {
-        text += 'Xona bo‘sh. Yangi sessiya ochish uchun buyurtma yarating.';
-        if (canTakeOrders(session.role)) kb.text('➕ Buyurtma ochish', `o:start:${ctx.match[1]}`).row();
-      } else {
-        const detail = await api.roomSession(config, store, ctx.chat.id, room.activeSession.id);
-        text +=
-          `📋 Sessiya (${time(detail.openedAt)} dan)\n` +
-          `Umumiy: ${money(detail.totalAmount)}\n` +
-          `To‘langan: ${money(detail.paidAmount)}\n` +
-          `Qarz: ${money(detail.outstandingAmount)}\n`;
-
-        const orders = detail.orders
-          .slice()
-          .sort((a, b) => +new Date(a.createdAt) - +new Date(b.createdAt))
-          .slice(-3);
-
-        for (const order of orders) {
-          text += `\n#${order.orderNumber} · ${orderStatusLabel[order.status]} · ${money(order.totalAmount)}`;
-          const readyItems = order.items.filter((item) => item.status === 'READY');
-          if (canTakeOrders(session.role) && readyItems.length > 0) {
-            for (const item of readyItems.slice(0, 4)) {
-              kb
-                .text(
-                  `✅ ${shortName(item.productName)} · berildi`,
-                  `r:svc:${refs.ref(ctx.chat.id, order.id)}:${refs.ref(ctx.chat.id, item.id)}`,
-                )
-                .row();
-            }
-          }
-        }
-        if (detail.orders.length > 3) text += `\n… va yana ${detail.orders.length - 3} ta buyurtma`;
-        if (detail.outstandingAmount > 0) {
-          if (canTakePayments(session.role)) {
-            payButton(kb, deps, ctx.chat.id, 'session', detail.id, detail.outstandingAmount);
-          } else {
-            text += '\n\n⚠️ To‘lov kassada qabul qilinadi.';
-          }
-        }
-
-        if (canTakeOrders(session.role)) kb.text('➕ Taom qo‘shish', `o:start:${ctx.match[1]}`).row();
-        kb.text('🧾 Chek', `r:rcpt:${refs.ref(ctx.chat.id, detail.id)}`);
-        if (canClose(session.role)) {
-          kb.text('🔒 Hisobni yopish', `r:close:${refs.ref(ctx.chat.id, detail.id)}`).row();
-        } else {
-          kb.row();
-        }
-      }
-
-      kb.text('⬅️ Xonalar', 'm:rooms');
-      await ctx.editMessageText(text, { reply_markup: kb });
+      await showRoom(ctx, roomId, true);
     } catch (error) {
       return handleError(deps, ctx, error);
     }

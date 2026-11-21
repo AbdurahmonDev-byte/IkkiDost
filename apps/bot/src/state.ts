@@ -17,6 +17,8 @@ export interface OrderFlow {
   /** productId -> quantity */
   lines: Record<string, number>;
   note?: string;
+  /** Open order of the room bill that new items are appended to (no new fee). */
+  appendOrderId?: string;
   /** True while the wizard waits for a typed exact quantity (e.g. 1.82 kg). */
   awaitingQty?: boolean;
 }
@@ -34,6 +36,7 @@ export type Flow =
       targetId: string;
       methodId: string;
       methodName: string;
+      methodKind: 'CASH' | 'CARD' | 'OTHER';
       outstanding: number;
     };
 

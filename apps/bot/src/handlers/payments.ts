@@ -74,7 +74,7 @@ export function registerPayments(deps: Deps, bot: import('../state.js').AppBot) 
       for (const m of methods.filter((x) => x.isActive)) {
         const mref = refs.ref(ctx.chat.id, m.id);
         kb.text(`${methodIcon(m)} ${m.name} — to‘liq`, `p:full:${ctx.match[1]}:${ctx.match[2]}:${mref}`);
-        kb.text('✍️ Qisman', `p:part:${ctx.match[1]}:${ctx.match[2]}:${mref}`).row();
+        kb.text(m.kind === 'CASH' ? '✍️ Mijoz berdi / qaytim' : '✍️ Qisman', `p:part:${ctx.match[1]}:${ctx.match[2]}:${mref}`).row();
       }
       kb.text('⬅️ Bosh menyu', 'm:home');
       await ctx.editMessageText(
@@ -109,7 +109,7 @@ export function registerPayments(deps: Deps, bot: import('../state.js').AppBot) 
       await ctx.answerCallbackQuery({ text: '✅ To‘lov qabul qilindi' });
       await ctx.editMessageText(
         `✅ ${info.label}: ${money(payment.amount)} (${payment.methodName}) qabul qilindi.\nQoldiq: ${money(0)}`,
-        { reply_markup: backHome() },
+        { reply_markup: afterPaymentKeyboard(deps, ctx.chat.id, target, targetId, 0) },
       );
     } catch (error) {
       return handleError(deps, ctx, error);
@@ -135,12 +135,15 @@ export function registerPayments(deps: Deps, bot: import('../state.js').AppBot) 
         targetId,
         methodId,
         methodName: method?.name ?? 'To‘lov',
+        methodKind: method?.kind ?? 'OTHER',
         outstanding: info.outstanding,
       });
       await ctx.answerCallbackQuery();
       await ctx.editMessageText(
         `✍️ ${info.label} — ${method?.name ?? ''}\nQoldiq: ${money(info.outstanding)}\n\n` +
-          'Qabul qilingan summani so‘mda yozing (masalan: 50000):',
+          (method?.kind === 'CASH'
+            ? 'Mijoz bergan naqd pulni yozing (masalan: 500000).\nQarzdan ko‘p bo‘lsa — qaytim hisoblanadi, kam bo‘lsa — qisman to‘lov.'
+            : 'Qabul qilingan summani so‘mda yozing (masalan: 50000):'),
         { reply_markup: new InlineKeyboard().text('❌ Bekor qilish', 'm:home') },
       );
     } catch (error) {
@@ -149,11 +152,31 @@ export function registerPayments(deps: Deps, bot: import('../state.js').AppBot) 
   });
 }
 
+/** After a payment: a fully paid room bill can be closed right away. */
+function afterPaymentKeyboard(deps: Deps, chatId: number, target: Target, targetId: string, left: number): InlineKeyboard {
+  const kb = new InlineKeyboard();
+  if (target === 'session') {
+    if (left <= 0) kb.text('🔒 Xonani yopish', `r:closeyes:${deps.refs.ref(chatId, targetId)}`);
+    else kb.text('💰 Yana to‘lov', `p:open:s:${deps.refs.ref(chatId, targetId)}`);
+    kb.text('⬅️ Zal', 'm:rooms');
+  } else {
+    kb.text('⬅️ Saboy', 'm:delivery');
+  }
+  return kb.row().text('🏠 Bosh menyu', 'm:home');
+}
+
 /** Text router handler for the partial payment amount. */
 export async function handlePayAmountText(
   deps: Deps,
   ctx: Context,
-  flow: { target: Target; targetId: string; methodId: string; methodName: string; outstanding: number },
+  flow: {
+    target: Target;
+    targetId: string;
+    methodId: string;
+    methodName: string;
+    methodKind: 'CASH' | 'CARD' | 'OTHER';
+    outstanding: number;
+  },
   text: string,
 ): Promise<void> {
   const { config, store, flows } = deps;
@@ -163,11 +186,14 @@ export async function handlePayAmountText(
     await ctx.reply('❌ Faqat musbat raqam kiriting (masalan: 50000):');
     return;
   }
-  const amount = Number(digits);
-  if (amount > flow.outstanding) {
+  const given = Number(digits);
+  // Cash above the balance is the money handed over: charge the balance, return the change.
+  if (given > flow.outstanding && flow.methodKind !== 'CASH') {
     await ctx.reply(`❌ Summa qoldiqdan oshmasligi kerak (${money(flow.outstanding)}). Qayta yozing:`);
     return;
   }
+  const amount = Math.min(given, flow.outstanding);
+  const change = given - amount;
   try {
     const payment = await api.pay(config, store, ctx.chat.id, flow.target, flow.targetId, {
       amount,
@@ -175,9 +201,12 @@ export async function handlePayAmountText(
       idempotencyKey: randomUUID(),
     });
     flows.delete(flowKey(ctx.chat.id));
+    const left = flow.outstanding - amount;
     await ctx.reply(
-      `✅ ${money(payment.amount)} (${payment.methodName}) qabul qilindi.\nQoldiq: ${money(flow.outstanding - amount)}`,
-      { reply_markup: backHome() },
+      `✅ ${money(payment.amount)} (${payment.methodName}) qabul qilindi.` +
+        (change > 0 ? `\n💵 Mijoz berdi: ${money(given)}\n🔁 QAYTIM: ${money(change)}` : '') +
+        `\nQoldiq: ${money(left)}`,
+      { reply_markup: afterPaymentKeyboard(deps, ctx.chat.id, flow.target, flow.targetId, left) },
     );
   } catch (error) {
     return handleError(deps, ctx, error);

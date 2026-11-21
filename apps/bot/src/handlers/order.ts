@@ -1,6 +1,6 @@
 import { InlineKeyboard, type Context } from 'grammy';
 import { api } from '../api.js';
-import { money, qty, unitShort } from '../format.js';
+import { money, qty, unitShort, uzs } from '../format.js';
 import { orderReceipt, receiptMessage } from '../receipt.js';
 import { flowKey, type Deps, type OrderFlow } from '../state.js';
 import type { CategoryDto, ProductDto, ServiceFeeConfigDto } from '../types.js';
@@ -36,6 +36,7 @@ export function invalidateMenuCache(): void {
 }
 
 function feeFor(flow: OrderFlow, fee: ServiceFeeConfigDto | null): number {
+  if (flow.appendOrderId) return 0;
   if (!fee || !fee.enabled) return 0;
   if (flow.mode === 'DINE_IN' && !fee.applyToDineIn) return 0;
   if (flow.mode === 'DELIVERY' && !fee.applyToDelivery) return 0;
@@ -65,7 +66,7 @@ function cartLinesText(flow: OrderFlow, products: ProductDto[]): string {
 }
 
 function modeTitle(flow: OrderFlow): string {
-  if (flow.mode === 'DELIVERY') return '🛵 Yetkazish buyurtmasi';
+  if (flow.mode === 'DELIVERY') return `📞 Saboy${flow.customer ? ` · ${flow.customer.name}` : ''}`;
   return flow.roomName ? `🪑 ${flow.roomName}` : '🍽 Zalda buyurtma';
 }
 
@@ -96,23 +97,27 @@ async function renderMenu(deps: Deps, ctx: Context, flow: OrderFlow, edit: boole
 
   if (!flow.categoryId) {
     text += '\nKategoriya tanlang:';
-    for (const category of data.categories) {
-      kb.text(category.name, `o:cat:${deps.refs.ref(chatId, category.id)}`).row();
-    }
+    data.categories.forEach((category, i) => {
+      kb.text(category.name, `o:cat:${deps.refs.ref(chatId, category.id)}`);
+      if (i % 2 === 1) kb.row();
+    });
+    if (data.categories.length % 2 === 1) kb.row();
   } else {
     const category = data.categories.find((c) => c.id === flow.categoryId);
     text += `\n${category?.name ?? 'Menyu'} — taom tanlang:`;
     const products = data.products.filter((p) => p.categoryId === flow.categoryId && p.status === 'ACTIVE');
     if (products.length === 0) text += '\n(bu kategoriyada taom yo‘q)';
-    for (const product of products) {
+    products.forEach((product, i) => {
       const inCart = flow.lines[product.id];
-      const label = `${product.name} — ${money(product.price)}/${unitShort[product.unit] || 'dona'}${inCart ? ` ✓${inCart}` : ''}`;
-      kb.text(label, `o:prd:${deps.refs.ref(chatId, product.id)}`).row();
-    }
+      const label = `${inCart ? '✅ ' : ''}${product.name} · ${uzs(product.price)}`;
+      kb.text(label, `o:prd:${deps.refs.ref(chatId, product.id)}`);
+      if (i % 2 === 1) kb.row();
+    });
+    if (products.length % 2 === 1) kb.row();
     kb.text('⬅️ Kategoriyalar', 'o:back').row();
   }
 
-  if (total.count > 0) kb.text(`✅ Buyurtmani yakunlash (${money(total.total)})`, 'o:done').row();
+  if (total.count > 0) kb.text(`🧾 Savat va yuborish · ${money(total.total)}`, 'o:done').row();
   kb.text('❌ Bekor qilish', 'o:cancel');
 
   if (edit) await ctx.editMessageText(text, { reply_markup: kb });
@@ -157,7 +162,8 @@ async function renderConfirm(deps: Deps, ctx: Context, flow: OrderFlow, edit: bo
     const p = data.products.find((x) => x.id === productId);
     if (p) kb.text(`✖ ${p.name}`, `o:rm:${deps.refs.ref(chatId, p.id)}`).row();
   }
-  kb.text('✅ Tasdiqlash', 'o:ok').row().text('❌ Bekor qilish', 'o:cancel');
+  kb.text('➕ Yana qo‘shish', 'o:back').text(flow.note ? '✍️ Izohni o‘zgartirish' : '✍️ Izoh', 'o:note').row();
+  kb.text('📤 Oshxonaga yuborish', 'o:ok').row().text('❌ Bekor qilish', 'o:cancel');
 
   let text = `${modeTitle(flow)}\n\n${cartLinesText(flow, data.products)}\n`;
   text += `\nTaomlar: ${money(total.items)}`;
@@ -166,7 +172,7 @@ async function renderConfirm(deps: Deps, ctx: Context, flow: OrderFlow, edit: bo
   if (flow.roomName) text += `\nXona: ${flow.roomName}`;
   if (flow.customer) text += `\nMijoz: ${flow.customer.name} · ${flow.customer.phone}\nManzil: ${flow.customer.address}`;
   if (flow.note) text += `\nIzoh: ${flow.note}`;
-  text += '\n\nTasdiqlaysizmi?';
+  if (flow.appendOrderId) text += '\n(mavjud hisobga qo‘shiladi)';
 
   if (edit) await ctx.editMessageText(text, { reply_markup: kb });
   else await ctx.reply(text, { reply_markup: kb });
@@ -216,15 +222,25 @@ export function registerOrder(deps: Deps, bot: import('../state.js').AppBot) {
     try {
       const rooms = await api.rooms(config, store, ctx.chat.id);
       const room = rooms.find((r) => r.id === roomId);
+      // An open bill gets the new items appended (no extra service fee).
+      let appendOrderId: string | undefined;
+      if (room?.activeSession) {
+        const detail = await api.roomSession(config, store, ctx.chat.id, room.activeSession.id);
+        appendOrderId = detail.orders
+          .slice()
+          .sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt))
+          .find((o) => o.status !== 'COMPLETED' && o.status !== 'CANCELLED')?.id;
+      }
       flows.set(flowKey(ctx.chat.id), {
         kind: 'order',
         data: {
           mode: 'DINE_IN',
           roomId,
           roomName: room?.name,
-          people: 1,
-          stage: 'people',
+          people: room?.activeSession ? 0 : 1,
+          stage: appendOrderId ? 'menu' : 'people',
           lines: {},
+          appendOrderId,
         },
       });
       await ctx.answerCallbackQuery();
@@ -329,6 +345,15 @@ export function registerOrder(deps: Deps, bot: import('../state.js').AppBot) {
     if (Object.keys(flow.lines).length === 0) {
       return ctx.answerCallbackQuery({ text: 'Savat bo‘sh', show_alert: true });
     }
+    flow.stage = 'confirm';
+    await ctx.answerCallbackQuery();
+    return renderConfirm(deps, ctx, flow, true);
+  });
+
+  // Optional chef note from the confirm screen.
+  bot.callbackQuery('o:note', async (ctx) => {
+    const flow = getFlow(ctx.chat.id);
+    if (!flow) return stale(ctx);
     flow.stage = 'note';
     await ctx.answerCallbackQuery();
     return renderNote(ctx, flow, true);
@@ -378,12 +403,15 @@ export function registerOrder(deps: Deps, bot: import('../state.js').AppBot) {
     const items = Object.entries(flow.lines).map(([productId, quantity]) => ({
       productId,
       quantity: String(quantity),
-      note: null,
+      // Appended items carry the chef note themselves (the order note is fixed).
+      note: flow.appendOrderId ? flow.note ?? null : null,
     }));
 
     try {
       let order;
-      if (flow.mode === 'DINE_IN') {
+      if (flow.appendOrderId) {
+        order = await api.addOrderItems(config, store, chatId, flow.appendOrderId, items);
+      } else if (flow.mode === 'DINE_IN') {
         order = await api.createDineInOrder(config, store, chatId, {
           roomId: flow.roomId!,
           numberOfPeople: flow.people,
@@ -404,10 +432,13 @@ export function registerOrder(deps: Deps, bot: import('../state.js').AppBot) {
       flows.delete(flowKey(chatId));
       const receipt = orderReceipt(order as import('../types.js').OrderDto, { roomName: flow.roomName });
 
-      await ctx.editMessageText(
-        `✅ Buyurtma #${(order as import('../types.js').OrderDto).orderNumber} qabul qilindi va oshpazga yuborildi!`,
-      );
-      await ctx.reply(receiptMessage(receipt), { parse_mode: 'HTML' });
+      const done = order as import('../types.js').OrderDto;
+      const kb = new InlineKeyboard();
+      if (flow.roomId) kb.text(`🚪 ${flow.roomName ?? 'Xona'}ga qaytish`, `r:open:${refs.ref(chatId, flow.roomId)}`).row();
+      kb.text('⬅️ Bosh menyu', 'm:home');
+      await ctx.editMessageText(`📤 #${done.orderNumber} oshxonaga yuborildi!`, { reply_markup: kb });
+      // Phone orders get a ticket to forward; room bills print from «🧾 Chek».
+      if (flow.mode === 'DELIVERY') await ctx.reply(receiptMessage(receipt), { parse_mode: 'HTML' });
     } catch (error) {
       return handleError(deps, ctx, error);
     }

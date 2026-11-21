@@ -336,3 +336,18 @@ Telegram Mini App served by the API at `/` (same origin as `/api`), Vite + React
   (change 274 100 shown), room auto-closed; new saboy auto-sent and
   paid by card; API tests 55/55 (kiosk refused when off, key enforced, stops when
   `kassa` is deactivated).
+
+## Bot in the same POS flow as the desktop till (2026-11-21, ADR-034)
+- Home: «🏠 Zal», «📞 Saboy», «➕ Yangi saboy»; OWNER/CASHIER also «💵 Bugungi kassa»
+  (`/bugun`: cash/card/total and the last 10 payments) and «📊 Hisobot».
+- Zal: room tiles two per row (🟢 free, 🟡 debt, ✅ paid). A room opens as a ticket:
+  every item of the bill summed per product, service fee, total/paid/debt, and
+  «➕ Mahsulot qo‘shish», «💰 To‘lov», «🧾 Chek», «🔒 Yopish».
+- Adding to an open bill appends to its open order (no people question, no second
+  service fee); categories/products are two per row; cart → confirm with optional
+  «✍️ Izoh» → «📤 Oshxonaga yuborish» → back to the room.
+- Payment: per method «to‘liq» or «Mijoz berdi / qaytim» (cash above the balance pays
+  the balance and shows the change) / «Qisman»; after a full room payment
+  «🔒 Xonani yopish» closes the room in one tap.
+- Verified with fake Telegram updates against the local API: append «Чой» with a note
+  to Xona 1, cash 500 000 for 228 900 → change 271 100, room closed, /bugun totals.

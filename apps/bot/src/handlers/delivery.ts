@@ -33,7 +33,7 @@ export function registerDelivery(deps: Deps, bot: import('../state.js').AppBot) 
         (d) => d.status === 'DELIVERED' && (d.cashCollectedAmount ?? 0) > 0 && !d.cashHandedOverAt,
       );
       const kb = new InlineKeyboard();
-      const lines = [session.role === 'DELIVERY' ? '🛵 Mening yetkazishlarim\n' : '🛵 Yetkazib berish\n'];
+      const lines = [session.role === 'DELIVERY' ? '🛵 Mening yetkazishlarim\n' : '📞 Saboy — telefon buyurtmalari\n'];
       if (cashPending.length > 0) {
         lines.push(`💵 Kassir tasdiqlashi kerak: ${cashPending.length} ta yetkazish`);
         for (const d of cashPending.slice(0, 5)) {
@@ -54,7 +54,7 @@ export function registerDelivery(deps: Deps, bot: import('../state.js').AppBot) 
         const cash = (d.cashCollectedAmount ?? 0) > 0 && !d.cashHandedOverAt ? '💵 ' : '';
         kb.text(`${cash}✔ ${deliveryStatusLabel[d.status]} · #${d.orderNumber} ${d.customerName}`, `d:open:${refs.ref(ctx.chat!.id, d.id)}`).row();
       }
-      if (session.role !== 'DELIVERY') kb.text('➕ Yangi yetkazish', 'm:newdel').row();
+      if (session.role !== 'DELIVERY') kb.text('➕ Yangi saboy', 'm:newdel').row();
       kb.text('🔄 Yangilash', 'm:delivery').row().text('⬅️ Bosh menyu', 'm:home');
       lines.push(`${active.length} ta faol. Tanlang:`);
       const text = lines.join('\n');
@@ -75,7 +75,7 @@ export function registerDelivery(deps: Deps, bot: import('../state.js').AppBot) 
     const session = store.get(ctx.chat!.id);
     if (!session) return expired(deps, ctx);
     const lines = [
-      `🛵 Yetkazish #${d.orderNumber}`,
+      `📞 Saboy #${d.orderNumber}`,
       '',
       `👤 ${d.customerName}`,
       `📞 ${d.customerPhone}`,
@@ -301,7 +301,7 @@ export function registerDelivery(deps: Deps, bot: import('../state.js').AppBot) 
       return ctx.reply('🛵 Yangi yetkazishni faqat ofitsiant, kassir va ega yaratadi.');
     }
     flows.set(flowKey(ctx.chat.id), { kind: 'delivery-name' });
-    const text = '🛵 Yangi yetkazish\n\n1/3 — Mijoz ismini yozing:';
+    const text = '📞 Yangi saboy\n\n1/3 — Mijoz ismini yozing:';
     if (edit) {
       await ctx.answerCallbackQuery();
       await ctx.editMessageText(text);
