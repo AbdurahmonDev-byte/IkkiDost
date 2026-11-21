@@ -42,7 +42,7 @@ dc --profile bot up -d --build api bot
 
 echo "▶ Tekshiruv"
 for i in $(seq 1 30); do
-  if dc exec -T api wget -qO- http://localhost:3000/api/health >/dev/null 2>&1; then
+  if dc exec -T api node -e "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))" >/dev/null 2>&1; then
     echo "✅ API ishlayapti"
     dc ps
     exit 0
