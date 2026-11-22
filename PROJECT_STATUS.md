@@ -365,3 +365,12 @@ Telegram Mini App served by the API at `/` (same origin as `/api`), Vite + React
 - Receipt printing now uses a hidden iframe with a standalone 80 mm page; printing
   the whole app made the Windows WebView2 print preview hang (seen on the cashier PC).
   Not yet re-tested on the real printer.
+
+## Automatic deploy + Xprinter receipt (2026-11-22)
+- `.github/workflows/deploy.yml` + `deploy/ikki-dost/remote-deploy.sh`: push → SSH →
+  DB dump, code sync from the commit tarball, rebuild api + bot, health check,
+  automatic rollback. Needs `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_SSH_KEY` secrets
+  (skips with a warning until they exist). See DEPLOYMENT §16.
+- Receipt page fitted to Xprinter 80 mm (72 mm printable): bold monospace, no page
+  margins, wider quantity column. Checked as an 80 mm PDF render; not yet printed on
+  the real printer.

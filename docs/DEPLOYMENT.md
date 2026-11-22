@@ -427,3 +427,27 @@ cashier app's API base URL / runtime setting).
 3. Check out the previous release tag, rebuild, restart.
 4. The mobile/desktop clients are backward-compatible within a minor version;
    avoid destructive API changes without a new client release.
+
+## 16. Automatic deploy (GitHub Actions)
+
+`.github/workflows/deploy.yml` deploys the server on every push to `main` (and the
+current working branch) that touches the API, bot, Mini App, shared packages or
+deploy files. Desktop-cashier-only changes do not redeploy the server.
+
+The job SSHes to the server and runs `deploy/ikki-dost/remote-deploy.sh <sha>`:
+database dump (last 10 kept in `~/ikki-dost-backups`), copy of the current code in
+`~/ikki-dost.prev`, download of the commit from GitHub, sync into `~/ikki-dost`
+(never touching `deploy/ikki-dost/.env`, uploads or bot sessions), rebuild of
+`api` + `bot`, health check, and **automatic rollback** to the previous code if
+the API does not come up.
+
+One-time setup — repository secrets (Settings → Secrets and variables → Actions):
+
+| Secret | Value |
+|---|---|
+| `DEPLOY_HOST` | server IP / hostname used for SSH |
+| `DEPLOY_USER` | `deploy` |
+| `DEPLOY_SSH_KEY` | private key of a key pair whose public half is in the server's `~/.ssh/authorized_keys` |
+| `DEPLOY_PORT` | optional, default 22 |
+
+Without these secrets the workflow only prints a warning and skips the deploy.

@@ -1,0 +1,70 @@
+name: Deploy server
+
+# Pushes that change the server (API, bot, Mini App, shared packages) are
+# deployed to ikkidost.abitcore.uz automatically. Desktop-cashier-only
+# changes do not redeploy the server.
+#
+# Repository secrets (Settings → Secrets and variables → Actions):
+#   DEPLOY_HOST     server address (IP or hostname used for SSH)
+#   DEPLOY_USER     SSH user (deploy)
+#   DEPLOY_SSH_KEY  private SSH key that may log in as that user
+#   DEPLOY_PORT     optional, defaults to 22
+on:
+  push:
+    branches: [main, 'claude/kind-gates-x8rs0j']
+    paths:
+      - 'apps/api/**'
+      - 'apps/bot/**'
+      - 'apps/mini-app/**'
+      - 'packages/**'
+      - 'Dockerfile.deploy'
+      - 'package-lock.json'
+      - 'deploy/ikki-dost/**'
+      - '.github/workflows/deploy.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      HAS_KEY: ${{ secrets.DEPLOY_SSH_KEY != '' && secrets.DEPLOY_HOST != '' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Secrets check
+        if: env.HAS_KEY != 'true'
+        run: |
+          echo "::warning::DEPLOY_HOST / DEPLOY_USER / DEPLOY_SSH_KEY secrets are not set — skipping deploy."
+
+      - name: Prepare SSH
+        if: env.HAS_KEY == 'true'
+        env:
+          KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          HOST: ${{ secrets.DEPLOY_HOST }}
+          PORT: ${{ secrets.DEPLOY_PORT || '22' }}
+        run: |
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "$KEY" > ~/.ssh/deploy_key && chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -p "$PORT" -H "$HOST" >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Deploy
+        if: env.HAS_KEY == 'true'
+        env:
+          HOST: ${{ secrets.DEPLOY_HOST }}
+          USER: ${{ secrets.DEPLOY_USER || 'deploy' }}
+          PORT: ${{ secrets.DEPLOY_PORT || '22' }}
+        run: |
+          ssh -i ~/.ssh/deploy_key -p "$PORT" -o BatchMode=yes -o ServerAliveInterval=30 \
+            "$USER@$HOST" 'bash -s' -- "$GITHUB_SHA" < deploy/ikki-dost/remote-deploy.sh
+
+      - name: Public health check
+        if: env.HAS_KEY == 'true'
+        run: curl -fsS -m 15 https://ikkidost.abitcore.uz/api/health

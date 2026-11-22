@@ -101,13 +101,15 @@ export function receiptHtml(data: ReceiptData): string {
   const row = (l: string, r: string, bold = false) =>
     `<div class="row${bold ? ' b' : ''}"><span>${esc(l)}</span><span>${esc(r)}</span></div>`;
   return `<!doctype html><html><head><meta charset="utf-8"><title>Chek</title><style>
-@page { size: 80mm auto; margin: 0; }
+/* Xprinter 80 mm: printable width is ~72 mm; the driver's paper size decides the length. */
+@page { margin: 0; }
 * { box-sizing: border-box; }
-body { margin: 0; padding: 3mm 4mm; width: 80mm; font-family: Consolas, 'Courier New', monospace; font-size: 12px; color: #000; }
+html, body { background: #fff; }
+body { margin: 0; padding: 2mm 1.5mm; width: 72mm; font-family: Consolas, 'Courier New', monospace; font-size: 12px; font-weight: 600; color: #000; line-height: 1.35; }
 .c { text-align: center; } .h { font-size: 15px; font-weight: bold; } .s { font-size: 11px; }
 .hr { border-top: 1px dashed #000; margin: 6px 0; }
 .row { display: flex; justify-content: space-between; gap: 6px; } .b { font-weight: bold; font-size: 14px; }
-.it { display: flex; gap: 4px; } .it .n { flex: 1; } .it .q { width: 54px; text-align: right; } .it .t { width: 76px; text-align: right; }
+.it { display: flex; gap: 6px; } .it .n { flex: 1; word-break: break-word; } .it .q { width: 68px; text-align: right; white-space: nowrap; } .it .t { width: 86px; text-align: right; white-space: nowrap; }
 </style></head><body>
 <div class="c h">IKKI DO‘ST CHOYXONASI</div>
 <div class="c s">Hisob-kitob cheki</div>
