@@ -357,3 +357,11 @@ Telegram Mini App served by the API at `/` (same origin as `/api`), Vite + React
 - Bot texts simplified for staff: colour legend spelled out, «Taom qo‘shish»,
   «Tanlab bo‘ldim», «Oshpazga izoh»; payment buttons show the amount
   («💵 Naqd: 7 000») with «boshqa summa» for less/more money; cash listed first.
+
+## Cashier desktop 0.3.1 (2026-11-22)
+- «Bugungi kassa»: kirim, sof foyda (kirim − xarajat − tannarx), xarajat, to‘lanmagan
+  qarz, naqd/karta, buyurtmalar, xizmat haqi; 7 kunlik kirim/xarajat/foyda grafigi,
+  bugungi soatlik kirim, eng ko‘p sotilgan taomlar (data: `GET /reports/dashboard`).
+- Receipt printing now uses a hidden iframe with a standalone 80 mm page; printing
+  the whole app made the Windows WebView2 print preview hang (seen on the cashier PC).
+  Not yet re-tested on the real printer.

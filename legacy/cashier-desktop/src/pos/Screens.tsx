@@ -1,4 +1,7 @@
 import { useMemo, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { api } from '../lib/api';
+import { HourChart, TopProducts, WeekChart } from './Charts';
 import { Banknote, Clock, CreditCard, Phone, Plus, RotateCcw } from 'lucide-react';
 import type { OrderDto, PaymentDto, RoomDto } from '@ikki-dost/shared-types';
 import { deliveryStatusLabel, elapsed, formatTime, formatUzs, isToday } from '../lib/format';
@@ -117,23 +120,50 @@ export function TodayScreen({
   const [reason, setReason] = useState('');
   const sorted = useMemo(() => [...payments].sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt)), [payments]);
   const totals = useMemo(() => todayTotals(payments), [payments]);
+  const dashQuery = useQuery({ queryKey: ['dashboard'], queryFn: () => api.dashboard(), refetchInterval: 30_000 });
+  const d = dashQuery.data;
 
   if (loading) return <Center><Spinner /></Center>;
   return (
     <div className="h-full overflow-y-auto p-4">
+      {/* Asosiy raqamlar */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Stat icon={<Banknote size={18} />} label="Naqd" value={formatUzs(totals.cash)} />
-        <Stat icon={<CreditCard size={18} />} label="Karta" value={formatUzs(totals.card)} />
-        <Stat label="Boshqa" value={formatUzs(totals.other)} />
-        <Stat label={`Jami · ${totals.count} to‘lov`} value={formatUzs(totals.cash + totals.card + totals.other)} strong />
+        <Stat label={`Kirim · ${totals.count} to‘lov`} value={formatUzs(totals.cash + totals.card + totals.other)} strong hint="Bugun kassaga tushgan pul" />
+        <Stat label="Sof foyda" value={d ? formatUzs(d.todayProfit) : '…'} hint="Kirim − xarajat − taom tannarxi" tone={d && d.todayProfit < 0 ? 'red' : 'green'} />
+        <Stat label="Xarajat" value={d ? formatUzs(d.todayExpenses) : '…'} hint={d ? `Taom tannarxi: ${formatUzs(d.todayCostOfGoods)}` : undefined} />
+        <Stat label="To‘lanmagan qarz" value={d ? formatUzs(d.unpaidOutstanding) : '…'} hint={d ? `Ochiq xonalar: ${d.activeRooms}` : undefined} tone={d && d.unpaidOutstanding > 0 ? 'red' : undefined} />
       </div>
-      <div className="mt-4 overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-line">
+      <div className="mt-3 grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <Stat icon={<Banknote size={18} />} label="Naqd" value={formatUzs(totals.cash)} small />
+        <Stat icon={<CreditCard size={18} />} label="Karta" value={formatUzs(totals.card)} small />
+        <Stat label="Buyurtmalar" value={d ? `${d.todayOrderCount} ta` : '…'} small />
+        <Stat label="Xizmat haqi" value={d ? formatUzs(d.serviceFeeRevenueToday) : '…'} small />
+      </div>
+
+      {/* Grafiklar */}
+      <div className="mt-4 grid gap-4 xl:grid-cols-[3fr_2fr]">
+        <Panel title="Oxirgi 7 kun: kirim, xarajat, foyda">
+          {d ? <WeekChart data={d.revenueByDay} /> : <Center><Spinner /></Center>}
+        </Panel>
+        <Panel title="Bugun eng ko‘p sotilgan taomlar">
+          {d ? <TopProducts items={d.popularProducts} /> : <Center><Spinner /></Center>}
+        </Panel>
+      </div>
+      <div className="mt-4 grid items-start gap-4 xl:grid-cols-[3fr_2fr]">
+        <Panel title="Bugun soatlar bo‘yicha kirim">
+          {!d ? <Center><Spinner /></Center> : d.hourlySales.length === 0 ? (
+            <p className="py-10 text-center text-sm text-ink-soft">Bugun hali to‘lov yo‘q</p>
+          ) : <HourChart data={d.hourlySales} />}
+        </Panel>
+      <div>
+      <p className="mb-2 text-sm font-semibold">Bugungi to‘lovlar</p>
+      <div className="max-h-[420px] overflow-y-auto rounded-2xl bg-white shadow-sm ring-1 ring-line">
         {sorted.length === 0 && <p className="px-6 py-14 text-center text-sm text-ink-soft">Bugun hali to‘lov yo‘q</p>}
         {sorted.map((p) => (
-          <div key={p.id} className={cn('flex items-center gap-4 border-b border-line/70 px-4 py-3 last:border-0', p.reversedAt && 'opacity-60')}>
-            <span className="w-14 text-sm text-ink-soft">{formatTime(p.createdAt)}</span>
-            <span className="w-32 text-base font-bold">{formatUzs(p.amount)}</span>
-            <span className="w-24 text-sm">{p.methodName}</span>
+          <div key={p.id} className={cn('flex items-center gap-3 border-b border-line/70 px-4 py-3 last:border-0', p.reversedAt && 'opacity-60')}>
+            <span className="w-12 text-sm text-ink-soft">{formatTime(p.createdAt)}</span>
+            <span className="w-28 whitespace-nowrap text-base font-bold">{formatUzs(p.amount)}</span>
+            <span className="w-14 text-sm">{p.methodName}</span>
             <span className="min-w-0 flex-1 truncate text-sm text-ink-soft">{p.receivedByName}</span>
             {p.reversedAt ? (
               <Badge tone="red">Qaytarilgan</Badge>
@@ -144,6 +174,9 @@ export function TodayScreen({
             )}
           </div>
         ))}
+      </div>
+
+      </div>
       </div>
 
       <Modal open={!!target} onClose={() => setTarget(null)} title="To‘lovni qaytarish">
@@ -184,11 +217,37 @@ export function todayTotals(payments: PaymentDto[]) {
   return t;
 }
 
-function Stat({ icon, label, value, strong }: { icon?: React.ReactNode; label: string; value: string; strong?: boolean }) {
+function Stat({
+  icon,
+  label,
+  value,
+  strong,
+  hint,
+  tone,
+  small,
+}: {
+  icon?: React.ReactNode;
+  label: string;
+  value: string;
+  strong?: boolean;
+  hint?: string;
+  tone?: 'green' | 'red';
+  small?: boolean;
+}) {
   return (
-    <div className={cn('rounded-2xl p-4 shadow-sm ring-1', strong ? 'bg-primary text-white ring-primary' : 'bg-white ring-line')}>
+    <div className={cn('rounded-2xl shadow-sm ring-1', small ? 'p-3' : 'p-4', strong ? 'bg-primary text-white ring-primary' : 'bg-white ring-line')}>
       <p className={cn('flex items-center gap-1.5 text-xs font-semibold uppercase', strong ? 'text-white/70' : 'text-ink-soft')}>{icon}{label}</p>
-      <p className="mt-1 text-2xl font-bold">{value}</p>
+      <p className={cn('mt-1 font-bold', small ? 'text-lg' : 'text-2xl', tone === 'green' && 'text-emerald-700', tone === 'red' && 'text-red-600')}>{value}</p>
+      {hint && <p className={cn('mt-0.5 text-[11px]', strong ? 'text-white/70' : 'text-ink-faint')}>{hint}</p>}
+    </div>
+  );
+}
+
+function Panel({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-line">
+      <p className="mb-2 text-sm font-semibold">{title}</p>
+      {children}
     </div>
   );
 }
