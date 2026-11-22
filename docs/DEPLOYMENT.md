@@ -430,8 +430,7 @@ cashier app's API base URL / runtime setting).
 
 ## 16. Automatic deploy (GitHub Actions)
 
-`.github/workflows/deploy.yml` deploys the server on every push to `main` (and the
-current working branch) that touches the API, bot, Mini App, shared packages or
+`.github/workflows/deploy.yml` deploys the server on every push to `main` that touches the API, bot, Mini App, shared packages or
 deploy files. Desktop-cashier-only changes do not redeploy the server.
 
 The job SSHes to the server and runs `deploy/ikki-dost/remote-deploy.sh <sha>`:

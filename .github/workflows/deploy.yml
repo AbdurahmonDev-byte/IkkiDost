@@ -11,7 +11,7 @@ name: Deploy server
 #   DEPLOY_PORT     optional, defaults to 22
 on:
   push:
-    branches: [main, 'claude/kind-gates-x8rs0j']
+    branches: [main]
     paths:
       - 'apps/api/**'
       - 'apps/bot/**'
