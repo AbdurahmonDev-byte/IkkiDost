@@ -1,4 +1,4 @@
-name: Cashier Windows build
+name: Cashier Windows exe
 
 on:
   push:
@@ -33,20 +33,23 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build Windows installer
-        uses: tauri-apps/tauri-action@v0
+      - name: Build Windows exe (no installer)
+        working-directory: legacy/cashier-desktop
         env:
           VITE_API_URL: https://ikkidost.abitcore.uz/api
           # Optional shared key; must equal CASHIER_KIOSK_KEY on the server.
           VITE_KIOSK_KEY: ${{ secrets.CASHIER_KIOSK_KEY }}
-        with:
-          projectPath: legacy/cashier-desktop
-          tauriScript: npx tauri
+        run: npx tauri build --no-bundle
+
+      - name: Name the exe
+        shell: pwsh
+        run: |
+          $v = (Get-Content legacy/cashier-desktop/package.json | ConvertFrom-Json).version
+          New-Item -ItemType Directory -Force out | Out-Null
+          Copy-Item legacy/cashier-desktop/src-tauri/target/release/ikki-dost-cashier.exe "out/IkkiDost-Kassa-$v.exe"
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ikki-dost-kassir-windows
-          path: |
-            legacy/cashier-desktop/src-tauri/target/release/bundle/msi/
-            legacy/cashier-desktop/src-tauri/target/release/ikki-dost-cashier.exe
+          name: ikki-dost-kassa-exe
+          path: out/*.exe
           if-no-files-found: error

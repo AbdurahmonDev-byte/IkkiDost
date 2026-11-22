@@ -406,3 +406,7 @@ Telegram Mini App served by the API at `/` (same origin as `/api`), Vite + React
 - Verified: Rust unit tests for the ESC/POS job; Windows code compiled with
   `cargo check --target x86_64-pc-windows-gnu`; bitmap rendering checked as an image.
   Not yet printed on the real Xprinter.
+- Distribution: only a portable Windows `.exe` is built now
+  (`tauri build --no-bundle`, artifact `ikki-dost-kassa-exe` →
+  `IkkiDost-Kassa-<version>.exe`); the MSI and the Linux AppImage workflow were
+  removed. The exe needs the WebView2 runtime (preinstalled on Windows 10/11).
