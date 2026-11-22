@@ -263,7 +263,7 @@ export function OrderScreen({
             try {
               const fresh = isRoom ? await api.roomSession(sessionId!) : await api.order(saboyId!);
               const pays = isRoom ? (fresh as { payments: PaymentDto[] }).payments : (await api.payments({ from: startOfDayIso((fresh as OrderDto).createdAt) })).filter((p) => p.orderId === saboyId);
-              printReceipt({
+              await printReceipt({
                 ...receiptData(),
                 orders: isRoom ? (fresh as { orders: OrderDto[] }).orders : [fresh as OrderDto],
                 total: fresh.totalAmount,
@@ -271,8 +271,8 @@ export function OrderScreen({
                 outstanding: fresh.outstandingAmount,
                 payments: pays,
               });
-            } catch {
-              notify('Chekni chop etib bo‘lmadi');
+            } catch (e) {
+              notify(`Chek chiqmadi: ${errorText(e, 'printer xatosi')}`);
             }
           }
           if (fullyPaid && isRoom && sessionId) {

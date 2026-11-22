@@ -1,3 +1,5 @@
+import { printSilently } from '../lib/printer';
+import { useState } from 'react';
 import { Printer } from 'lucide-react';
 import type { OrderDto, PaymentDto } from '@ikki-dost/shared-types';
 import { formatDateTime, formatQty, formatTime, formatUzs } from '../lib/format';
@@ -16,6 +18,8 @@ export interface ReceiptData {
 
 /** 80 mm customer check; printing hides everything except `#receipt-print`. */
 export function ReceiptModal({ data, onClose }: { data: ReceiptData; onClose: () => void }) {
+  const [printing, setPrinting] = useState(false);
+  const [printError, setPrintError] = useState<string | null>(null);
   const items = data.orders.flatMap((o) =>
     o.items
       .filter((i) => i.status !== 'CANCELLED')
@@ -76,11 +80,25 @@ export function ReceiptModal({ data, onClose }: { data: ReceiptData; onClose: ()
           <p className="text-center text-[9px] text-ink-soft">Ikki Do‘st choyxonasi</p>
         </div>
 
+        {printError && <p className="no-print mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{printError}</p>}
         <div className="no-print mt-4 flex justify-end gap-2">
           <Button variant="secondary" onClick={onClose}>
             Yopish
           </Button>
-          <Button onClick={() => printReceipt(data)}>
+          <Button
+            loading={printing}
+            onClick={async () => {
+              setPrinting(true);
+              setPrintError(null);
+              try {
+                await printReceipt(data);
+              } catch (e) {
+                setPrintError(e instanceof Error ? e.message : String(e));
+              } finally {
+                setPrinting(false);
+              }
+            }}
+          >
             <Printer size={15} /> Chop etish
           </Button>
         </div>
@@ -142,7 +160,14 @@ ${payments.length ? `<div class="hr"></div>${payments.map((p) => row(`${p.method
  * Prints only the receipt from a hidden iframe. Printing the whole app page
  * made the WebView2 print preview hang on Windows.
  */
-export function printReceipt(data: ReceiptData): void {
+export async function printReceipt(data: ReceiptData): Promise<void> {
+  // Desktop app: straight to the receipt printer, no dialog.
+  if (await printSilently(data)) return;
+  printReceiptDialog(data);
+}
+
+/** Browser fallback: system print dialog with the 80 mm page. */
+function printReceiptDialog(data: ReceiptData): void {
   const frame = document.createElement('iframe');
   frame.setAttribute('aria-hidden', 'true');
   frame.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden';

@@ -393,3 +393,16 @@ Telegram Mini App served by the API at `/` (same origin as `/api`), Vite + React
 - API tests 56/56; typecheck and builds pass; desktop flow verified in headless
   Chrome (3 guests → 1.82 kg + 2 pcs → 300 000 cash → change 66 100 → room closed;
   saboy created and paid without details); bot saboy flow checked with fake updates.
+
+## Silent receipt printing (2026-11-22)
+- Desktop cashier prints receipts straight to the receipt printer without the
+  Windows print dialog: the receipt is drawn on a canvas, converted to a 1-bit
+  bitmap and sent to Rust (`print_receipt_raster`), which wraps it in ESC/POS
+  `GS v 0` raster bands + cut and writes it as a RAW spooler job (Windows
+  `winspool`; CUPS `lp -o raw` on Linux). Any alphabet prints (Cyrillic Қ Ғ Ў Ҳ).
+- Header «🖨» opens printer settings: printer list (`list_printers`), 80/58 mm,
+  «Sinov cheki». Without a saved choice an Xprinter/POS-named printer (or the
+  Windows default) is picked automatically. Browser builds fall back to the dialog.
+- Verified: Rust unit tests for the ESC/POS job; Windows code compiled with
+  `cargo check --target x86_64-pc-windows-gnu`; bitmap rendering checked as an image.
+  Not yet printed on the real Xprinter.

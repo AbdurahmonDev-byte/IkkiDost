@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Banknote, BarChart3, DoorOpen, Loader2, Phone, RefreshCw, Wifi, WifiOff } from 'lucide-react';
+import { Banknote, BarChart3, DoorOpen, Loader2, Phone, Printer, RefreshCw, Wifi, WifiOff } from 'lucide-react';
+import { PrinterSettingsModal } from './pos/PrinterSettings';
 import type { PaymentDto } from '@ikki-dost/shared-types';
 import { KIOSK_USERNAME, TOKENS_REFRESHED, api, kioskLogin, useAuth } from './lib/api';
 import { useRealtime } from './lib/realtime';
@@ -78,6 +79,7 @@ function Pos() {
   const qc = useQueryClient();
   const [screen, setScreen] = useState<Screen>({ kind: 'hall' });
   const [notice, setNotice] = useState<string | null>(null);
+  const [printerOpen, setPrinterOpen] = useState(false);
   const [now, setNow] = useState(() => new Date());
 
   const notify = useCallback((m: string) => {
@@ -140,6 +142,9 @@ function Pos() {
 
         <div className="ml-auto flex items-center gap-4">
           <span className="hidden text-sm font-semibold xl:inline" title="Bugun kassaga tushgan pul">{formatUzs(totals.cash + totals.card + totals.other)}</span>
+          <button onClick={() => setPrinterOpen(true)} className="flex h-10 w-10 items-center justify-center rounded-lg text-ink-soft hover:bg-paper" title="Chek printeri">
+            <Printer size={19} />
+          </button>
           <button onClick={refetchAll} className="flex h-10 w-10 items-center justify-center rounded-lg text-ink-soft hover:bg-paper" title="Yangilash">
             <RefreshCw size={19} />
           </button>
@@ -190,6 +195,7 @@ function Pos() {
           />
         )}
       </main>
+      <PrinterSettingsModal open={printerOpen} onClose={() => setPrinterOpen(false)} notify={notify} />
     </div>
   );
 }
