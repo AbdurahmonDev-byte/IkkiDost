@@ -14,7 +14,7 @@ export function homeKeyboard(role: BotRole, miniAppUrl: string): InlineKeyboard 
   }
 
   if (role === 'OWNER' || role === 'WAITER' || role === 'CASHIER') {
-    kb.text('🏠 Zal', 'm:rooms').text('📞 Saboy', 'm:delivery').row();
+    kb.text('🏠 Xonalar', 'm:rooms').text('📞 Saboy', 'm:delivery').row();
     kb.text('➕ Yangi saboy', 'm:newdel').row();
   }
   if (role === 'OWNER' || role === 'CASHIER') {

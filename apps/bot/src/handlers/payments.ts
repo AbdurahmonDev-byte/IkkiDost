@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { InlineKeyboard, type Context } from 'grammy';
 import { api } from '../api.js';
-import { money } from '../format.js';
+import { money, uzs } from '../format.js';
 import { backHome } from '../keyboards.js';
 import { flowKey, type Deps } from '../state.js';
 import type { PaymentMethodDto } from '../types.js';
@@ -71,15 +71,17 @@ export function registerPayments(deps: Deps, bot: import('../state.js').AppBot) 
         return;
       }
       const kb = new InlineKeyboard();
-      for (const m of methods.filter((x) => x.isActive)) {
+      // Cash first: it is what most guests pay with.
+      const ordered = methods.filter((x) => x.isActive).sort((a, b) => Number(b.kind === 'CASH') - Number(a.kind === 'CASH'));
+      for (const m of ordered) {
         const mref = refs.ref(ctx.chat.id, m.id);
-        kb.text(`${methodIcon(m)} ${m.name} — to‘liq`, `p:full:${ctx.match[1]}:${ctx.match[2]}:${mref}`);
-        kb.text(m.kind === 'CASH' ? '✍️ Mijoz berdi / qaytim' : '✍️ Qisman', `p:part:${ctx.match[1]}:${ctx.match[2]}:${mref}`).row();
+        kb.text(`${methodIcon(m)} ${m.name}: ${uzs(info.outstanding)}`, `p:full:${ctx.match[1]}:${ctx.match[2]}:${mref}`);
+        kb.text(`✍️ ${m.name}: boshqa summa`, `p:part:${ctx.match[1]}:${ctx.match[2]}:${mref}`).row();
       }
       kb.text('⬅️ Bosh menyu', 'm:home');
       await ctx.editMessageText(
         `💰 ${info.label}\n\nJami: ${money(info.total)}\nTo‘langan: ${money(info.paid)}\n` +
-          `Qoldiq: ${money(info.outstanding)}\n\nTo‘lov usulini tanlang:`,
+          `Qarz: ${money(info.outstanding)}\n\nMijoz qanday to‘ladi? Hammasini to‘lasa — summali tugmani bosing.\nKam yoki ko‘p bersa — «boshqa summa».`,
         { reply_markup: kb },
       );
     } catch (error) {
@@ -158,7 +160,7 @@ function afterPaymentKeyboard(deps: Deps, chatId: number, target: Target, target
   if (target === 'session') {
     if (left <= 0) kb.text('🔒 Xonani yopish', `r:closeyes:${deps.refs.ref(chatId, targetId)}`);
     else kb.text('💰 Yana to‘lov', `p:open:s:${deps.refs.ref(chatId, targetId)}`);
-    kb.text('⬅️ Zal', 'm:rooms');
+    kb.text('⬅️ Xonalar', 'm:rooms');
   } else {
     kb.text('⬅️ Saboy', 'm:delivery');
   }

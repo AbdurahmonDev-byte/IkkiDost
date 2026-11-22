@@ -4,7 +4,7 @@ import type { OrderDto, PaymentDto, RoomDto } from '@ikki-dost/shared-types';
 import { deliveryStatusLabel, elapsed, formatTime, formatUzs, isToday } from '../lib/format';
 import { Badge, Button, Field, Modal, Spinner, Textarea, cn } from '../ui';
 
-// ===================== Zal =====================
+// ===================== Xonalar =====================
 
 export function HallScreen({ rooms, loading, onOpen }: { rooms: RoomDto[]; loading: boolean; onOpen: (roomId: string) => void }) {
   const active = rooms.filter((r) => r.isActive);
@@ -41,7 +41,7 @@ export function HallScreen({ rooms, loading, onOpen }: { rooms: RoomDto[]; loadi
                   </div>
                 </div>
               ) : (
-                <p className="flex items-center gap-1.5 text-sm font-semibold text-primary"><Plus size={16} /> Buyurtma ochish</p>
+                <p className="flex items-center gap-1.5 text-sm font-semibold text-primary"><Plus size={16} /> Bosing — buyurtma ochish</p>
               )}
             </button>
           );

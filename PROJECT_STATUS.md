@@ -351,3 +351,9 @@ Telegram Mini App served by the API at `/` (same origin as `/api`), Vite + React
   «🔒 Xonani yopish» closes the room in one tap.
 - Verified with fake Telegram updates against the local API: append «Чой» with a note
   to Xona 1, cash 500 000 for 228 900 → change 271 100, room closed, /bugun totals.
+
+## Simpler wording (2026-11-22)
+- «Zal» renamed back to «Xonalar» in the bot and the desktop till; «Bugun» → «Bugungi kassa».
+- Bot texts simplified for staff: colour legend spelled out, «Taom qo‘shish»,
+  «Tanlab bo‘ldim», «Oshpazga izoh»; payment buttons show the amount
+  («💵 Naqd: 7 000») with «boshqa summa» for less/more money; cash listed first.

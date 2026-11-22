@@ -320,7 +320,7 @@ export function OrderScreen({
         <div className="flex items-center gap-2 border-b border-line bg-white px-3 py-2.5">
           <div className="relative w-64">
             <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-faint" />
-            <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Mahsulot qidirish…" className="h-11 pl-9" />
+            <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Taom qidirish…" className="h-11 pl-9" />
           </div>
           <div className="flex min-w-0 flex-1 gap-2 overflow-x-auto pb-0.5">
             <CategoryChip active={!categoryId && !search} onClick={() => { setCategoryId(null); setSearch(''); }}>
@@ -390,7 +390,7 @@ export function OrderScreen({
               {isRoom
                 ? session
                   ? `Ochilgan ${formatTime(session.openedAt)} · ${billOrders.length} buyurtma`
-                  : 'Bo‘sh xona — yangi hisob'
+                  : 'Bo‘sh xona'
                 : saboy?.delivery
                   ? `${saboy.delivery.customerName} · ${saboy.delivery.customerPhone}`
                   : 'Telefon orqali buyurtma'}
@@ -439,7 +439,7 @@ export function OrderScreen({
 
           {draftLines.length > 0 && (
             <div className="bg-primary-50/60 px-3 py-2">
-              <p className="mb-1 text-[11px] font-bold uppercase tracking-wide text-primary">Yangi — yuborilmagan</p>
+              <p className="mb-1 text-[11px] font-bold uppercase tracking-wide text-primary">Yangi taomlar (hali yuborilmagan)</p>
               {draftLines.map((l) => (
                 <div key={l.productId} className="flex items-center gap-1.5 py-1">
                   <span className="min-w-0 flex-1 truncate text-sm font-semibold">{l.product.name}</span>
@@ -460,7 +460,7 @@ export function OrderScreen({
           )}
 
           {!loadingBill && !hasBill && draftLines.length === 0 && (
-            <div className="px-6 py-14 text-center text-sm text-ink-soft">Chapdagi menyudan mahsulot tanlang</div>
+            <div className="px-6 py-14 text-center text-sm text-ink-soft">Chapdan taomni bosing</div>
           )}
         </div>
 
@@ -479,7 +479,7 @@ export function OrderScreen({
           {draftLines.length > 0 && (
             <SumRow label={draftFee > 0 ? `Yangi (xizmat ${formatUzs(draftFee)})` : 'Yangi'} value={formatUzs(draftTotal)} />
           )}
-          <SumRow label="Jami hisob" value={formatUzs(total)} />
+          <SumRow label="Hisob" value={formatUzs(total)} />
           <SumRow label="To‘langan" value={formatUzs(paid)} tone="green" />
           <div className="mt-1 flex items-center justify-between">
             <span className="text-base font-semibold">Qarz</span>

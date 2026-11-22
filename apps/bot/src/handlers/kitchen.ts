@@ -12,7 +12,7 @@ function kitchenText(orders: OrderDto[]): string {
   }
   const parts = ['👨‍🍳 Oshxona — faol buyurtmalar\n'];
   for (const order of orders.slice(0, 8)) {
-    const where = order.type === 'DELIVERY' ? `🛵 ${order.delivery?.customerName ?? ''}` : `🪑 ${order.roomName ?? 'Zal'}`;
+    const where = order.type === 'DELIVERY' ? `🛵 ${order.delivery?.customerName ?? ''}` : `🪑 ${order.roomName ?? 'Xona'}`;
     parts.push(`#${order.orderNumber} · ${where} · ${time(order.createdAt)}`);
     if (order.note) parts.push(`✍️ ${order.note}`);
   }

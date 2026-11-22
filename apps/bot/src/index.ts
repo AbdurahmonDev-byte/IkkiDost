@@ -45,8 +45,8 @@ async function main() {
     await bot.api.setMyCommands([
       { command: 'start', description: 'Telegram ID orqali kirish' },
       { command: 'menu', description: 'Bosh menyu' },
-      { command: 'rooms', description: 'Zal — xonalar va hisoblar' },
-      { command: 'delivery', description: 'Saboy — telefon buyurtmalari' },
+      { command: 'rooms', description: 'Xonalar va hisoblar' },
+      { command: 'delivery', description: 'Saboy (telefon orqali buyurtmalar)' },
       { command: 'newdel', description: 'Yangi saboy' },
       { command: 'bugun', description: 'Bugungi kassa (ega, kassir)' },
       { command: 'kitchen', description: 'Oshxona navbati' },

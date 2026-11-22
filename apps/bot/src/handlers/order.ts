@@ -81,7 +81,7 @@ async function renderPeople(ctx: Context, flow: OrderFlow, edit: boolean) {
     .text('Davom ▶️', 'o:p:d')
     .row()
     .text('❌ Bekor qilish', 'o:cancel');
-  const text = `${modeTitle(flow)}\n\nNecha kishisiz? (xizmat haqi har bir kishi uchun hisoblanadi)`;
+  const text = `${modeTitle(flow)}\n\nNecha kishi? ➖ / ➕ bilan tanlang, keyin «Davom» ni bosing.`;
   if (edit) await ctx.editMessageText(text, { reply_markup: kb });
   else await ctx.reply(text, { reply_markup: kb });
 }
@@ -96,7 +96,7 @@ async function renderMenu(deps: Deps, ctx: Context, flow: OrderFlow, edit: boole
   if (total.count > 0) text += `\n🧺 Savat:\n${cartLinesText(flow, data.products)}\n\nJami: ${money(total.total)}\n`;
 
   if (!flow.categoryId) {
-    text += '\nKategoriya tanlang:';
+    text += '\nBo‘limni tanlang:';
     data.categories.forEach((category, i) => {
       kb.text(category.name, `o:cat:${deps.refs.ref(chatId, category.id)}`);
       if (i % 2 === 1) kb.row();
@@ -114,10 +114,10 @@ async function renderMenu(deps: Deps, ctx: Context, flow: OrderFlow, edit: boole
       if (i % 2 === 1) kb.row();
     });
     if (products.length % 2 === 1) kb.row();
-    kb.text('⬅️ Kategoriyalar', 'o:back').row();
+    kb.text('⬅️ Orqaga', 'o:back').row();
   }
 
-  if (total.count > 0) kb.text(`🧾 Savat va yuborish · ${money(total.total)}`, 'o:done').row();
+  if (total.count > 0) kb.text(`✅ Tanlab bo‘ldim · ${money(total.total)}`, 'o:done').row();
   kb.text('❌ Bekor qilish', 'o:cancel');
 
   if (edit) await ctx.editMessageText(text, { reply_markup: kb });
@@ -162,7 +162,7 @@ async function renderConfirm(deps: Deps, ctx: Context, flow: OrderFlow, edit: bo
     const p = data.products.find((x) => x.id === productId);
     if (p) kb.text(`✖ ${p.name}`, `o:rm:${deps.refs.ref(chatId, p.id)}`).row();
   }
-  kb.text('➕ Yana qo‘shish', 'o:back').text(flow.note ? '✍️ Izohni o‘zgartirish' : '✍️ Izoh', 'o:note').row();
+  kb.text('➕ Yana taom', 'o:back').text(flow.note ? '✍️ Izohni o‘zgartirish' : '✍️ Oshpazga izoh', 'o:note').row();
   kb.text('📤 Oshxonaga yuborish', 'o:ok').row().text('❌ Bekor qilish', 'o:cancel');
 
   let text = `${modeTitle(flow)}\n\n${cartLinesText(flow, data.products)}\n`;
@@ -172,7 +172,7 @@ async function renderConfirm(deps: Deps, ctx: Context, flow: OrderFlow, edit: bo
   if (flow.roomName) text += `\nXona: ${flow.roomName}`;
   if (flow.customer) text += `\nMijoz: ${flow.customer.name} · ${flow.customer.phone}\nManzil: ${flow.customer.address}`;
   if (flow.note) text += `\nIzoh: ${flow.note}`;
-  if (flow.appendOrderId) text += '\n(mavjud hisobga qo‘shiladi)';
+  if (flow.appendOrderId) text += '\n(shu xonaning hisobiga qo‘shiladi)';
 
   if (edit) await ctx.editMessageText(text, { reply_markup: kb });
   else await ctx.reply(text, { reply_markup: kb });

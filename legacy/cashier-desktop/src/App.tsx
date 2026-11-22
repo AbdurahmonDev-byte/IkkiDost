@@ -136,9 +136,9 @@ function Pos() {
             <p className="text-[11px] text-white/70">Kassa</p>
           </div>
         </div>
-        <NavButton active={section === 'hall'} onClick={() => setScreen({ kind: 'hall' })} icon={<DoorOpen size={18} />} label="Zal" badge={busyRooms} />
+        <NavButton active={section === 'hall'} onClick={() => setScreen({ kind: 'hall' })} icon={<DoorOpen size={18} />} label="Xonalar" badge={busyRooms} />
         <NavButton active={section === 'saboy'} onClick={() => setScreen({ kind: 'saboy' })} icon={<Phone size={18} />} label="Saboy" badge={openSaboy} />
-        <NavButton active={section === 'today'} onClick={() => setScreen({ kind: 'today' })} icon={<BarChart3 size={18} />} label="Bugun" />
+        <NavButton active={section === 'today'} onClick={() => setScreen({ kind: 'today' })} icon={<BarChart3 size={18} />} label="Bugungi kassa" />
 
         <div className="ml-auto hidden items-center gap-4 rounded-xl bg-white/10 px-4 py-2 text-sm lg:flex" title="Bugun qabul qilingan to‘lovlar">
           <span className="flex items-center gap-1.5"><Banknote size={15} /> {formatUzs(totals.cash)}</span>

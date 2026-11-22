@@ -59,7 +59,7 @@ export function registerRooms(deps: Deps, bot: import('../state.js').AppBot) {
       kb.text('🔄 Yangilash', 'm:rooms').text('⬅️ Bosh menyu', 'm:home');
       const busy = active.filter((r) => r.activeSession).length;
       const text = active.length
-        ? `🏠 Zal — bo‘sh: ${active.length - busy}, band: ${busy}\n\n🟢 bo‘sh · 🟡 qarz bor · ✅ to‘langan\nXonani tanlang:`
+        ? `🏠 Xonalar\n\n🟢 — bo‘sh\n🟡 — odam bor, pul to‘lanmagan\n✅ — pul to‘langan\n\nXonani bosing:`
         : '🏠 Xonalar topilmadi. Ega Mini App’da qo‘shishi mumkin.';
       if (edit) await ctx.editMessageText(text, { reply_markup: kb });
       else await ctx.reply(text, { reply_markup: kb });
@@ -80,7 +80,7 @@ export function registerRooms(deps: Deps, bot: import('../state.js').AppBot) {
     let text: string;
 
     if (!room.activeSession) {
-      text = `🟢 ${room.name} — bo‘sh\n\nYangi hisob ochish uchun mahsulot qo‘shing.`;
+      text = `🟢 ${room.name} — bo‘sh\n\nMehmon kelgan bo‘lsa «Buyurtma ochish» ni bosing.`;
       if (canTakeOrders(session.role)) kb.text('➕ Buyurtma ochish', `o:start:${roomKey}`).row();
     } else {
       const detail = await api.roomSession(config, store, chatId, room.activeSession.id);
@@ -91,14 +91,14 @@ export function registerRooms(deps: Deps, bot: import('../state.js').AppBot) {
       text =
         `🪑 ${room.name} · ochilgan ${time(detail.openedAt)}\n` +
         '━━━━━━━━━━━━━━\n' +
-        (items.length ? items.join('\n') : '(mahsulot yo‘q)') +
+        (items.length ? items.join('\n') : '(hali taom yo‘q)') +
         (fee > 0 ? `\n• Xizmat haqi — ${uzs(fee)}` : '') +
         '\n━━━━━━━━━━━━━━\n' +
         `Jami: ${money(detail.totalAmount)}\nTo‘langan: ${money(detail.paidAmount)}\n` +
         `${detail.outstandingAmount > 0 ? '🔴' : '🟢'} Qarz: ${money(detail.outstandingAmount)}`;
 
       const sessionKey = refs.ref(chatId, detail.id);
-      if (canTakeOrders(session.role)) kb.text('➕ Mahsulot qo‘shish', `o:start:${roomKey}`);
+      if (canTakeOrders(session.role)) kb.text('➕ Taom qo‘shish', `o:start:${roomKey}`);
       if (detail.outstandingAmount > 0 && canTakePayments(session.role)) {
         kb.text('💰 To‘lov', `p:open:s:${sessionKey}`);
       }
@@ -117,7 +117,7 @@ export function registerRooms(deps: Deps, bot: import('../state.js').AppBot) {
       if (detail.outstandingAmount > 0 && !canTakePayments(session.role)) text += '\n\n⚠️ To‘lov kassada qabul qilinadi.';
     }
 
-    kb.text('🔄 Yangilash', `r:open:${roomKey}`).text('⬅️ Zal', 'm:rooms');
+    kb.text('🔄 Yangilash', `r:open:${roomKey}`).text('⬅️ Xonalar', 'm:rooms');
     if (edit) await ctx.editMessageText(text, { reply_markup: kb });
     else await ctx.reply(text, { reply_markup: kb });
   }
