@@ -1,9 +1,0 @@
-[Desktop Entry]
-Categories=
-Comment=Ikki Do'st cashier desktop
-Exec=ikki-dost-cashier
-StartupWMClass=ikki-dost-cashier
-Icon=ikki-dost-cashier
-Name=Ikki Do'st Kassir
-Terminal=false
-Type=Application

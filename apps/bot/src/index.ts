@@ -1,18 +1,7 @@
-import { Bot } from 'grammy';
+import { createBot } from './bot.js';
 import { loadConfig } from './config.js';
-import { handleCloseReason, registerRooms } from './handlers/rooms.js';
-import { registerAuth, replyStaffOnly } from './handlers/auth.js';
-import { registerDashboard } from './handlers/dashboard.js';
-import {
-  handleDeliveryAddressLocation,
-  handleDeliveryCashText,
-  handleDeliveryText,
-  registerDelivery,
-} from './handlers/delivery.js';
-import { registerKitchen } from './handlers/kitchen.js';
-import { registerOrder } from './handlers/order.js';
 import { startNotificationPoller } from './poller.js';
-import { flowKey, type ChatContext, type Deps, type Flow } from './state.js';
+import type { Deps, Flow } from './state.js';
 import { Refs, Store } from './store.js';
 
 async function main() {
@@ -34,67 +23,7 @@ async function main() {
   const flows = new Map<string, Flow>();
   const deps: Deps = { config, store, refs, flows };
 
-  const bot = new Bot<ChatContext>(config.token);
-
-  bot.use(async (ctx, next) => {
-    if (!ctx.chat) return;
-    await next();
-  });
-
-  // Global error handler
-  bot.catch((err) => {
-    console.error('Botda kutilmagan xatolik:', err);
-  });
-
-  // Register all staff role handlers
-  registerAuth(deps, bot);
-  registerRooms(deps, bot);
-  registerKitchen(deps, bot);
-  registerDelivery(deps, bot);
-  registerOrder(deps, bot);
-  registerDashboard(deps, bot);
-
-  // Telegram location messages for the staff delivery wizard.
-  bot.on('message:location', async (ctx) => {
-    if (!ctx.chat) return;
-    if (!store.get(ctx.chat.id)) return replyStaffOnly(ctx);
-    const flow = flows.get(flowKey(ctx.chat.id));
-    if (flow?.kind === 'delivery-address') {
-      return handleDeliveryAddressLocation(deps, ctx, flow);
-    }
-  });
-
-  // Router for plain text messages based on active flows
-  bot.on('message:text', async (ctx) => {
-    if (!ctx.chat) return;
-    const text = ctx.message.text.trim();
-    const session = store.get(ctx.chat.id);
-    if (text.startsWith('/')) {
-      // Known commands are handled by bot.command; reject removed/unknown ones.
-      if (!session) return replyStaffOnly(ctx);
-      return;
-    }
-    if (!session) return replyStaffOnly(ctx);
-
-    const flow = flows.get(flowKey(ctx.chat.id));
-    if (flow) {
-      switch (flow.kind) {
-        case 'delivery-cash':
-          return handleDeliveryCashText(deps, ctx, flow, text);
-        case 'close-reason':
-          return handleCloseReason(deps, ctx, flow.sessionId, text);
-        case 'delivery-name':
-        case 'delivery-phone':
-        case 'delivery-address':
-          return handleDeliveryText(deps, ctx, flow, text);
-        case 'order':
-          await ctx.reply('Iltimos, ekrandagi tugmalardan foydalaning yoki /menu bosing.');
-          return;
-      }
-    }
-
-    await ctx.reply('Bosh menyuni ko‘rish uchun /menu buyrug‘ini bosing.');
-  });
+  const bot = createBot(deps);
 
   // Start background notification polling
   const stopPoller = startNotificationPoller(deps, bot);
@@ -117,10 +46,11 @@ async function main() {
       { command: 'start', description: 'Telegram ID orqali kirish' },
       { command: 'menu', description: 'Bosh menyu' },
       { command: 'rooms', description: 'Xonalar va hisoblar' },
+      { command: 'delivery', description: 'Saboy (telefon orqali buyurtmalar)' },
+      { command: 'newdel', description: 'Yangi saboy' },
+      { command: 'bugun', description: 'Bugungi kassa (ega, kassir)' },
       { command: 'kitchen', description: 'Oshxona navbati' },
-      { command: 'delivery', description: 'Yetkazish buyurtmalari' },
-      { command: 'newdel', description: 'Yangi yetkazish yaratish' },
-      { command: 'dash', description: 'Bugungi hisobot (ega)' },
+      { command: 'dash', description: 'Hisobot (ega, kassir)' },
       { command: 'me', description: 'Profil va rol' },
       { command: 'logout', description: 'Hisobni uzish' },
       { command: 'help', description: 'Yordam' },

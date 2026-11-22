@@ -2,10 +2,11 @@ name: Cashier Windows build
 
 on:
   push:
-    branches: [main]
+    branches: [main, 'claude/**']
     paths:
       - 'legacy/cashier-desktop/**'
       - 'packages/**'
+      - 'package-lock.json'
       - '.github/workflows/cashier-windows.yml'
   workflow_dispatch:
 
@@ -36,6 +37,8 @@ jobs:
         uses: tauri-apps/tauri-action@v0
         env:
           VITE_API_URL: https://ikkidost.abitcore.uz/api
+          # Optional shared key; must equal CASHIER_KIOSK_KEY on the server.
+          VITE_KIOSK_KEY: ${{ secrets.CASHIER_KIOSK_KEY }}
         with:
           projectPath: legacy/cashier-desktop
           tauriScript: npx tauri

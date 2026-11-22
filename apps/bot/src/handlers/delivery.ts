@@ -5,8 +5,11 @@ import { flowKey, type Deps } from '../state.js';
 import { expired, locationToAddress } from './auth.js';
 import { handleError, stale } from './rooms.js';
 import { startDeliveryWizard } from './order.js';
-import { homeKeyboard, locationRequestKeyboard } from '../keyboards.js';
+import { MANUAL_ADDRESS, SKIP_ADDRESS, homeKeyboard, locationRequestKeyboard } from '../keyboards.js';
+
+const NO_ADDRESS = 'Manzil ko‘rsatilmagan (telefon orqali aniqlanadi)';
 import type { DeliveryDto } from '../types.js';
+import { canTakePayments, payButton } from './payments.js';
 
 const allowed = (role: string) => role === 'OWNER' || role === 'WAITER' || role === 'CASHIER' || role === 'DELIVERY';
 const CLAIMABLE: DeliveryDto['status'][] = ['CONFIRMED', 'PREPARING', 'READY'];
@@ -30,7 +33,7 @@ export function registerDelivery(deps: Deps, bot: import('../state.js').AppBot) 
         (d) => d.status === 'DELIVERED' && (d.cashCollectedAmount ?? 0) > 0 && !d.cashHandedOverAt,
       );
       const kb = new InlineKeyboard();
-      const lines = [session.role === 'DELIVERY' ? '🛵 Mening yetkazishlarim\n' : '🛵 Yetkazib berish\n'];
+      const lines = [session.role === 'DELIVERY' ? '🛵 Mening yetkazishlarim\n' : '📞 Saboy — telefon buyurtmalari\n'];
       if (cashPending.length > 0) {
         lines.push(`💵 Kassir tasdiqlashi kerak: ${cashPending.length} ta yetkazish`);
         for (const d of cashPending.slice(0, 5)) {
@@ -51,7 +54,7 @@ export function registerDelivery(deps: Deps, bot: import('../state.js').AppBot) 
         const cash = (d.cashCollectedAmount ?? 0) > 0 && !d.cashHandedOverAt ? '💵 ' : '';
         kb.text(`${cash}✔ ${deliveryStatusLabel[d.status]} · #${d.orderNumber} ${d.customerName}`, `d:open:${refs.ref(ctx.chat!.id, d.id)}`).row();
       }
-      if (session.role === 'OWNER' || session.role === 'WAITER') kb.text('➕ Yangi yetkazish', 'm:newdel').row();
+      if (session.role !== 'DELIVERY') kb.text('➕ Yangi saboy', 'm:newdel').row();
       kb.text('🔄 Yangilash', 'm:delivery').row().text('⬅️ Bosh menyu', 'm:home');
       lines.push(`${active.length} ta faol. Tanlang:`);
       const text = lines.join('\n');
@@ -72,7 +75,7 @@ export function registerDelivery(deps: Deps, bot: import('../state.js').AppBot) 
     const session = store.get(ctx.chat!.id);
     if (!session) return expired(deps, ctx);
     const lines = [
-      `🛵 Yetkazish #${d.orderNumber}`,
+      `📞 Saboy #${d.orderNumber}`,
       '',
       `👤 ${d.customerName}`,
       `📞 ${d.customerPhone}`,
@@ -113,6 +116,8 @@ export function registerDelivery(deps: Deps, bot: import('../state.js').AppBot) 
     const cashPending = d.status === 'DELIVERED' && (d.cashCollectedAmount ?? 0) > 0 && !d.cashHandedOverAt;
     if (cashPending && (session.role === 'CASHIER' || session.role === 'OWNER')) {
       kb.text(`💵 Pul topshirildi — ${money(d.cashCollectedAmount ?? 0)}`, `d:handover:${key}`).row();
+    } else if (d.outstandingAmount > 0 && d.status !== 'CANCELLED' && canTakePayments(session.role)) {
+      payButton(kb, deps, ctx.chat!.id, 'order', d.orderId, d.outstandingAmount);
     }
     if (isDeliveryActive(d.status) && session.role !== 'DELIVERY') {
       kb.text('🚫 Bekor qilish', `d:cancel:${key}`).row();
@@ -291,12 +296,12 @@ export function registerDelivery(deps: Deps, bot: import('../state.js').AppBot) 
     if (!ctx.chat) return;
     const session = store.get(ctx.chat.id);
     if (!session) return expired(deps, ctx);
-    if (session.role !== 'OWNER' && session.role !== 'WAITER') {
+    if (session.role !== 'OWNER' && session.role !== 'WAITER' && session.role !== 'CASHIER') {
       if (edit) return ctx.answerCallbackQuery({ text: 'Ruxsat yo‘q', show_alert: true });
-      return ctx.reply('🛵 Yangi yetkazishni faqat ofitsiant va ega yaratadi.');
+      return ctx.reply('🛵 Yangi yetkazishni faqat ofitsiant, kassir va ega yaratadi.');
     }
     flows.set(flowKey(ctx.chat.id), { kind: 'delivery-name' });
-    const text = '🛵 Yangi yetkazish\n\n1/3 — Mijoz ismini yozing:';
+    const text = '📞 Yangi saboy\n\n1/3 — Mijoz ismini yozing:';
     if (edit) {
       await ctx.answerCallbackQuery();
       await ctx.editMessageText(text);
@@ -342,10 +347,20 @@ export async function handleDeliveryText(
     return;
   }
   if (flow.kind === 'delivery-address') {
+    if (value === MANUAL_ADDRESS) {
+      await ctx.reply('✍️ Manzilni yozing (ko‘cha, uy, mo‘ljal):', { reply_markup: { remove_keyboard: true } });
+      return;
+    }
+    if (value === SKIP_ADDRESS) {
+      await ctx.reply('Manzil keyinroq telefon orqali aniqlanadi.', { reply_markup: { remove_keyboard: true } });
+      await startDeliveryWizard(deps, ctx, { name: flow.name!, phone: flow.phone!, address: NO_ADDRESS });
+      return;
+    }
     if (value.length < 3) {
       await ctx.reply('❌ Manzil juda qisqa. Qayta yozing:');
       return;
     }
+    await ctx.reply(`📍 Manzil: ${value}`, { reply_markup: { remove_keyboard: true } });
     await startDeliveryWizard(deps, ctx, { name: flow.name!, phone: flow.phone!, address: value });
   }
 }
@@ -358,6 +373,7 @@ export async function handleDeliveryAddressLocation(
 ): Promise<void> {
   const location = ctx.message?.location;
   if (!location || !flow.name || !flow.phone) return;
+  await ctx.reply('📍 Lokatsiya qabul qilindi.', { reply_markup: { remove_keyboard: true } });
   await startDeliveryWizard(deps, ctx, {
     name: flow.name,
     phone: flow.phone,

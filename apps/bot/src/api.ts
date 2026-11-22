@@ -9,6 +9,8 @@ import type {
   DeliveryStatus,
   NotificationDto,
   OrderDto,
+  PaymentDto,
+  PaymentMethodDto,
   ProductDto,
   RoomDto,
   RoomSessionDetailDto,
@@ -173,6 +175,9 @@ export const api = {
     },
   ) => post<OrderDto>(c, s, id, '/orders', { type: 'DELIVERY', ...input }),
 
+  addOrderItems: (c: BotConfig, s: Store, id: number | string, orderId: string, items: OrderItemInput[]) =>
+    post<OrderDto>(c, s, id, `/orders/${orderId}/items`, { items }),
+
   setItemStatus: (c: BotConfig, s: Store, id: number | string, orderId: string, itemId: string, status: 'PREPARING' | 'READY' | 'SERVED') =>
     post<OrderDto>(c, s, id, `/orders/${orderId}/items/${itemId}/status`, { status }),
 
@@ -199,6 +204,20 @@ export const api = {
   handoverDeliveryCash: (c: BotConfig, s: Store, id: number | string, deliveryId: string) =>
     post<DeliveryDto>(c, s, id, `/deliveries/${deliveryId}/handover`, {}),
   order: (c: BotConfig, s: Store, id: number | string, orderId: string) => get<OrderDto>(c, s, id, `/orders/${orderId}`),
+
+  paymentMethods: (c: BotConfig, s: Store, id: number | string) =>
+    get<PaymentMethodDto[]>(c, s, id, '/payments/methods'),
+  pay: (
+    c: BotConfig,
+    s: Store,
+    id: number | string,
+    target: 'session' | 'order',
+    targetId: string,
+    input: { amount: number; methodId: string; idempotencyKey: string; note?: string | null },
+  ) => post<PaymentDto>(c, s, id, `/payments/${target}/${targetId}`, input),
+
+  payments: (c: BotConfig, s: Store, id: number | string, from: string) =>
+    get<PaymentDto[]>(c, s, id, `/payments?from=${encodeURIComponent(from)}`),
 
   dashboard: (c: BotConfig, s: Store, id: number | string) => get<DashboardSummaryDto>(c, s, id, '/reports/dashboard'),
 

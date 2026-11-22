@@ -260,3 +260,18 @@
 - **Context:** The cashier works from the desktop app but could only take payments. Customers calling from home need their orders recorded by the cashier.
 - **Decision:** The desktop cashier can create orders for a room (DINE_IN) and for phone/home orders (DELIVERY, «Saboy»). The Saboy tab lists today's and still-unpaid delivery orders. The composer uses the same products, categories, service fee and decimal quantities (3 places) as the Mini App; the API and database are shared by bot, Mini App and desktop.
 - **Consequences:** Desktop and Mini App always show the same rooms, orders and payments. The desktop is still built for Windows through GitHub Actions; printing uses the WebView print dialog.
+
+## ADR-032: Payments in the Telegram bot and courier cash in the desktop cashier
+- **Context:** The cashier needs to accept money away from the desk, and the desktop app could not confirm courier cash handovers that the bot and Mini App already supported.
+- **Decision:** The bot gets a payment screen for OWNER/CASHIER (full amount per method or typed partial amount) using the existing `/payments/session/:id` and `/payments/order/:id` endpoints. CASHIER has the same bot rights as in the API (orders, deliveries, dashboard, debt close with reason). The desktop cashier adds a «Kuryer» tab using `POST /deliveries/:id/handover` (new `ApiClient.handoverDeliveryCash`) and daily payment totals.
+- **Consequences:** No API or schema change. Money still flows only through the audited payments pipeline; overpayment is rejected server-side, so repeated bot taps cannot double-charge. Desktop version is 0.2.0 so the MSI upgrades the 0.1.0 install.
+
+## ADR-033: Login-free desktop cashier (kiosk) with a POS-style screen
+- **Context:** The cashiers are used to a till program that opens straight to the sales screen without a login, with room tiles, a product grid and a numeric keypad. They asked to remove the login/password and the courier section from the Windows app.
+- **Decision:** `POST /auth/kiosk` issues tokens for the dedicated CASHIER account `kassa` without credentials when `CASHIER_KIOSK=on`. An optional `CASHIER_KIOSK_KEY` must match the `x-kiosk-key` header; the Windows build embeds it from the GitHub secret. The desktop app has no login screen and reconnects by itself. The UI is rebuilt as a POS: room tiles → menu grid + ticket, keypad payment with change, saboy tiles, and a «Bugun» payments screen.
+- **Consequences:** The owner explicitly accepted that the terminal needs no credentials. Anyone holding a copy of the exe (or, without a key, anyone who can reach the API with the kiosk switched on) can act as the cashier, including CASHIER admin capabilities from ADR-026. Mitigations: the switch is off by default, the key blocks random internet callers, all actions are attributed to «Kassa» in payments/audit, and deactivating that employee disables the terminal immediately (refresh is refused, access tokens expire within 15 minutes).
+
+## ADR-034: Bot follows the desktop POS flow
+- **Context:** Staff asked for the bot to work like the desktop till (Zal → room ticket → add items → pay with change → close).
+- **Decision:** Bot menus and wording mirror the desktop (Zal / Saboy / Bugungi kassa). Adding items to an open room bill appends to its latest open order instead of creating a new order, so no extra service fee or people prompt. Cash entered above the balance is treated as money handed over: the balance is charged and the change is shown; non-cash amounts above the balance are rejected.
+- **Consequences:** Same business rules as the desktop; no API change. A chef note typed while appending is stored on the appended items (the order-level note is fixed at creation).

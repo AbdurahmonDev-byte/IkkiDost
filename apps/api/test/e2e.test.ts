@@ -187,6 +187,41 @@ describe('Telegram identity and customer registration', () => {
   });
 });
 
+describe('Desktop cashier kiosk login', () => {
+  const kiosk = (key?: string) =>
+    fetch(`${ctx.baseUrl}/auth/kiosk`, { method: 'POST', headers: key ? { 'x-kiosk-key': key } : {} });
+
+  it('is refused unless CASHIER_KIOSK=on', async () => {
+    delete process.env.CASHIER_KIOSK;
+    expect((await kiosk()).status).toBe(401);
+  });
+
+  it('requires the kiosk key when one is configured', async () => {
+    process.env.CASHIER_KIOSK = 'on';
+    process.env.CASHIER_KIOSK_KEY = 'kiosk-test-key-123';
+    expect((await kiosk()).status).toBe(401);
+    expect((await kiosk('wrong-key-wrong-key')).status).toBe(401);
+    const ok = await kiosk('kiosk-test-key-123');
+    expect(ok.status).toBe(201);
+    const body = await ok.json();
+    expect(body.user.username).toBe('kassa');
+    expect(body.user.role).toBe('CASHIER');
+    const rooms = await req(ctx, 'GET', '/rooms', undefined, body.accessToken);
+    expect(rooms.status).toBe(200);
+  });
+
+  it('stops working when the owner deactivates the kassa account', async () => {
+    const employees = await req(ctx, 'GET', '/employees', undefined, ctx.tokens.owner);
+    const kassa = employees.body.find((u: { username: string }) => u.username === 'kassa');
+    const off = await req(ctx, 'PATCH', `/employees/${kassa.id}`, { isActive: false }, ctx.tokens.owner);
+    expect(off.status).toBe(200);
+    expect((await kiosk('kiosk-test-key-123')).status).toBe(401);
+    await req(ctx, 'PATCH', `/employees/${kassa.id}`, { isActive: true }, ctx.tokens.owner);
+    delete process.env.CASHIER_KIOSK;
+    delete process.env.CASHIER_KIOSK_KEY;
+  });
+});
+
 describe('Courier cash collection → cashier handover', () => {
   let deliveryId = '';
   let orderId = '';

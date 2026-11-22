@@ -17,6 +17,10 @@ export interface OrderFlow {
   /** productId -> quantity */
   lines: Record<string, number>;
   note?: string;
+  /** Open order of the room bill that new items are appended to (no new fee). */
+  appendOrderId?: string;
+  /** True while the wizard waits for a typed exact quantity (e.g. 1.82 kg). */
+  awaitingQty?: boolean;
 }
 
 export type Flow =
@@ -25,7 +29,16 @@ export type Flow =
   | { kind: 'delivery-phone'; name: string }
   | { kind: 'delivery-address'; name: string; phone: string }
   | { kind: 'order'; data: OrderFlow }
-  | { kind: 'close-reason'; sessionId: string };
+  | { kind: 'close-reason'; sessionId: string }
+  | {
+      kind: 'pay-amount';
+      target: 'session' | 'order';
+      targetId: string;
+      methodId: string;
+      methodName: string;
+      methodKind: 'CASH' | 'CARD' | 'OTHER';
+      outstanding: number;
+    };
 
 export interface Deps {
   config: BotConfig;

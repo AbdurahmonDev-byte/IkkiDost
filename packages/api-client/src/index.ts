@@ -165,6 +165,8 @@ export class ApiClient {
   }
   updateDeliveryStatus(id: string, input: UpdateDeliveryStatusInput) { return this.post<DeliveryDto>(`/deliveries/${id}/status`, input); }
   assignDelivery(id: string, input: AssignDeliveryInput) { return this.post<DeliveryDto>(`/deliveries/${id}/assign`, input); }
+  /** Cashier/owner confirms the courier handed over the collected cash (“To‘lov qilindi”). */
+  handoverDeliveryCash(id: string) { return this.post<DeliveryDto>(`/deliveries/${id}/handover`, {}); }
 
   // ===== Payments =====
   payments(opts?: { from?: string; to?: string }) {

@@ -285,3 +285,75 @@ Telegram Mini App served by the API at `/` (same origin as `/api`), Vite + React
 - «Qo'shish» on a room order (session) and on a Saboy/delivery order opens the product picker in append mode.
 - Verified against local API: saboy 87 900 -> 111 900 so'm after adding 2 l Fanta; room order updated too.
 - Service fee is not recalculated when appending (order fee stays as snapshotted at creation).
+
+## Bot payments and cashier desktop 0.2.0 (2026-11-20, ADR-032)
+- **Bot — payments:** OWNER/CASHIER see «💰 To‘lov qabul qilish» on room bills and
+  delivery orders with a balance; full payment per method (Naqd/Karta) or a typed
+  partial amount. Each attempt sends a fresh idempotency key; the API's overpayment
+  rejection protects against double taps.
+- **Bot — cashier role:** CASHIER can take room orders, create deliveries, open
+  `/dash`, and close a session with debt by giving a reason (same as the API rule).
+- **Bot — fixes:** the chef note typed in the order wizard was ignored (now saved);
+  «✍️ Aniq miqdor yozish» accepts exact kg/litre amounts such as `1,82`; the
+  «Manzilni qo‘lda yozish» / «O‘tkazib yuborish» reply buttons were saved as the
+  delivery address (now handled, reply keyboard removed); receipt shows «Xodim».
+- **Bot — structure:** `createBot()` lives in `apps/bot/src/bot.ts`, so the bot can be
+  driven with fake Telegram updates. Verified against a local API: cashier
+  Telegram-ID login, partial 20 000 + full card payment, 1.82 kg order with chef
+  note, new delivery via the manual-address button, cashier dashboard.
+- **Cashier desktop 0.2.0:** «Kuryer» tab lists couriers' collected cash with a
+  «To‘lov qilindi» confirmation (also shown on the delivery bill); header shows
+  today's cash/card/total; payment lists no longer freeze at app start (session
+  payments come from the session detail, saboy payments from the order's day);
+  the working day rolls over at midnight; queries refetch after a token refresh;
+  CASHIER can close a session with debt by giving a reason; readable Uzbek date.
+  Verified in headless Chrome against the local API.
+- **CI:** the Windows cashier workflow also runs on `claude/**` branches and on
+  `package-lock.json` changes. The installer is still unsigned and not yet
+  runtime-tested on a real Windows machine.
+
+## Cashier desktop 0.3.0 — login-free POS terminal (2026-11-20, ADR-033)
+- **No login/password:** the app connects itself through `POST /api/auth/kiosk` as the
+  dedicated CASHIER account `kassa` (created on first use, random password, cannot
+  use the password login). Server switch `CASHIER_KIOSK=on`; optional shared key
+  `CASHIER_KIOSK_KEY` (sent as `x-kiosk-key`, embedded at build time from the GitHub
+  secret of the same name). Deactivating «Kassa» in the owner panel stops the terminal.
+  Expired sessions reconnect automatically.
+- **POS layout:** top bar with Zal / Saboy / Bugun, today's cash/card/total and a clock.
+  Zal = room tiles (free/busy, total, debt, time open). Opening a room shows the menu
+  (category chips, search, large product tiles) next to a ticket panel: sent items,
+  unsent draft with −/+ and a keypad for exact kg/litre, people count for a new bill,
+  chef note, totals, «Oshxonaga yuborish», «To‘lov», «Chek», «Yopish».
+- **Payment dialog:** Naqd/Karta buttons, keypad amount (defaults to the full debt),
+  «Mijoz berdi» with change (qaytim), quick banknotes, and «To‘lovdan keyin xonani
+  yopish» for a full room payment. Unsent items are sent before paying.
+- **Saboy:** tiles for today's/unpaid phone orders and «Yangi saboy» (name, phone,
+  address on the ticket); status advance and cancel (only while unpaid).
+- **Bugun:** today's totals by method and every payment with reversal (reason required).
+- Removed: login screen, «Kuryer» tab, the separate Yetkazish list.
+- Verified in headless Chrome against the local API: kiosk auto-connect, 2 × Табака +
+  1.82 kg Оқ балиқ sent to the kitchen, cash payment of 225 900 with 500 000 given
+  (change 274 100 shown), room auto-closed; new saboy auto-sent and
+  paid by card; API tests 55/55 (kiosk refused when off, key enforced, stops when
+  `kassa` is deactivated).
+
+## Bot in the same POS flow as the desktop till (2026-11-21, ADR-034)
+- Home: «🏠 Zal», «📞 Saboy», «➕ Yangi saboy»; OWNER/CASHIER also «💵 Bugungi kassa»
+  (`/bugun`: cash/card/total and the last 10 payments) and «📊 Hisobot».
+- Zal: room tiles two per row (🟢 free, 🟡 debt, ✅ paid). A room opens as a ticket:
+  every item of the bill summed per product, service fee, total/paid/debt, and
+  «➕ Mahsulot qo‘shish», «💰 To‘lov», «🧾 Chek», «🔒 Yopish».
+- Adding to an open bill appends to its open order (no people question, no second
+  service fee); categories/products are two per row; cart → confirm with optional
+  «✍️ Izoh» → «📤 Oshxonaga yuborish» → back to the room.
+- Payment: per method «to‘liq» or «Mijoz berdi / qaytim» (cash above the balance pays
+  the balance and shows the change) / «Qisman»; after a full room payment
+  «🔒 Xonani yopish» closes the room in one tap.
+- Verified with fake Telegram updates against the local API: append «Чой» with a note
+  to Xona 1, cash 500 000 for 228 900 → change 271 100, room closed, /bugun totals.
+
+## Simpler wording (2026-11-22)
+- «Zal» renamed back to «Xonalar» in the bot and the desktop till; «Bugun» → «Bugungi kassa».
+- Bot texts simplified for staff: colour legend spelled out, «Taom qo‘shish»,
+  «Tanlab bo‘ldim», «Oshpazga izoh»; payment buttons show the amount
+  («💵 Naqd: 7 000») with «boshqa summa» for less/more money; cash listed first.

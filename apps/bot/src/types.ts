@@ -137,6 +137,13 @@ export interface OrderDto {
   updatedAt: string;
 }
 
+export interface PaymentMethodDto {
+  id: string;
+  name: string;
+  kind: PaymentKind;
+  isActive: boolean;
+}
+
 export interface PaymentDto {
   id: string;
   amount: number;

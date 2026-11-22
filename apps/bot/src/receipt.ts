@@ -31,8 +31,8 @@ export function orderReceipt(order: OrderDto, opts?: { roomName?: string }): str
     `Buyurtma #${order.orderNumber}  ${formatDateTime(order.createdAt)}`,
     order.type === 'DELIVERY'
       ? `Yetkazish · ${order.delivery?.customerName ?? ''}`
-      : `Zal · ${opts?.roomName ?? order.roomName ?? ''}`,
-    `Ofitsiant: ${order.createdByName}`,
+      : `Xona · ${opts?.roomName ?? order.roomName ?? ''}`,
+    `Xodim: ${order.createdByName}`,
   ];
   if (order.delivery) rows.push(`Tel: ${order.delivery.customerPhone}`, `${order.delivery.address}`);
   rows.push(line());

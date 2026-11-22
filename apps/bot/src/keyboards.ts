@@ -14,30 +14,29 @@ export function homeKeyboard(role: BotRole, miniAppUrl: string): InlineKeyboard 
   }
 
   if (role === 'OWNER' || role === 'WAITER' || role === 'CASHIER') {
-    kb.text('🏠 Xonalar', 'm:rooms');
-    kb.text('🛵 Yetkazish', 'm:delivery');
-    kb.row();
+    kb.text('🏠 Xonalar', 'm:rooms').text('📞 Saboy', 'm:delivery').row();
+    kb.text('➕ Yangi saboy', 'm:newdel').row();
+  }
+  if (role === 'OWNER' || role === 'CASHIER') {
+    kb.text('💵 Bugungi kassa', 'm:today').text('📊 Hisobot', 'm:dash').row();
   }
   if (role === 'OWNER' || role === 'CHEF') {
     kb.text('👨‍🍳 Oshxona', 'm:kitchen').row();
   }
-  if (role === 'OWNER' || role === 'WAITER') {
-    kb.text('➕ Yangi yetkazish', 'm:newdel').row();
-  }
-  if (role === 'OWNER') {
-    kb.text('📊 Hisobot', 'm:dash').row();
-  }
   kb.text('ℹ️ Yordam', 'm:help');
   return kb;
 }
+
+export const MANUAL_ADDRESS = '✍️ Manzilni qo‘lda yozish';
+export const SKIP_ADDRESS = '⏭ O‘tkazib yuborish';
 
 /** Reply keyboard for the staff delivery-address wizard. */
 export function locationRequestKeyboard() {
   return {
     keyboard: [
       [{ text: '📍 Lokatsiyani yuborish', request_location: true }],
-      [{ text: '✍️ Manzilni qo‘lda yozish' }],
-      [{ text: '⏭ O‘tkazib yuborish' }],
+      [{ text: MANUAL_ADDRESS }],
+      [{ text: SKIP_ADDRESS }],
     ],
     resize_keyboard: true,
     one_time_keyboard: true,

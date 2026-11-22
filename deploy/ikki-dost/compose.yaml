@@ -47,6 +47,8 @@ services:
       BOT_USERNAME: ${BOT_USERNAME:-ikkidostbot}
       OWNER_TELEGRAM_IDS: ${OWNER_TELEGRAM_IDS:-}
       TELEGRAM_AUTH_MAX_AGE_SECONDS: ${TELEGRAM_AUTH_MAX_AGE_SECONDS:-86400}
+      CASHIER_KIOSK: ${CASHIER_KIOSK:-off}
+      CASHIER_KIOSK_KEY: ${CASHIER_KIOSK_KEY:-}
     volumes:
       - ikki_dost_uploads:/app/apps/api/uploads
     command: >-
