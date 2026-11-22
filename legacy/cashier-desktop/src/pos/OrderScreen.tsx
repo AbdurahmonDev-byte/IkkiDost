@@ -1,66 +1,33 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import {
-  ArrowLeft,
-  Ban,
-  CreditCard,
-  Lock,
-  Minus,
-  Phone,
-  Plus,
-  Printer,
-  Search,
-  Send,
-  Trash2,
-  UtensilsCrossed,
-} from 'lucide-react';
-import type {
-  DeliveryStatus,
-  OrderDto,
-  PaymentDto,
-  PaymentMethodDto,
-  ProductDto,
-  RoomDto,
-} from '@ikki-dost/shared-types';
+import { ArrowLeft, ChevronsRight, Delete, MoreHorizontal, Printer, Search, Trash2, UtensilsCrossed, Users } from 'lucide-react';
+import type { OrderDto, PaymentDto, PaymentMethodDto, ProductDto, RoomDto } from '@ikki-dost/shared-types';
 import { computeServiceFee, lineTotalUzs } from '@ikki-dost/utils';
 import { api, assetUrl } from '../lib/api';
-import {
-  deliveryStatusLabel,
-  formatQty,
-  formatTime,
-  formatUzs,
-  isMassUnit,
-  orderStatusLabel,
-  quantityForApi,
-  uuid,
-} from '../lib/format';
-import { Badge, Button, Field, Input, Modal, Spinner, Textarea, cn } from '../ui';
-import { Keypad } from './Keypad';
-import { PaymentDialog, type PayInput } from './PaymentDialog';
-import { ReceiptModal, type ReceiptData } from './Receipt';
+import { formatQty, formatUzs, isMassUnit, quantityForApi } from '../lib/format';
+import { Button, Field, Modal, Spinner, Textarea, cn } from '../ui';
+import { PaymentScreen } from './PaymentScreen';
+import { ReceiptModal, printReceipt, type ReceiptData } from './Receipt';
 
-export type OrderTarget = { kind: 'room'; roomId: string } | { kind: 'saboy'; orderId: string | null };
+export type OrderTarget =
+  | { kind: 'room'; roomId: string; people?: number }
+  | { kind: 'saboy'; orderId: string | null };
 
 interface DraftLine {
   productId: string;
   qty: string;
 }
 
-const NEXT_STATUS: Partial<Record<DeliveryStatus, { to: DeliveryStatus; label: string }>> = {
-  PENDING: { to: 'CONFIRMED', label: 'Tasdiqlash' },
-  CONFIRMED: { to: 'PREPARING', label: 'Tayyorlanmoqda' },
-  PREPARING: { to: 'READY', label: 'Tayyor' },
-  READY: { to: 'OUT_FOR_DELIVERY', label: 'Yo‘lga chiqdi' },
-  OUT_FOR_DELIVERY: { to: 'DELIVERED', label: 'Yetkazildi' },
-};
-
 const isOpenOrder = (o: OrderDto) => o.status !== 'COMPLETED' && o.status !== 'CANCELLED';
 const errorText = (e: unknown, fallback: string) => (e instanceof Error ? e.message : fallback);
+const num = (n: number) => new Intl.NumberFormat('ru-RU').format(n).replace(/ /g, ' ');
 
 function startOfDayIso(iso: string): string {
   const d = new Date(iso);
   return new Date(d.getFullYear(), d.getMonth(), d.getDate()).toISOString();
 }
+
+type KeyMode = 'qty' | 'people';
 
 export function OrderScreen({
   target,
@@ -97,169 +64,167 @@ export function OrderScreen({
   const [search, setSearch] = useState('');
   const visible = useMemo(() => {
     const term = search.trim().toLowerCase();
-    return products.filter((p) =>
-      term ? p.name.toLowerCase().includes(term) : categoryId ? p.categoryId === categoryId : true,
-    );
+    return products.filter((p) => (term ? p.name.toLowerCase().includes(term) : categoryId ? p.categoryId === categoryId : true));
   }, [products, categoryId, search]);
 
   // ---------- bill ----------
-  const sessionQuery = useQuery({
-    queryKey: ['session', sessionId],
-    queryFn: () => api.roomSession(sessionId!),
-    enabled: !!sessionId,
-  });
-  const saboyQuery = useQuery({
-    queryKey: ['order', saboyId],
-    queryFn: () => api.order(saboyId!),
-    enabled: !!saboyId,
-  });
+  const sessionQuery = useQuery({ queryKey: ['session', sessionId], queryFn: () => api.roomSession(sessionId!), enabled: !!sessionId });
+  const saboyQuery = useQuery({ queryKey: ['order', saboyId], queryFn: () => api.order(saboyId!), enabled: !!saboyId });
   const saboy = saboyQuery.data;
   const saboyPaymentsQuery = useQuery({
     queryKey: ['order-payments', saboyId, saboy?.createdAt],
     queryFn: () => api.payments({ from: startOfDayIso(saboy!.createdAt) }),
     enabled: !!saboy,
   });
-
   const session = sessionId ? sessionQuery.data : undefined;
   const billOrders: OrderDto[] = isRoom
     ? (session?.orders ?? []).slice().sort((a, b) => +new Date(a.createdAt) - +new Date(b.createdAt))
     : saboy
       ? [saboy]
       : [];
-  const billPayments: PaymentDto[] = isRoom
-    ? session?.payments ?? []
-    : (saboyPaymentsQuery.data ?? []).filter((p) => p.orderId === saboyId);
+  const billPayments: PaymentDto[] = isRoom ? session?.payments ?? [] : (saboyPaymentsQuery.data ?? []).filter((p) => p.orderId === saboyId);
   const total = isRoom ? session?.totalAmount ?? 0 : saboy?.totalAmount ?? 0;
   const paid = isRoom ? session?.paidAmount ?? 0 : saboy?.paidAmount ?? 0;
   const outstanding = isRoom ? session?.outstandingAmount ?? 0 : saboy?.outstandingAmount ?? 0;
+  const billFee = billOrders.reduce((s, o) => s + o.serviceFeeAmount, 0);
   const appendTo = [...billOrders].reverse().find(isOpenOrder) ?? null;
   const hasBill = billOrders.length > 0;
   const loadingBill = (isRoom && !!sessionId && sessionQuery.isLoading) || (!!saboyId && saboyQuery.isLoading);
+  const savedItems = billOrders.flatMap((o) => o.items.filter((i) => i.status !== 'CANCELLED'));
 
   // ---------- draft ----------
   const [lines, setLines] = useState<DraftLine[]>([]);
-  const [people, setPeople] = useState(1);
-  const [note, setNote] = useState('');
-  const [customer, setCustomer] = useState({ name: '', phone: '', address: '' });
-  const [qtyEdit, setQtyEdit] = useState<{ productId: string; value: string } | null>(null);
+  const [people, setPeople] = useState(0);
+  const [selected, setSelected] = useState<string | null>(null);
+  const [mode, setMode] = useState<KeyMode>('qty');
+  /** First key after selecting a line replaces its quantity instead of appending. */
+  const freshKey = useRef(true);
   const targetKey = target.kind === 'room' ? `r:${target.roomId}` : `s:${target.orderId ?? 'new'}`;
   useEffect(() => {
     setLines([]);
-    setNote('');
-    setQtyEdit(null);
-    setCustomer({ name: '', phone: '', address: '' });
+    setSelected(null);
+    setMode('qty');
   }, [targetKey]);
-  // A brand-new bill charges the service fee; extra orders on an open bill default to 0 people.
   useEffect(() => {
-    setPeople(hasBill ? 0 : 1);
+    setPeople(hasBill ? 0 : target.kind === 'room' ? target.people ?? 1 : 0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [targetKey, hasBill]);
 
   const needsNewOrder = !appendTo;
-  const draftLines = lines
+  const draft = lines
     .map((l) => ({ ...l, product: byId.get(l.productId) }))
-    .filter((l): l is DraftLine & { product: ProductDto } => Boolean(l.product) && Number(l.qty) > 0);
-  const draftItems = draftLines.reduce((s, l) => s + lineTotalUzs(l.product.price, Number(l.qty)), 0);
-  const orderType = isRoom ? 'DINE_IN' : 'DELIVERY';
-  const draftFee =
-    needsNewOrder && feeQuery.data ? computeServiceFee(feeQuery.data, orderType, people).amount : 0;
-  const draftTotal = draftLines.length ? draftItems + draftFee : 0;
+    .filter((l): l is DraftLine & { product: ProductDto } => Boolean(l.product));
+  const validDraft = draft.filter((l) => Number(l.qty) > 0);
+  const draftItems = validDraft.reduce((s, l) => s + lineTotalUzs(l.product.price, Number(l.qty)), 0);
+  const draftFee = needsNewOrder && validDraft.length && feeQuery.data ? computeServiceFee(feeQuery.data, isRoom ? 'DINE_IN' : 'DELIVERY', people).amount : 0;
+  const grandItems = savedItems.reduce((s, i) => s + i.lineTotal, 0) + draftItems;
+  const grandFee = billFee + draftFee;
+  const toPay = outstanding + draftItems + draftFee;
 
   const setQty = (productId: string, qty: string) =>
-    setLines((ls) => {
-      if (!(Number(qty) > 0)) return ls.filter((l) => l.productId !== productId);
-      return ls.some((l) => l.productId === productId)
-        ? ls.map((l) => (l.productId === productId ? { ...l, qty } : l))
-        : [...ls, { productId, qty }];
-    });
-  const currentQty = (productId: string) => Number(lines.find((l) => l.productId === productId)?.qty ?? 0);
+    setLines((ls) => (ls.some((l) => l.productId === productId) ? ls.map((l) => (l.productId === productId ? { ...l, qty } : l)) : [...ls, { productId, qty }]));
+  const removeLine = (productId: string) => {
+    setLines((ls) => ls.filter((l) => l.productId !== productId));
+    if (selected === productId) setSelected(null);
+  };
 
   const tapProduct = (p: ProductDto) => {
-    if (isMassUnit(p.unit)) {
-      const cur = lines.find((l) => l.productId === p.id)?.qty ?? '';
-      setQtyEdit({ productId: p.id, value: cur });
-      return;
-    }
-    setQty(p.id, quantityForApi(currentQty(p.id) + 1));
+    const cur = lines.find((l) => l.productId === p.id);
+    if (cur && !isMassUnit(p.unit)) setQty(p.id, quantityForApi(Number(cur.qty || 0) + 1));
+    else if (!cur) setQty(p.id, '1');
+    setSelected(p.id);
+    setMode('qty');
+    freshKey.current = true;
   };
-  const step = (p: ProductDto, delta: number) => {
-    const d = isMassUnit(p.unit) ? delta * 0.1 : delta;
-    setQty(p.id, quantityForApi(Math.max(0, currentQty(p.id) + d)));
+
+  const pressKey = (k: string) => {
+    if (mode === 'people') {
+      const cur = freshKey.current ? '' : String(people);
+      freshKey.current = false;
+      if (k === 'C') return setPeople(0);
+      if (k === '⌫') return setPeople(Number(String(people).slice(0, -1)) || 0);
+      if (!/^\d$/.test(k)) return;
+      return setPeople(Math.min(500, Number(cur + k)));
+    }
+    if (!selected) return notify('Avval o‘ngdan mahsulot tanlang');
+    const line = lines.find((l) => l.productId === selected);
+    const product = byId.get(selected);
+    if (!line || !product) return;
+    const decimals = isMassUnit(product.unit) ? 3 : 0;
+    let v = freshKey.current ? '' : line.qty;
+    freshKey.current = false;
+    if (k === 'C') v = '';
+    else if (k === '⌫') v = v.slice(0, -1);
+    else if (k === '.') {
+      if (decimals === 0 || v.includes('.')) return;
+      v = v === '' ? '0.' : `${v}.`;
+    } else {
+      const dot = v.indexOf('.');
+      if (dot >= 0 && v.length - dot > decimals) return;
+      v = v === '0' ? k : v + k;
+      if (v.length > 7) return;
+    }
+    setQty(selected, v);
   };
 
   // ---------- mutations ----------
   const refresh = () => {
-    void qc.invalidateQueries({ queryKey: ['rooms'] });
-    void qc.invalidateQueries({ queryKey: ['orders'] });
-    void qc.invalidateQueries({ queryKey: ['session'] });
-    void qc.invalidateQueries({ queryKey: ['order'] });
-    void qc.invalidateQueries({ queryKey: ['order-payments'] });
-    void qc.invalidateQueries({ queryKey: ['payments-today'] });
+    for (const key of ['rooms', 'orders', 'session', 'order', 'order-payments', 'payments-today', 'dashboard']) {
+      void qc.invalidateQueries({ queryKey: [key] });
+    }
   };
 
-  const sendMutation = useMutation({
-    mutationFn: async (): Promise<OrderDto> => {
-      const items = draftLines.map((l) => ({ productId: l.productId, quantity: quantityForApi(Number(l.qty)) }));
+  const saveMutation = useMutation({
+    mutationFn: async (): Promise<OrderDto | null> => {
+      if (validDraft.length === 0) return null;
+      const items = validDraft.map((l) => ({ productId: l.productId, quantity: quantityForApi(Number(l.qty)) }));
       if (appendTo) return api.addOrderItems(appendTo.id, { items });
-      if (isRoom) {
-        return api.createOrder({ type: 'DINE_IN', roomId: target.roomId, numberOfPeople: people, note: note.trim() || null, items });
-      }
-      return api.createOrder({
-        type: 'DELIVERY',
-        numberOfPeople: people,
-        note: note.trim() || null,
-        items,
-        customerName: customer.name.trim(),
-        customerPhone: customer.phone.trim(),
-        address: customer.address.trim(),
-      });
+      if (isRoom) return api.createOrder({ type: 'DINE_IN', roomId: target.roomId, numberOfPeople: people, items });
+      return api.createOrder({ type: 'DELIVERY', numberOfPeople: people, items });
     },
     onSuccess: (order) => {
       setLines([]);
-      setNote('');
-      notify(`#${order.orderNumber} oshxonaga yuborildi`);
+      setSelected(null);
       refresh();
-      if (target.kind === 'saboy' && !target.orderId) onTargetChange({ kind: 'saboy', orderId: order.id });
+      if (order && target.kind === 'saboy' && !target.orderId) onTargetChange({ kind: 'saboy', orderId: order.id });
     },
-    onError: (e) => notify(errorText(e, 'Buyurtmani yuborib bo‘lmadi')),
+    onError: (e) => notify(errorText(e, 'Saqlab bo‘lmadi')),
   });
 
-  const saboyInvalid =
-    target.kind === 'saboy' &&
-    !target.orderId &&
-    (customer.name.trim().length < 1 || customer.phone.trim().length < 4 || customer.address.trim().length < 3);
-  const canSend = draftLines.length > 0 && !saboyInvalid && !sendMutation.isPending;
-
-  const [payOpen, setPayOpen] = useState(false);
-  const payMutation = useMutation({
-    mutationFn: async (input: PayInput) => {
-      const body = { amount: input.amount, methodId: input.methodId, note: null, idempotencyKey: uuid() };
-      const payment = isRoom ? await api.payRoomSession(sessionId!, body) : await api.payOrder(saboyId!, body);
-      if (input.closeAfter && isRoom && sessionId) await api.closeRoomSession(sessionId, {});
-      return { payment, closed: input.closeAfter };
-    },
-    onSuccess: ({ payment, closed }) => {
-      setPayOpen(false);
-      refresh();
-      notify(`To‘lov qabul qilindi: ${formatUzs(payment.amount)}${closed ? ' · xona yopildi' : ''}`);
-      if (closed) onBack();
-    },
-    onError: (e) => {
-      refresh();
-      notify(errorText(e, 'To‘lov amalga oshmadi'));
-    },
-  });
-
-  const openPayment = async () => {
-    if (draftLines.length > 0) {
-      try {
-        await sendMutation.mutateAsync();
-      } catch {
-        return;
-      }
+  const save = async (): Promise<boolean> => {
+    if (lines.some((l) => !(Number(l.qty) > 0))) setLines((ls) => ls.filter((l) => Number(l.qty) > 0));
+    if (validDraft.length === 0) return true;
+    try {
+      await saveMutation.mutateAsync();
+      return true;
+    } catch {
+      return false;
     }
-    setPayOpen(true);
   };
 
+  const goBack = async () => {
+    if (await save()) onBack();
+  };
+
+  const [paying, setPaying] = useState(false);
+  const openPayment = async () => {
+    if (!(await save())) return;
+    setPaying(true);
+  };
+
+  const [receipt, setReceipt] = useState<ReceiptData | null>(null);
+  const title = isRoom ? room?.name ?? 'Xona' : saboy ? `Saboy #${saboy.orderNumber}` : 'Yangi saboy';
+  const receiptData = (): ReceiptData => ({
+    heading: title,
+    subheading: isRoom ? `${billOrders.reduce((s, o) => s + o.numberOfPeople, 0) || ''} kishi`.trim() : 'Saboy',
+    orders: billOrders,
+    total,
+    paid,
+    outstanding,
+    payments: billPayments,
+  });
+
+  const [menuOpen, setMenuOpen] = useState(false);
   const [closeReason, setCloseReason] = useState<string | null>(null);
   const closeMutation = useMutation({
     mutationFn: (reason?: string) => api.closeRoomSession(sessionId!, reason ? { overrideReason: reason } : {}),
@@ -271,12 +236,6 @@ export function OrderScreen({
     },
     onError: (e) => notify(errorText(e, 'Xonani yopib bo‘lmadi')),
   });
-  const pressClose = () => {
-    if (draftLines.length > 0) return notify('Avval yangi mahsulotlarni yuboring yoki o‘chiring');
-    if (outstanding > 0) setCloseReason('');
-    else closeMutation.mutate(undefined);
-  };
-
   const [cancelReason, setCancelReason] = useState<string | null>(null);
   const cancelMutation = useMutation({
     mutationFn: (reason: string) => api.cancelOrder(saboyId!, { reason }),
@@ -289,86 +248,262 @@ export function OrderScreen({
     onError: (e) => notify(errorText(e, 'Bekor qilib bo‘lmadi')),
   });
 
-  const statusMutation = useMutation({
-    mutationFn: (status: DeliveryStatus) => api.updateDeliveryStatus(saboy!.delivery!.id, { status }),
-    onSuccess: () => refresh(),
-    onError: (e) => notify(errorText(e, 'Holatni o‘zgartirib bo‘lmadi')),
-  });
-
-  const [receipt, setReceipt] = useState<ReceiptData | null>(null);
-  const showReceipt = () =>
-    setReceipt({
-      heading: isRoom ? room?.name ?? 'Xona' : `Saboy #${saboy?.orderNumber ?? ''}`,
-      subheading: isRoom ? `${billOrders.length} buyurtma` : saboy?.delivery?.customerName,
-      details: !isRoom && saboy?.delivery ? `${saboy.delivery.customerPhone} · ${saboy.delivery.address}` : undefined,
-      orders: billOrders,
-      total,
-      paid,
-      outstanding,
-      payments: billPayments,
-    });
-
-  // ---------- view ----------
-  const title = isRoom ? room?.name ?? 'Xona' : saboy ? `Saboy #${saboy.orderNumber}` : 'Yangi saboy';
-  const editProduct = qtyEdit ? byId.get(qtyEdit.productId) : undefined;
-  const nextStatus = saboy?.delivery ? NEXT_STATUS[saboy.delivery.status] : undefined;
+  if (paying) {
+    return (
+      <PaymentScreen
+        title={title}
+        outstanding={outstanding}
+        methods={methods}
+        isRoom={isRoom}
+        target={isRoom ? { kind: 'session', id: sessionId! } : { kind: 'order', id: saboyId! }}
+        onBack={() => setPaying(false)}
+        onDone={async ({ fullyPaid, printCheck }) => {
+          refresh();
+          if (printCheck) {
+            try {
+              const fresh = isRoom ? await api.roomSession(sessionId!) : await api.order(saboyId!);
+              const pays = isRoom ? (fresh as { payments: PaymentDto[] }).payments : (await api.payments({ from: startOfDayIso((fresh as OrderDto).createdAt) })).filter((p) => p.orderId === saboyId);
+              printReceipt({
+                ...receiptData(),
+                orders: isRoom ? (fresh as { orders: OrderDto[] }).orders : [fresh as OrderDto],
+                total: fresh.totalAmount,
+                paid: fresh.paidAmount,
+                outstanding: fresh.outstandingAmount,
+                payments: pays,
+              });
+            } catch {
+              notify('Chekni chop etib bo‘lmadi');
+            }
+          }
+          if (fullyPaid && isRoom && sessionId) {
+            try {
+              await api.closeRoomSession(sessionId, {});
+            } catch (e) {
+              notify(errorText(e, 'Xonani yopib bo‘lmadi'));
+            }
+          }
+          setPaying(false);
+          if (fullyPaid) onBack();
+        }}
+        notify={notify}
+      />
+    );
+  }
 
   return (
-    <div className="grid h-full min-h-0 grid-cols-[1fr_420px]">
-      {/* ===== Menu ===== */}
-      <section className="flex min-h-0 flex-col">
-        <div className="flex items-center gap-2 border-b border-line bg-white px-3 py-2.5">
-          <div className="relative w-64">
-            <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-faint" />
-            <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Taom qidirish…" className="h-11 pl-9" />
+    <div className="grid h-full min-h-0 grid-cols-[minmax(520px,46%)_1fr]">
+      {/* ===== Left: ticket ===== */}
+      <section className="flex min-h-0 flex-col border-r border-line bg-[#eceef2]">
+        <div className="flex h-14 shrink-0 items-center gap-3 border-b border-line bg-white px-3">
+          <button onClick={() => void goBack()} className="flex h-10 w-10 items-center justify-center rounded-lg hover:bg-paper" title="Orqaga">
+            <ArrowLeft size={22} />
+          </button>
+          <p className="min-w-0 flex-1 truncate text-lg font-bold">{title}</p>
+          <button
+            onClick={() => {
+              setMode('people');
+              freshKey.current = true;
+            }}
+            className={cn('flex h-10 items-center gap-1.5 rounded-lg px-3 text-sm font-semibold ring-1', mode === 'people' ? 'bg-primary text-white ring-primary' : 'bg-white ring-line')}
+            title="Mehmonlar soni"
+          >
+            <Users size={16} /> {hasBill && !needsNewOrder ? billOrders.reduce((s, o) => s + o.numberOfPeople, 0) : people}
+          </button>
+        </div>
+
+        {/* table */}
+        <div className="grid grid-cols-[1fr_96px_88px_104px_36px] items-center gap-2 border-b border-line bg-white px-3 py-2 text-xs font-semibold text-ink-soft">
+          <span>Nom</span><span className="text-right">Narx</span><span className="text-right">Miqdor</span><span className="text-right">Summa</span><span />
+        </div>
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          {loadingBill && <div className="flex justify-center py-8"><Spinner /></div>}
+          {savedItems.map((i) => (
+            <div key={i.id} className="grid grid-cols-[1fr_96px_88px_104px_36px] items-center gap-2 border-b border-line/70 bg-white/60 px-3 py-2.5 text-sm">
+              <span className="truncate font-semibold">{i.productName}</span>
+              <span className="text-right">{num(i.unitPrice)}</span>
+              <span className="text-right">{formatQty(i.quantity, i.productUnit)}</span>
+              <span className="text-right font-semibold">{num(i.lineTotal)}</span>
+              <span />
+            </div>
+          ))}
+          {draft.map((l) => (
+            <div
+              key={l.productId}
+              onClick={() => {
+                setSelected(l.productId);
+                setMode('qty');
+                freshKey.current = true;
+              }}
+              className={cn(
+                'grid cursor-pointer grid-cols-[1fr_96px_88px_104px_36px] items-center gap-2 border-b border-line/70 px-3 py-2.5 text-sm',
+                selected === l.productId ? 'bg-white ring-2 ring-inset ring-primary' : 'bg-white',
+              )}
+            >
+              <span className="truncate font-semibold">{l.product.name}</span>
+              <span className="text-right">{num(l.product.price)}</span>
+              <span className={cn('text-right', !(Number(l.qty) > 0) && 'text-red-600')}>{l.qty || '0'} {formatQty('1', l.product.unit).replace(/^1\s?/, '')}</span>
+              <span className="text-right font-semibold">{Number(l.qty) > 0 ? num(lineTotalUzs(l.product.price, Number(l.qty))) : '0'}</span>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  removeLine(l.productId);
+                }}
+                className="flex h-8 w-8 items-center justify-center rounded text-ink-faint hover:bg-red-50 hover:text-red-600"
+              >
+                <Trash2 size={16} />
+              </button>
+            </div>
+          ))}
+          {!loadingBill && savedItems.length === 0 && draft.length === 0 && (
+            <div className="flex h-full flex-col items-center justify-center gap-2 text-ink-soft">
+              <UtensilsCrossed size={32} />
+              <p>Buyurtma bo‘sh</p>
+            </div>
+          )}
+        </div>
+
+        {/* summary bar */}
+        <div className="flex shrink-0 items-center gap-2 bg-[#243b31] px-3 py-2.5 text-white">
+          <div className="relative">
+            <button onClick={() => setMenuOpen((v) => !v)} className="flex h-11 w-16 items-center justify-center rounded-md bg-white text-ink">
+              <MoreHorizontal size={20} />
+            </button>
+            {menuOpen && (
+              <div className="absolute bottom-12 left-0 z-20 w-60 overflow-hidden rounded-lg bg-white text-sm text-ink shadow-xl ring-1 ring-line">
+                {isRoom ? (
+                  <button
+                    disabled={!sessionId}
+                    onClick={() => {
+                      setMenuOpen(false);
+                      if (validDraft.length) return notify('Avval mahsulotlarni saqlang');
+                      if (outstanding > 0) setCloseReason('');
+                      else closeMutation.mutate(undefined);
+                    }}
+                    className="block w-full px-4 py-3 text-left hover:bg-paper disabled:opacity-40"
+                  >
+                    {outstanding > 0 ? 'Qarz bilan yopish…' : 'Xonani yopish'}
+                  </button>
+                ) : (
+                  <button
+                    disabled={!saboy || saboy.paidAmount > 0 || saboy.status === 'COMPLETED'}
+                    onClick={() => {
+                      setMenuOpen(false);
+                      setCancelReason('');
+                    }}
+                    className="block w-full px-4 py-3 text-left text-red-600 hover:bg-paper disabled:opacity-40"
+                  >
+                    Saboyni bekor qilish
+                  </button>
+                )}
+                <button
+                  disabled={validDraft.length === 0}
+                  onClick={() => {
+                    setMenuOpen(false);
+                    void save();
+                  }}
+                  className="block w-full px-4 py-3 text-left hover:bg-paper disabled:opacity-40"
+                >
+                  Saqlash (to‘lovsiz)
+                </button>
+              </div>
+            )}
           </div>
-          <div className="flex min-w-0 flex-1 gap-2 overflow-x-auto pb-0.5">
-            <CategoryChip active={!categoryId && !search} onClick={() => { setCategoryId(null); setSearch(''); }}>
-              Hammasi
-            </CategoryChip>
+          <button
+            disabled={!hasBill}
+            onClick={() => setReceipt(receiptData())}
+            className="flex h-11 w-16 items-center justify-center rounded-md bg-white text-ink disabled:opacity-40"
+            title="Chek"
+          >
+            <Printer size={20} />
+          </button>
+          <div className="ml-auto text-right text-sm leading-tight">
+            <p>Buyurtma summasi: <b>{num(grandItems)}</b></p>
+            <p>Xizmat to‘lovi: <b>{num(grandFee)}</b></p>
+            {paid > 0 && <p>To‘langan: <b>{num(paid)}</b></p>}
+            <p className="text-base">Jami to‘lov: <b>{num(toPay)}</b></p>
+          </div>
+        </div>
+
+        {/* keypad */}
+        <div className="grid shrink-0 grid-cols-[1.1fr_1fr_1fr_1fr_1.4fr] grid-rows-4 border-t border-line bg-white text-lg" style={{ height: 232 }}>
+          <ModeKey active={mode === 'qty'} onClick={() => { setMode('qty'); freshKey.current = true; }}>Miqdor</ModeKey>
+          <Key onClick={() => pressKey('1')}>1</Key>
+          <Key onClick={() => pressKey('2')}>2</Key>
+          <Key onClick={() => pressKey('3')}>3</Key>
+          <button
+            onClick={() => void openPayment()}
+            disabled={(toPay <= 0) || saveMutation.isPending}
+            className="row-span-3 flex flex-col items-center justify-center gap-1 bg-primary text-white hover:bg-primary-700 disabled:opacity-50"
+          >
+            {saveMutation.isPending ? <Spinner className="text-white" /> : <ChevronsRight size={30} />}
+            <span className="text-lg font-bold">To‘lov</span>
+            <span className="text-xs text-white/75">{num(toPay)} so‘m</span>
+          </button>
+          <ModeKey active={mode === 'people'} onClick={() => { setMode('people'); freshKey.current = true; }}>Mehmon</ModeKey>
+          <Key onClick={() => pressKey('4')}>4</Key>
+          <Key onClick={() => pressKey('5')}>5</Key>
+          <Key onClick={() => pressKey('6')}>6</Key>
+          <div className="flex items-center justify-center border-b border-r border-line px-2 text-center text-[11px] leading-tight text-ink-faint">
+            {mode === 'qty' ? (selected ? byId.get(selected)?.name ?? '' : 'Mahsulot tanlang') : 'Mehmonlar soni'}
+          </div>
+          <Key onClick={() => pressKey('7')}>7</Key>
+          <Key onClick={() => pressKey('8')}>8</Key>
+          <Key onClick={() => pressKey('9')}>9</Key>
+          <Key onClick={() => pressKey('⌫')}><Delete size={20} /></Key>
+          <Key onClick={() => pressKey('0')}>0</Key>
+          <Key onClick={() => pressKey('.')}>.</Key>
+          <Key onClick={() => pressKey('C')}>C</Key>
+          <button
+            onClick={() => void save()}
+            disabled={validDraft.length === 0 || saveMutation.isPending}
+            className="border-l border-line bg-paper text-sm font-semibold hover:bg-primary-50 disabled:opacity-40"
+          >
+            Saqlash
+          </button>
+        </div>
+      </section>
+
+      {/* ===== Right: products ===== */}
+      <section className="flex min-h-0 flex-col bg-white">
+        <div className="space-y-3 px-5 pt-4">
+          <div className="relative">
+            <Search size={18} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-ink-faint" />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Mahsulot qidirish"
+              className="h-12 w-full rounded-lg bg-[#f1f2f5] pl-11 pr-4 text-sm outline-none focus:ring-2 focus:ring-primary/30"
+            />
+          </div>
+          <div className="flex gap-2 overflow-x-auto pb-1">
+            <Chip active={!categoryId && !search} onClick={() => { setCategoryId(null); setSearch(''); }}>Hammasi</Chip>
             {categories.map((c) => (
-              <CategoryChip key={c.id} active={categoryId === c.id && !search} onClick={() => { setCategoryId(c.id); setSearch(''); }}>
-                {c.name}
-              </CategoryChip>
+              <Chip key={c.id} active={categoryId === c.id && !search} onClick={() => { setCategoryId(c.id); setSearch(''); }}>{c.name}</Chip>
             ))}
           </div>
         </div>
-        <div className="min-h-0 flex-1 overflow-y-auto p-3">
+        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-3">
           {productsQuery.isLoading ? (
             <div className="flex justify-center py-16"><Spinner /></div>
           ) : (
-            <div className="grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-2.5">
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-4">
               {visible.map((p) => {
-                const inDraft = currentQty(p.id);
                 const img = assetUrl(p.thumbnailUrl ?? p.imageUrl);
+                const inDraft = lines.some((l) => l.productId === p.id);
                 return (
-                  <button
-                    key={p.id}
-                    onClick={() => tapProduct(p)}
-                    className={cn(
-                      'relative flex h-32 flex-col overflow-hidden rounded-2xl bg-white text-left shadow-sm ring-1 transition active:scale-[0.97]',
-                      inDraft > 0 ? 'ring-2 ring-primary' : 'ring-line hover:ring-primary/40',
-                    )}
-                  >
-                    {img ? (
-                      <img src={img} alt="" className="h-14 w-full object-cover" loading="lazy" />
-                    ) : (
-                      <div className="flex h-14 w-full items-center justify-center bg-primary-50 text-primary">
-                        <UtensilsCrossed size={20} />
+                  <button key={p.id} onClick={() => tapProduct(p)} className="group text-left active:scale-[0.97]">
+                    <div className={cn('relative aspect-square overflow-hidden rounded-lg bg-[#eceef2] ring-1', inDraft ? 'ring-2 ring-primary' : 'ring-line')}>
+                      {img ? (
+                        <img src={img} alt="" className="h-full w-full object-cover" loading="lazy" />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center text-ink-faint"><UtensilsCrossed size={34} /></div>
+                      )}
+                      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent px-2 pb-1.5 pt-6">
+                        <span className="text-base font-bold text-white">{num(p.price)}</span>
+                        {isMassUnit(p.unit) && <span className="text-xs text-white/80"> / {p.unit === 'KG' ? 'kg' : 'l'}</span>}
                       </div>
-                    )}
-                    <div className="flex flex-1 flex-col justify-between px-2.5 py-1.5">
-                      <p className="line-clamp-2 text-[13px] font-semibold leading-tight">{p.name}</p>
-                      <p className="text-xs font-bold text-primary">
-                        {formatUzs(p.price)}
-                        {isMassUnit(p.unit) && <span className="font-normal text-ink-soft"> / {p.unit === 'KG' ? 'kg' : 'l'}</span>}
-                      </p>
                     </div>
-                    {inDraft > 0 && (
-                      <span className="absolute right-1.5 top-1.5 rounded-full bg-primary px-2 py-0.5 text-xs font-bold text-white">
-                        {formatQty(String(inDraft), p.unit)}
-                      </span>
-                    )}
+                    <p className="mt-1.5 line-clamp-2 text-sm font-semibold uppercase leading-tight">{p.name}</p>
                   </button>
                 );
               })}
@@ -378,203 +513,10 @@ export function OrderScreen({
         </div>
       </section>
 
-      {/* ===== Ticket ===== */}
-      <aside className="flex min-h-0 flex-col border-l border-line bg-white">
-        <div className="flex items-center gap-2 border-b border-line px-3 py-2.5">
-          <button onClick={onBack} className="flex h-11 w-11 items-center justify-center rounded-xl bg-paper ring-1 ring-line active:scale-95" title="Orqaga">
-            <ArrowLeft size={20} />
-          </button>
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-lg font-bold leading-tight">{title}</p>
-            <p className="truncate text-xs text-ink-soft">
-              {isRoom
-                ? session
-                  ? `Ochilgan ${formatTime(session.openedAt)} · ${billOrders.length} buyurtma`
-                  : 'Bo‘sh xona'
-                : saboy?.delivery
-                  ? `${saboy.delivery.customerName} · ${saboy.delivery.customerPhone}`
-                  : 'Telefon orqali buyurtma'}
-            </p>
-          </div>
-          {saboy?.delivery && <Badge tone="blue">{deliveryStatusLabel[saboy.delivery.status]}</Badge>}
-        </div>
-
-        {target.kind === 'saboy' && !target.orderId && (
-          <div className="grid grid-cols-2 gap-2 border-b border-line px-3 py-2.5">
-            <Input placeholder="Mijoz ismi" value={customer.name} onChange={(e) => setCustomer({ ...customer, name: e.target.value })} className="h-11" />
-            <Input placeholder="Telefon" inputMode="tel" value={customer.phone} onChange={(e) => setCustomer({ ...customer, phone: e.target.value })} className="h-11" />
-            <Input placeholder="Manzil" value={customer.address} onChange={(e) => setCustomer({ ...customer, address: e.target.value })} className="col-span-2 h-11" />
-          </div>
-        )}
-        {saboy?.delivery && (
-          <div className="flex items-center gap-2 border-b border-line px-3 py-2 text-xs text-ink-soft">
-            <Phone size={13} /> <span className="min-w-0 flex-1 truncate">{saboy.delivery.address}</span>
-            {nextStatus && saboy.status !== 'CANCELLED' && (
-              <Button size="sm" variant="secondary" loading={statusMutation.isPending} onClick={() => statusMutation.mutate(nextStatus.to)}>
-                {nextStatus.label}
-              </Button>
-            )}
-          </div>
-        )}
-
-        <div className="min-h-0 flex-1 overflow-y-auto">
-          {loadingBill && <div className="flex justify-center py-8"><Spinner /></div>}
-          {billOrders.map((o) => (
-            <div key={o.id} className="border-b border-line/70 px-3 py-2">
-              <div className="mb-1 flex items-center gap-2 text-[11px] text-ink-faint">
-                <span className="font-semibold text-ink-soft">#{o.orderNumber}</span>
-                <span>{formatTime(o.createdAt)}</span>
-                <span>· {orderStatusLabel[o.status]}</span>
-                {o.serviceFeeAmount > 0 && <span className="ml-auto">Xizmat: {formatUzs(o.serviceFeeAmount)}</span>}
-              </div>
-              {o.items.map((i) => (
-                <div key={i.id} className={cn('flex items-center gap-2 py-0.5 text-sm', i.status === 'CANCELLED' && 'text-ink-faint line-through')}>
-                  <span className="min-w-0 flex-1 truncate">{i.productName}</span>
-                  <span className="text-xs text-ink-soft">{formatQty(i.quantity, i.productUnit)}</span>
-                  <span className="w-24 text-right">{formatUzs(i.lineTotal)}</span>
-                </div>
-              ))}
-            </div>
-          ))}
-
-          {draftLines.length > 0 && (
-            <div className="bg-primary-50/60 px-3 py-2">
-              <p className="mb-1 text-[11px] font-bold uppercase tracking-wide text-primary">Yangi taomlar (hali yuborilmagan)</p>
-              {draftLines.map((l) => (
-                <div key={l.productId} className="flex items-center gap-1.5 py-1">
-                  <span className="min-w-0 flex-1 truncate text-sm font-semibold">{l.product.name}</span>
-                  <IconButton onClick={() => step(l.product, -1)}><Minus size={16} /></IconButton>
-                  <button
-                    onClick={() => setQtyEdit({ productId: l.productId, value: l.qty })}
-                    className="h-10 min-w-[72px] rounded-lg bg-white px-2 text-sm font-bold ring-1 ring-line"
-                  >
-                    {formatQty(l.qty, l.product.unit)}
-                  </button>
-                  <IconButton onClick={() => step(l.product, 1)}><Plus size={16} /></IconButton>
-                  <span className="w-24 whitespace-nowrap text-right text-sm font-semibold">{formatUzs(lineTotalUzs(l.product.price, Number(l.qty)))}</span>
-                  <IconButton onClick={() => setQty(l.productId, '0')} danger><Trash2 size={15} /></IconButton>
-                </div>
-              ))}
-              <Input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Oshpazga izoh (ixtiyoriy)" className="mt-1.5 h-10" />
-            </div>
-          )}
-
-          {!loadingBill && !hasBill && draftLines.length === 0 && (
-            <div className="px-6 py-14 text-center text-sm text-ink-soft">Chapdan taomni bosing</div>
-          )}
-        </div>
-
-        {/* totals + actions */}
-        <div className="border-t border-line bg-paper/60 px-3 py-2.5">
-          {needsNewOrder && draftLines.length > 0 && (
-            <div className="mb-2 flex items-center justify-between">
-              <span className="text-sm text-ink-soft">Kishi soni</span>
-              <div className="flex items-center gap-1.5">
-                <IconButton onClick={() => setPeople((n) => Math.max(0, n - 1))}><Minus size={16} /></IconButton>
-                <span className="w-10 text-center text-lg font-bold">{people}</span>
-                <IconButton onClick={() => setPeople((n) => Math.min(500, n + 1))}><Plus size={16} /></IconButton>
-              </div>
-            </div>
-          )}
-          {draftLines.length > 0 && (
-            <SumRow label={draftFee > 0 ? `Yangi (xizmat ${formatUzs(draftFee)})` : 'Yangi'} value={formatUzs(draftTotal)} />
-          )}
-          <SumRow label="Hisob" value={formatUzs(total)} />
-          <SumRow label="To‘langan" value={formatUzs(paid)} tone="green" />
-          <div className="mt-1 flex items-center justify-between">
-            <span className="text-base font-semibold">Qarz</span>
-            <span className={cn('text-2xl font-bold', outstanding > 0 ? 'text-red-600' : 'text-emerald-700')}>{formatUzs(outstanding)}</span>
-          </div>
-
-          <Button size="lg" className="mt-2.5 h-14 w-full text-base" disabled={!canSend} loading={sendMutation.isPending} onClick={() => sendMutation.mutate()}>
-            <Send size={18} /> Oshxonaga yuborish{draftLines.length > 0 ? ` · ${formatUzs(draftTotal)}` : ''}
-          </Button>
-          {saboyInvalid && draftLines.length > 0 && (
-            <p className="mt-1 text-center text-xs text-red-600">Mijoz ismi, telefoni va manzilini kiriting</p>
-          )}
-          <div className="mt-2 grid grid-cols-3 gap-2">
-            <Button
-              size="lg"
-              variant="success"
-              className="h-14"
-              disabled={(outstanding <= 0 && draftLines.length === 0) || saboyInvalid}
-              onClick={() => void openPayment()}
-            >
-              <CreditCard size={18} /> To‘lov
-            </Button>
-            <Button size="lg" variant="secondary" className="h-14" disabled={!hasBill} onClick={showReceipt}>
-              <Printer size={18} /> Chek
-            </Button>
-            {isRoom ? (
-              <Button size="lg" variant="secondary" className="h-14" disabled={!sessionId} loading={closeMutation.isPending} onClick={pressClose}>
-                <Lock size={18} /> Yopish
-              </Button>
-            ) : (
-              <Button
-                size="lg"
-                variant="secondary"
-                className="h-14 text-red-600"
-                disabled={!saboy || saboy.status === 'CANCELLED' || saboy.status === 'COMPLETED' || saboy.paidAmount > 0}
-                onClick={() => setCancelReason('')}
-              >
-                <Ban size={18} /> Bekor
-              </Button>
-            )}
-          </div>
-        </div>
-      </aside>
-
-      {/* ===== Dialogs ===== */}
-      <Modal open={!!qtyEdit} onClose={() => setQtyEdit(null)} title={editProduct ? `${editProduct.name} — miqdor` : 'Miqdor'}>
-        {qtyEdit && editProduct && (
-          <div className="space-y-3">
-            <div className="flex items-baseline justify-between rounded-xl bg-paper px-4 py-3 ring-1 ring-line">
-              <span className="text-3xl font-bold">
-                {qtyEdit.value || '0'} <span className="text-base font-normal text-ink-soft">{formatQty('1', editProduct.unit).replace(/^1\s?/, '')}</span>
-              </span>
-              <span className="text-lg font-semibold text-primary">
-                {Number(qtyEdit.value) > 0 ? formatUzs(lineTotalUzs(editProduct.price, Number(qtyEdit.value))) : ''}
-              </span>
-            </div>
-            <Keypad
-              value={qtyEdit.value}
-              decimals={isMassUnit(editProduct.unit) ? 3 : 0}
-              maxLength={8}
-              onChange={(v) => setQtyEdit({ ...qtyEdit, value: v })}
-              onEnter={() => {
-                setQty(qtyEdit.productId, Number(qtyEdit.value) > 0 ? quantityForApi(Number(qtyEdit.value)) : '0');
-                setQtyEdit(null);
-              }}
-            />
-            <Button
-              size="lg"
-              className="h-14 w-full"
-              onClick={() => {
-                setQty(qtyEdit.productId, Number(qtyEdit.value) > 0 ? quantityForApi(Number(qtyEdit.value)) : '0');
-                setQtyEdit(null);
-              }}
-            >
-              Tayyor
-            </Button>
-          </div>
-        )}
-      </Modal>
-
-      <PaymentDialog
-        open={payOpen}
-        title={`To‘lov — ${title}`}
-        outstanding={outstanding}
-        methods={methods}
-        canCloseAfter={isRoom}
-        loading={payMutation.isPending}
-        onClose={() => setPayOpen(false)}
-        onPay={(input) => payMutation.mutate(input)}
-      />
+      {receipt && <ReceiptModal data={receipt} onClose={() => setReceipt(null)} />}
 
       <Modal open={closeReason !== null} onClose={() => setCloseReason(null)} title="Qarz bilan yopish">
-        <p className="text-sm text-ink-soft">
-          Qarz {formatUzs(outstanding)} qoladi. Sabab audit jurnaliga yoziladi.
-        </p>
+        <p className="text-sm text-ink-soft">Qarz {formatUzs(outstanding)} qoladi. Sabab audit jurnaliga yoziladi.</p>
         <div className="mt-3">
           <Field label="Sabab">
             <Textarea value={closeReason ?? ''} onChange={(e) => setCloseReason(e.target.value)} placeholder="Masalan: mijoz ertaga to‘laydi" />
@@ -582,12 +524,7 @@ export function OrderScreen({
         </div>
         <div className="mt-4 flex justify-end gap-2">
           <Button variant="secondary" onClick={() => setCloseReason(null)}>Bekor</Button>
-          <Button
-            variant="danger"
-            disabled={(closeReason ?? '').trim().length < 3}
-            loading={closeMutation.isPending}
-            onClick={() => closeMutation.mutate((closeReason ?? '').trim())}
-          >
+          <Button variant="danger" disabled={(closeReason ?? '').trim().length < 3} loading={closeMutation.isPending} onClick={() => closeMutation.mutate((closeReason ?? '').trim())}>
             Qarz bilan yopish
           </Button>
         </div>
@@ -599,55 +536,38 @@ export function OrderScreen({
         </Field>
         <div className="mt-4 flex justify-end gap-2">
           <Button variant="secondary" onClick={() => setCancelReason(null)}>Yo‘q</Button>
-          <Button
-            variant="danger"
-            disabled={(cancelReason ?? '').trim().length < 2}
-            loading={cancelMutation.isPending}
-            onClick={() => cancelMutation.mutate((cancelReason ?? '').trim())}
-          >
+          <Button variant="danger" disabled={(cancelReason ?? '').trim().length < 2} loading={cancelMutation.isPending} onClick={() => cancelMutation.mutate((cancelReason ?? '').trim())}>
             Bekor qilish
           </Button>
         </div>
       </Modal>
-
-      {receipt && <ReceiptModal data={receipt} onClose={() => setReceipt(null)} />}
     </div>
   );
 }
 
-function CategoryChip({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+function Key({ children, onClick }: { children: React.ReactNode; onClick: () => void }) {
   return (
-    <button
-      onClick={onClick}
-      className={cn(
-        'h-11 shrink-0 rounded-xl px-4 text-sm font-semibold transition active:scale-95',
-        active ? 'bg-primary text-white' : 'bg-paper text-ink ring-1 ring-line hover:bg-primary-50',
-      )}
-    >
+    <button onClick={onClick} className="flex items-center justify-center border-b border-r border-line font-medium hover:bg-paper active:bg-primary-50">
       {children}
     </button>
   );
 }
 
-function IconButton({ children, onClick, danger }: { children: React.ReactNode; onClick: () => void; danger?: boolean }) {
+function ModeKey({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
-    <button
-      onClick={onClick}
-      className={cn(
-        'flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ring-1 ring-line active:scale-95',
-        danger ? 'bg-red-50 text-red-600' : 'bg-white text-ink',
-      )}
-    >
+    <button onClick={onClick} className={cn('flex items-center justify-center border-b border-r border-line text-sm font-semibold', active ? 'bg-[#dfe3e9] text-ink' : 'bg-[#f3f4f6] text-ink-soft')}>
       {children}
     </button>
   );
 }
 
-function SumRow({ label, value, tone }: { label: string; value: string; tone?: 'green' }) {
+function Chip({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
-    <div className="flex items-center justify-between text-sm">
-      <span className="text-ink-soft">{label}</span>
-      <span className={cn('font-semibold', tone === 'green' && 'text-emerald-700')}>{value}</span>
-    </div>
+    <button
+      onClick={onClick}
+      className={cn('h-11 shrink-0 rounded-lg px-5 text-sm font-semibold transition', active ? 'bg-[#243b31] text-white' : 'bg-[#f1f2f5] text-ink hover:bg-[#e6e8ec]')}
+    >
+      {children}
+    </button>
   );
 }

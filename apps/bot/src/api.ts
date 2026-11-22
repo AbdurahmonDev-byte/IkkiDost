@@ -168,9 +168,9 @@ export const api = {
     input: {
       numberOfPeople: number;
       items: OrderItemInput[];
-      customerName: string;
-      customerPhone: string;
-      address: string;
+      customerName?: string;
+      customerPhone?: string;
+      address?: string;
       note?: string | null;
     },
   ) => post<OrderDto>(c, s, id, '/orders', { type: 'DELIVERY', ...input }),

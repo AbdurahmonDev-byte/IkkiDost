@@ -8,7 +8,10 @@ import { AuditService } from '../audit/audit.service';
 import { RealtimeService } from '../realtime/realtime.service';
 import { mapOrder, mapPayment } from '../../common/mappers';
 
-function sessionSummary(s: RoomSession & { _count?: { orders: number } }, orderCount?: number): RoomSessionSummaryDto {
+function sessionSummary(
+  s: RoomSession & { _count?: { orders: number }; orders?: Array<{ createdBy: { fullName: string } | null }> },
+  orderCount?: number,
+): RoomSessionSummaryDto {
   return {
     id: s.id,
     status: s.status,
@@ -17,13 +20,17 @@ function sessionSummary(s: RoomSession & { _count?: { orders: number } }, orderC
     totalAmount: s.totalAmount,
     paidAmount: s.paidAmount,
     outstandingAmount: s.totalAmount - s.paidAmount,
+    openedByName: s.orders?.[0]?.createdBy?.fullName ?? null,
   };
 }
 
 async function toRoomDto(prisma: PrismaService, room: Room): Promise<RoomDto> {
   const active = await prisma.roomSession.findFirst({
     where: { roomId: room.id, status: 'OPEN' },
-    include: { _count: { select: { orders: true } } },
+    include: {
+      _count: { select: { orders: true } },
+      orders: { orderBy: { createdAt: 'asc' }, take: 1, select: { createdBy: { select: { fullName: true } } } },
+    },
   });
   return {
     id: room.id,

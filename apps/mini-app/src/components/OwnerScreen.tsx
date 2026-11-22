@@ -54,7 +54,7 @@ const roleHint: Record<Role, string> = {
   CASHIER: 'To‘lovlar va naqd pul',
   DELIVERY: 'Yetkazish va mijoz aloqasi',
 };
-const STAFF_ROLES: Role[] = ['WAITER', 'CHEF', 'CASHIER', 'DELIVERY'];
+const STAFF_ROLES: Role[] = ['WAITER', 'CASHIER'];
 const ROLE_OPTIONS: Role[] = ['OWNER', ...STAFF_ROLES];
 
 type OwnerSection = 'overview' | 'staff' | 'menu';

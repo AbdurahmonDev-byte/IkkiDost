@@ -79,6 +79,8 @@ export interface RoomSessionSummaryDto {
   totalAmount: Uzs;
   paidAmount: Uzs;
   outstandingAmount: Uzs;
+  /** Staff member who opened the bill (first order), shown on the room tile. */
+  openedByName?: string | null;
 }
 
 export interface CategoryDto {

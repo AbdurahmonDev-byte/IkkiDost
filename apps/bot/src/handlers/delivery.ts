@@ -77,9 +77,9 @@ export function registerDelivery(deps: Deps, bot: import('../state.js').AppBot) 
     const lines = [
       `📞 Saboy #${d.orderNumber}`,
       '',
-      `👤 ${d.customerName}`,
-      `📞 ${d.customerPhone}`,
-      `📍 ${d.address}`,
+      ...(d.customerName && d.customerName !== 'Saboy' ? [`👤 ${d.customerName}`] : []),
+      ...(d.customerPhone && d.customerPhone !== '—' ? [`📞 ${d.customerPhone}`] : []),
+      ...(d.address && d.address !== '—' ? [`📍 ${d.address}`] : []),
       `Holat: ${deliveryStatusLabel[d.status]}`,
       `Jami: ${money(d.totalAmount)}`,
       `To‘langan: ${money(d.paidAmount)}`,
@@ -300,14 +300,9 @@ export function registerDelivery(deps: Deps, bot: import('../state.js').AppBot) 
       if (edit) return ctx.answerCallbackQuery({ text: 'Ruxsat yo‘q', show_alert: true });
       return ctx.reply('🛵 Yangi yetkazishni faqat ofitsiant, kassir va ega yaratadi.');
     }
-    flows.set(flowKey(ctx.chat.id), { kind: 'delivery-name' });
-    const text = '📞 Yangi saboy\n\n1/3 — Mijoz ismini yozing:';
-    if (edit) {
-      await ctx.answerCallbackQuery();
-      await ctx.editMessageText(text);
-    } else {
-      await ctx.reply(text);
-    }
+    // Saboy is take-away: no customer details, straight to the menu.
+    if (edit) await ctx.answerCallbackQuery();
+    await startDeliveryWizard(deps, ctx);
   }
 
   bot.callbackQuery('m:newdel', (ctx) => promptNewDelivery(ctx, true));

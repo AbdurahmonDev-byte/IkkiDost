@@ -336,15 +336,21 @@ describe('3-4. Delivery order for 2 people → service fee 8 000', () => {
     await req(ctx, 'POST', `/deliveries/${deliveryId}/status`, { status: 'OUT_FOR_DELIVERY' }, ctx.tokens.owner);
   });
 
-  it('completes after delivery + full payment', async () => {
+  it('saboy (take-away) completes on full payment, without courier steps', async () => {
     // total = 2×4 000 + 8 000 = 16 000
     const pay = await req(ctx, 'POST', `/payments/order/${deliveryOrderId}`, { amount: 16000, methodId: cashMethodId }, ctx.tokens.cashier);
     expect(pay.status).toBe(201);
-    const delivered = await req(ctx, 'POST', `/deliveries/${deliveryId}/status`, { status: 'DELIVERED' }, ctx.tokens.owner);
-    expect(delivered.status).toBe(201);
     const order = await req(ctx, 'GET', `/orders/${deliveryOrderId}`, undefined, ctx.tokens.owner);
     expect(order.body.status).toBe('COMPLETED');
     expect(order.body.outstandingAmount).toBe(0);
+    expect(order.body.delivery.status).toBe('DELIVERED');
+    expect(order.body.delivery.id).toBe(deliveryId);
+  });
+
+  it('saboy needs no customer details', async () => {
+    const res = await req(ctx, 'POST', '/orders', { type: 'DELIVERY', numberOfPeople: 0, items: [{ productId: productChoy.id, quantity: '2' }] }, ctx.tokens.cashier);
+    expect(res.status).toBe(201);
+    expect(res.body.delivery.customerName).toBe('Saboy');
   });
 });
 

@@ -148,7 +148,7 @@ async function renderQty(deps: Deps, ctx: Context, flow: OrderFlow, product: Pro
 
 async function renderNote(ctx: Context, flow: OrderFlow, edit: boolean) {
   const kb = new InlineKeyboard().text('➡️ Izohsiz davom etish', 'o:note:skip').row().text('❌ Bekor qilish', 'o:cancel');
-  const text = `${modeTitle(flow)}\n\n✍️ Oshpazga izoh yozing (ixtiyoriy).\nMisol: “achchiq bo‘lmasin”, “2 ta choy qaynoq”`;
+  const text = `${modeTitle(flow)}\n\n✍️ Izoh yozing (ixtiyoriy).\nMisol: “achchiq bo‘lmasin”, “2 ta choy qaynoq”`;
   if (edit) await ctx.editMessageText(text, { reply_markup: kb });
   else await ctx.reply(text, { reply_markup: kb });
 }
@@ -162,8 +162,8 @@ async function renderConfirm(deps: Deps, ctx: Context, flow: OrderFlow, edit: bo
     const p = data.products.find((x) => x.id === productId);
     if (p) kb.text(`✖ ${p.name}`, `o:rm:${deps.refs.ref(chatId, p.id)}`).row();
   }
-  kb.text('➕ Yana taom', 'o:back').text(flow.note ? '✍️ Izohni o‘zgartirish' : '✍️ Oshpazga izoh', 'o:note').row();
-  kb.text('📤 Oshxonaga yuborish', 'o:ok').row().text('❌ Bekor qilish', 'o:cancel');
+  kb.text('➕ Yana taom', 'o:back').text(flow.note ? '✍️ Izohni o‘zgartirish' : '✍️ Izoh', 'o:note').row();
+  kb.text('✅ Saqlash', 'o:ok').row().text('❌ Bekor qilish', 'o:cancel');
 
   let text = `${modeTitle(flow)}\n\n${cartLinesText(flow, data.products)}\n`;
   text += `\nTaomlar: ${money(total.items)}`;
@@ -422,9 +422,9 @@ export function registerOrder(deps: Deps, bot: import('../state.js').AppBot) {
         order = await api.createDeliveryOrder(config, store, chatId, {
           numberOfPeople: flow.people,
           items,
-          customerName: flow.customer!.name,
-          customerPhone: flow.customer!.phone,
-          address: flow.customer!.address,
+          ...(flow.customer
+            ? { customerName: flow.customer.name, customerPhone: flow.customer.phone, address: flow.customer.address }
+            : {}),
           note: flow.note ?? null,
         });
       }
@@ -436,7 +436,7 @@ export function registerOrder(deps: Deps, bot: import('../state.js').AppBot) {
       const kb = new InlineKeyboard();
       if (flow.roomId) kb.text(`🚪 ${flow.roomName ?? 'Xona'}ga qaytish`, `r:open:${refs.ref(chatId, flow.roomId)}`).row();
       kb.text('⬅️ Bosh menyu', 'm:home');
-      await ctx.editMessageText(`📤 #${done.orderNumber} oshxonaga yuborildi!`, { reply_markup: kb });
+      await ctx.editMessageText(`✅ #${done.orderNumber} saqlandi!`, { reply_markup: kb });
       // Phone orders get a ticket to forward; room bills print from «🧾 Chek».
       if (flow.mode === 'DELIVERY') await ctx.reply(receiptMessage(receipt), { parse_mode: 'HTML' });
     } catch (error) {
@@ -486,16 +486,20 @@ export async function handleNoteText(deps: Deps, ctx: Context, flow: OrderFlow, 
   return renderConfirm(deps, ctx, flow, false);
 }
 
-export async function startDeliveryWizard(deps: Deps, ctx: Context, customer: { name: string; phone: string; address: string }): Promise<void> {
+export async function startDeliveryWizard(
+  deps: Deps,
+  ctx: Context,
+  customer?: { name: string; phone: string; address: string },
+): Promise<void> {
   const flow: OrderFlow = {
     mode: 'DELIVERY',
     customer,
-    people: 1,
-    stage: 'people',
+    people: 0,
+    stage: 'menu',
     lines: {},
   };
   deps.flows.set(flowKey(ctx.chat!.id), { kind: 'order', data: flow });
-  await renderPeople(ctx, flow, false);
+  await renderMenu(deps, ctx, flow, false);
 }
 
 export function getOrderFlow(deps: Deps, chatId: number): OrderFlow | undefined {

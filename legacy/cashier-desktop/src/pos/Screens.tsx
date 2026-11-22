@@ -9,44 +9,68 @@ import { Badge, Button, Field, Modal, Spinner, Textarea, cn } from '../ui';
 
 // ===================== Xonalar =====================
 
-export function HallScreen({ rooms, loading, onOpen }: { rooms: RoomDto[]; loading: boolean; onOpen: (roomId: string) => void }) {
+export function HallScreen({
+  rooms,
+  loading,
+  onOpen,
+}: {
+  rooms: RoomDto[];
+  loading: boolean;
+  /** `people` is set when a free room is opened with a chosen guest count. */
+  onOpen: (roomId: string, people?: number) => void;
+}) {
+  const [picker, setPicker] = useState<string | null>(null);
   const active = rooms.filter((r) => r.isActive);
-  const busy = active.filter((r) => r.activeSession).length;
   if (loading) return <Center><Spinner /></Center>;
   return (
-    <div className="h-full overflow-y-auto p-4">
-      <div className="mb-3 flex items-center gap-3 text-sm text-ink-soft">
-        <Legend className="bg-white ring-1 ring-line" label={`Bo‘sh: ${active.length - busy}`} />
-        <Legend className="bg-amber-400" label={`Band: ${busy}`} />
-      </div>
-      <div className="grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-3">
+    <div className="h-full overflow-y-auto bg-white p-6" onClick={() => setPicker(null)}>
+      <div className="grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-x-10 gap-y-12">
         {active.map((r) => {
           const s = r.activeSession;
           return (
-            <button
-              key={r.id}
-              onClick={() => onOpen(r.id)}
-              className={cn(
-                'flex h-40 flex-col justify-between rounded-2xl p-4 text-left shadow-sm ring-1 transition active:scale-[0.98]',
-                s ? 'bg-amber-50 ring-amber-300 hover:ring-amber-500' : 'bg-white ring-line hover:ring-primary/50',
-              )}
-            >
-              <div className="flex items-start justify-between gap-2">
-                <p className="text-xl font-bold leading-tight">{r.name}</p>
-                {s ? <Badge tone={s.outstandingAmount > 0 ? 'amber' : 'green'}>{s.outstandingAmount > 0 ? 'Band' : 'To‘langan'}</Badge> : <Badge tone="green">Bo‘sh</Badge>}
-              </div>
-              {s ? (
-                <div>
-                  <p className="text-2xl font-bold">{formatUzs(s.totalAmount)}</p>
-                  <div className="mt-1 flex items-center justify-between text-xs text-ink-soft">
-                    <span className="flex items-center gap-1"><Clock size={12} /> {elapsed(s.openedAt)}</span>
-                    {s.outstandingAmount > 0 && <span className="font-semibold text-red-600">Qarz {formatUzs(s.outstandingAmount)}</span>}
+            <div key={r.id} className="relative flex justify-center">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (s) onOpen(r.id);
+                  else setPicker(picker === r.id ? null : r.id);
+                }}
+                className={cn(
+                  'flex h-32 w-32 flex-col items-center justify-center rounded-md text-center shadow-sm transition active:scale-95',
+                  s ? 'bg-[#243b31] text-white' : 'bg-[#d5d7dc] text-[#2c3340] hover:bg-[#c9ccd2]',
+                )}
+              >
+                <span className="text-3xl font-bold leading-none">{r.name.replace(/^xona\s*/i, '')}</span>
+                {s && (
+                  <>
+                    <span className="mt-2 max-w-[7rem] truncate text-sm">{s.openedByName ?? ''}</span>
+                    <span className="mt-0.5 text-xs text-white/70">{formatUzs(s.totalAmount)}</span>
+                  </>
+                )}
+              </button>
+              {picker === r.id && (
+                <div
+                  className="absolute top-[8.5rem] z-20 w-24 overflow-hidden rounded-lg bg-white shadow-xl ring-1 ring-line"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <p className="border-b border-line py-2 text-center text-sm font-semibold">Mehmon</p>
+                  <div className="max-h-52 overflow-y-auto">
+                    {Array.from({ length: 20 }, (_, i) => i + 1).map((n) => (
+                      <button
+                        key={n}
+                        onClick={() => {
+                          setPicker(null);
+                          onOpen(r.id, n);
+                        }}
+                        className="block h-10 w-full border-b border-line/60 text-sm hover:bg-primary hover:text-white"
+                      >
+                        {n}
+                      </button>
+                    ))}
                   </div>
                 </div>
-              ) : (
-                <p className="flex items-center gap-1.5 text-sm font-semibold text-primary"><Plus size={16} /> Bosing — buyurtma ochish</p>
               )}
-            </button>
+            </div>
           );
         })}
       </div>
@@ -71,7 +95,7 @@ export function SaboyScreen({ orders, loading, onOpen, onNew }: { orders: OrderD
         >
           <Plus size={32} />
           <span className="text-lg font-bold">Yangi saboy</span>
-          <span className="text-xs text-white/70">Telefon orqali buyurtma</span>
+          <span className="text-xs text-white/70">Olib ketish uchun</span>
         </button>
         {list.map((o) => (
           <button
@@ -83,18 +107,14 @@ export function SaboyScreen({ orders, loading, onOpen, onNew }: { orders: OrderD
             )}
           >
             <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0">
-                <p className="text-lg font-bold">#{o.orderNumber}</p>
-                <p className="truncate text-sm font-semibold">{o.delivery?.customerName}</p>
-              </div>
+              <p className="text-2xl font-bold">#{o.orderNumber}</p>
               <Badge tone={o.outstandingAmount > 0 ? 'amber' : 'green'}>{o.outstandingAmount > 0 ? 'To‘lanmagan' : 'To‘langan'}</Badge>
             </div>
             <div>
               <p className="text-xl font-bold">{formatUzs(o.totalAmount)}</p>
-              <div className="mt-1 flex items-center justify-between gap-2 text-xs text-ink-soft">
-                <span className="flex items-center gap-1 truncate"><Phone size={12} /> {o.delivery?.customerPhone}</span>
-                <span>{o.delivery ? deliveryStatusLabel[o.delivery.status] : ''} · {formatTime(o.createdAt)}</span>
-              </div>
+              <p className="mt-1 text-xs text-ink-soft">
+                {o.items.filter((i) => i.status !== 'CANCELLED').length} xil mahsulot · {formatTime(o.createdAt)} · {o.createdByName}
+              </p>
             </div>
           </button>
         ))}

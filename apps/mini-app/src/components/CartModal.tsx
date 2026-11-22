@@ -4,7 +4,6 @@ import {
   CheckCircle2,
   FileEdit,
   Loader2,
-  MapPin,
   Minus,
   Plus,
   ShoppingBag,
@@ -50,13 +49,9 @@ export const CartModal: React.FC<Props> = ({
 }) => {
   const [people, setPeople] = useState(2);
   const [generalNote, setGeneralNote] = useState('');
-  const [customerName, setCustomerName] = useState('');
-  const [customerPhone, setCustomerPhone] = useState('');
-  const [address, setAddress] = useState('');
   const [editingNoteFor, setEditingNoteFor] = useState<string | null>(null);
   const [tempNote, setTempNote] = useState('');
   const [loading, setLoading] = useState(false);
-  const [locating, setLocating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   if (!isOpen) return null;
@@ -76,43 +71,12 @@ export const CartModal: React.FC<Props> = ({
         : serviceFeeConfig.applyToDelivery;
     if (applies) {
       serviceFeeAmount =
-        serviceFeeConfig.amountPerPerson * (effectiveType === 'DINE_IN' ? people : 1);
+        serviceFeeConfig.amountPerPerson * (effectiveType === 'DINE_IN' ? people : 0);
     }
   }
 
   const grandTotal = itemsSubtotal + serviceFeeAmount;
 
-  const requestLocation = () => {
-    if (!navigator.geolocation) {
-      setError('Bu qurilmada lokatsiya aniqlanmaydi. Manzilni matn bilan kiriting.');
-      return;
-    }
-    setLocating(true);
-    setError(null);
-    navigator.geolocation.getCurrentPosition(
-      ({ coords }) => {
-        const mapUrl = `https://maps.google.com/?q=${coords.latitude.toFixed(6)},${coords.longitude.toFixed(6)}`;
-        setAddress((current) => {
-          const withoutOldLocation = current
-            .split('\n')
-            .filter((line) => !line.startsWith('https://maps.google.com/?q='))
-            .join('\n')
-            .trim();
-          return withoutOldLocation ? `${withoutOldLocation}\n${mapUrl}` : mapUrl;
-        });
-        setLocating(false);
-      },
-      (locationError) => {
-        setError(
-          locationError.code === locationError.PERMISSION_DENIED
-            ? 'Lokatsiya ruxsati berilmadi. Manzilni matn bilan kiriting yoki sozlamadan ruxsat bering.'
-            : 'Lokatsiyani aniqlab bo‘lmadi. Qayta urinib ko‘ring yoki manzilni matn bilan kiriting.',
-        );
-        setLocating(false);
-      },
-      { enableHighAccuracy: true, timeout: 12_000, maximumAge: 60_000 },
-    );
-  };
 
   const handleSubmit = async () => {
     if (items.length === 0) return;
@@ -127,20 +91,7 @@ export const CartModal: React.FC<Props> = ({
       return;
     }
 
-    if (effectiveType === 'DELIVERY') {
-      if (!customerName.trim()) {
-        setError('Iltimos, ismingizni kiriting');
-        return;
-      }
-      if (!customerPhone.trim() || customerPhone.trim().length < 7) {
-        setError('Iltimos, to‘g‘ri telefon raqamingizni kiriting');
-        return;
-      }
-      if (!address.trim() || address.trim().length < 3) {
-        setError('Iltimos, yetkazish manzilini to‘liq kiriting');
-        return;
-      }
-    }
+    // Saboy (take-away) needs no customer details.
 
     setLoading(true);
     setError(null);
@@ -163,12 +114,9 @@ export const CartModal: React.FC<Props> = ({
             })
           : await api.createStaffOrder(token, {
               type: 'DELIVERY',
-              numberOfPeople: 1,
+              numberOfPeople: 0,
               items: payloadItems,
               note: generalNote.trim() || null,
-              customerName: customerName.trim(),
-              customerPhone: customerPhone.trim(),
-              address: address.trim(),
             });
 
       tg.hapticSuccess();
@@ -357,50 +305,6 @@ export const CartModal: React.FC<Props> = ({
                   <span className="font-black">{money(serviceFeeAmount)}</span>
                 </div>
               )}
-            </div>
-          )}
-
-          {/* Delivery details */}
-          {items.length > 0 && effectiveType === 'DELIVERY' && (
-            <div className="space-y-2.5 rounded-2xl border border-sky-200/70 dark:border-sky-400/25 bg-sky-50/60 dark:bg-sky-400/10 p-3.5">
-              <div className="flex items-center gap-2">
-                <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-sky-100 dark:bg-sky-400/15 text-sky-700 dark:text-sky-300">
-                  <MapPin className="h-4 w-4" />
-                </span>
-                <h4 className="text-[12px] font-black text-sky-900 dark:text-sky-300">
-                  Mijoz ma’lumotlari
-                </h4>
-              </div>
-              <input
-                type="text"
-                value={customerName}
-                onChange={(e) => setCustomerName(e.target.value)}
-                placeholder="Mijoz ismi"
-                className="field-mini border-sky-200 dark:border-sky-400/25 bg-white dark:bg-stone-900 focus:border-sky-400"
-              />
-              <input
-                type="tel"
-                value={customerPhone}
-                onChange={(e) => setCustomerPhone(e.target.value)}
-                placeholder="Telefon (+998 90 123 45 67)"
-                className="field-mini border-sky-200 dark:border-sky-400/25 bg-white dark:bg-stone-900 focus:border-sky-400"
-              />
-              <button
-                type="button"
-                onClick={requestLocation}
-                disabled={locating}
-                className="tap flex w-full items-center justify-center gap-2 rounded-xl border border-sky-300 dark:border-sky-400/40 bg-white dark:bg-stone-900 py-2.5 text-[11.5px] font-bold text-sky-800 dark:text-sky-300 shadow-sm disabled:opacity-50"
-              >
-                {locating ? <Loader2 className="h-4 w-4 animate-spin" /> : <MapPin className="h-4 w-4" />}
-                {locating ? 'Lokatsiya aniqlanmoqda…' : 'Hozirgi lokatsiyani yuborish'}
-              </button>
-              <input
-                type="text"
-                value={address}
-                onChange={(e) => setAddress(e.target.value)}
-                placeholder="Yetkazish manzili (ko‘cha, uy, mo‘ljal)"
-                className="field-mini border-sky-200 dark:border-sky-400/25 bg-white dark:bg-stone-900 focus:border-sky-400"
-              />
             </div>
           )}
 

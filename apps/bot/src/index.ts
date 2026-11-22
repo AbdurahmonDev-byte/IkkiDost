@@ -49,7 +49,6 @@ async function main() {
       { command: 'delivery', description: 'Saboy (telefon orqali buyurtmalar)' },
       { command: 'newdel', description: 'Yangi saboy' },
       { command: 'bugun', description: 'Bugungi kassa (ega, kassir)' },
-      { command: 'kitchen', description: 'Oshxona navbati' },
       { command: 'dash', description: 'Hisobot (ega, kassir)' },
       { command: 'me', description: 'Profil va rol' },
       { command: 'logout', description: 'Hisobni uzish' },

@@ -162,11 +162,12 @@ export const App: React.FC = () => {
     if (role === 'OWNER' || role === 'WAITER' || role === 'CASHIER') {
       list.push({ id: 'waiter', label: 'Xonalar', icon: DoorOpen });
     }
-    if (role === 'OWNER' || role === 'CHEF') {
+    if (role === 'CHEF') {
+      // Kitchen screen is no longer used (orders are passed on verbally); kept only for old CHEF accounts.
       list.push({ id: 'kitchen', label: 'Oshxona', icon: ChefHat });
     }
     if (role === 'OWNER' || role === 'WAITER' || role === 'CASHIER' || role === 'DELIVERY') {
-      list.push({ id: 'delivery', label: 'Yetkazish', icon: Truck });
+      list.push({ id: 'delivery', label: 'Saboy', icon: Truck });
     }
     if (role === 'OWNER' || role === 'CASHIER') {
       list.push({ id: 'cashier', label: 'Kassa', icon: Wallet });

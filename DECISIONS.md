@@ -275,3 +275,8 @@
 - **Context:** Staff asked for the bot to work like the desktop till (Zal → room ticket → add items → pay with change → close).
 - **Decision:** Bot menus and wording mirror the desktop (Zal / Saboy / Bugungi kassa). Adding items to an open room bill appends to its latest open order instead of creating a new order, so no extra service fee or people prompt. Cash entered above the balance is treated as money handed over: the balance is charged and the change is shown; non-cash amounts above the balance are rejected.
 - **Consequences:** Same business rules as the desktop; no API change. A chef note typed while appending is stored on the appended items (the order-level note is fixed at creation).
+
+## ADR-035: Till-first operation — no kitchen screen, take-away saboy
+- **Context:** Staff found the system too elaborate. The kitchen is told orders verbally; the software is used to control the till. Saboy orders are take-away, not delivered.
+- **Decision:** The desktop cashier follows the till layout staff already know (room tiles → ticket + keypad + photo grid → full-screen payment with change). Delivery customer fields are optional in the API with defaults; a full payment completes a saboy order. The CHEF role is no longer offered (enum kept; existing accounts are not deleted).
+- **Consequences:** Kitchen statuses are no longer meaningful; dine-in orders complete on full payment as before. Courier/handover features remain in the API but are hidden from the main flows.

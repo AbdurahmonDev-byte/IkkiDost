@@ -30,11 +30,12 @@ export function orderReceipt(order: OrderDto, opts?: { roomName?: string }): str
     line(),
     `Buyurtma #${order.orderNumber}  ${formatDateTime(order.createdAt)}`,
     order.type === 'DELIVERY'
-      ? `Yetkazish · ${order.delivery?.customerName ?? ''}`
+      ? `Saboy${order.delivery?.customerName && order.delivery.customerName !== 'Saboy' ? ` · ${order.delivery.customerName}` : ''}`
       : `Xona · ${opts?.roomName ?? order.roomName ?? ''}`,
     `Xodim: ${order.createdByName}`,
   ];
-  if (order.delivery) rows.push(`Tel: ${order.delivery.customerPhone}`, `${order.delivery.address}`);
+  if (order.delivery && order.delivery.customerPhone !== '—') rows.push(`Tel: ${order.delivery.customerPhone}`);
+  if (order.delivery && order.delivery.address !== '—') rows.push(`${order.delivery.address}`);
   rows.push(line());
   for (const item of order.items) {
     if (item.status === 'CANCELLED') continue;

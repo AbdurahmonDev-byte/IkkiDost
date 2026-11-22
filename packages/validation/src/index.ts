@@ -167,9 +167,10 @@ export const createDeliveryOrderSchema = z.object({
   numberOfPeople: z.number().int().min(0).max(500),
   note: z.string().max(500).optional().nullable(),
   items: z.array(orderItemInputSchema).min(1),
-  customerName: z.string().min(1).max(128),
-  customerPhone: z.string().min(4).max(32),
-  address: z.string().min(3).max(500),
+  /** Saboy (take-away) needs no customer details; defaults are stored instead. */
+  customerName: z.string().trim().max(128).optional().nullable(),
+  customerPhone: z.string().trim().max(32).optional().nullable(),
+  address: z.string().trim().max(500).optional().nullable(),
   assignedToId: z.string().optional().nullable(),
 });
 export type CreateDeliveryOrderInput = z.infer<typeof createDeliveryOrderSchema>;

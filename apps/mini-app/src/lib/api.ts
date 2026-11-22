@@ -209,9 +209,9 @@ export const api = {
           numberOfPeople: number;
           items: Array<{ productId: string; quantity: string; note?: string | null }>;
           note?: string | null;
-          customerName: string;
-          customerPhone: string;
-          address: string;
+          customerName?: string;
+          customerPhone?: string;
+          address?: string;
         },
   ) => request<OrderDto>('/orders', { method: 'POST', body: JSON.stringify(input) }, token),
 

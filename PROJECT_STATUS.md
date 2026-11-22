@@ -374,3 +374,22 @@ Telegram Mini App served by the API at `/` (same origin as `/api`), Vite + React
 - Receipt page fitted to Xprinter 80 mm (72 mm printable): bold monospace, no page
   margins, wider quantity column. Checked as an 80 mm PDF render; not yet printed on
   the real printer.
+
+## Till redesign, no kitchen, take-away saboy (2026-11-22, ADR-035)
+- **Desktop cashier:** light POS layout. Rooms are square tiles (grey = free, dark =
+  busy with the waiter's name and total); a free room asks «Mehmon» 1–20 first.
+  Order screen: left — ticket table (Nom / Narx / Miqdor / Summa), summary bar
+  (Buyurtma summasi, Xizmat to‘lovi, Jami to‘lov), keypad with «Miqdor» / «Mehmon»
+  modes and a large «To‘lov»; right — search, category chips, photo product grid.
+  Payment page: Jami to‘lov / Qaytim, cash field with «Aniq summa», quick
+  +50 000 / +100 000 / +200 000, cashless methods (mixed payments supported),
+  «Chekni chop etish» toggle, «Tasdiqlash». A fully paid room closes automatically.
+- **Saboy = take-away:** no customer name/phone/address anywhere (desktop, bot, Mini
+  App). API stores «Saboy» / «—» defaults; a full payment completes a saboy order
+  (delivery marked DELIVERED) — no courier steps needed.
+- **No kitchen role:** CHEF removed from the Mini App role picker and the owner’s
+  tabs; bot kitchen menu/command removed; wording «oshxonaga yuborish» → «Saqlash».
+- `RoomSessionSummaryDto.openedByName` (first order’s creator) for the room tiles.
+- API tests 56/56; typecheck and builds pass; desktop flow verified in headless
+  Chrome (3 guests → 1.82 kg + 2 pcs → 300 000 cash → change 66 100 → room closed;
+  saboy created and paid without details); bot saboy flow checked with fake updates.

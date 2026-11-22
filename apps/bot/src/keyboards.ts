@@ -20,9 +20,6 @@ export function homeKeyboard(role: BotRole, miniAppUrl: string): InlineKeyboard 
   if (role === 'OWNER' || role === 'CASHIER') {
     kb.text('💵 Bugungi kassa', 'm:today').text('📊 Hisobot', 'm:dash').row();
   }
-  if (role === 'OWNER' || role === 'CHEF') {
-    kb.text('👨‍🍳 Oshxona', 'm:kitchen').row();
-  }
   kb.text('ℹ️ Yordam', 'm:help');
   return kb;
 }

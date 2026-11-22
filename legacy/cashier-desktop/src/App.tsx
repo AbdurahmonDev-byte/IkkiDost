@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Banknote, BarChart3, CreditCard, DoorOpen, Loader2, Phone, RefreshCw, WifiOff } from 'lucide-react';
+import { Banknote, BarChart3, DoorOpen, Loader2, Phone, RefreshCw, Wifi, WifiOff } from 'lucide-react';
 import type { PaymentDto } from '@ikki-dost/shared-types';
 import { KIOSK_USERNAME, TOKENS_REFRESHED, api, kioskLogin, useAuth } from './lib/api';
 import { useRealtime } from './lib/realtime';
@@ -128,28 +128,29 @@ function Pos() {
 
   return (
     <div className="flex h-full flex-col">
-      <header className="flex h-16 shrink-0 items-center gap-2 bg-primary px-3 text-white">
-        <div className="mr-2 flex items-center gap-2.5">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/15"><Banknote size={20} /></div>
-          <div className="leading-tight">
-            <p className="text-sm font-bold">Ikki Do‘st</p>
-            <p className="text-[11px] text-white/70">Kassa</p>
+      <header className="relative flex h-16 shrink-0 items-center gap-1 border-b border-line bg-white px-4">
+        <NavButton active={section === 'hall'} onClick={() => setScreen({ kind: 'hall' })} icon={<DoorOpen size={18} />} label="XONALAR" badge={busyRooms} />
+        <NavButton active={section === 'saboy'} onClick={() => setScreen({ kind: 'saboy' })} icon={<Phone size={18} />} label="SABOYLAR" badge={openSaboy} />
+        <NavButton active={section === 'today'} onClick={() => setScreen({ kind: 'today' })} icon={<BarChart3 size={18} />} label="KASSA" />
+
+        <div className="pointer-events-none absolute left-1/2 flex -translate-x-1/2 items-center gap-2">
+          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-white"><Banknote size={18} /></div>
+          <span className="text-lg font-extrabold tracking-wide text-primary">IKKI DO‘ST</span>
+        </div>
+
+        <div className="ml-auto flex items-center gap-4">
+          <span className="hidden text-sm font-semibold xl:inline" title="Bugun kassaga tushgan pul">{formatUzs(totals.cash + totals.card + totals.other)}</span>
+          <button onClick={refetchAll} className="flex h-10 w-10 items-center justify-center rounded-lg text-ink-soft hover:bg-paper" title="Yangilash">
+            <RefreshCw size={19} />
+          </button>
+          <span title={connected ? 'Internet bor' : 'Qayta ulanmoqda'} className={connected ? 'text-ink-soft' : 'text-amber-500'}>
+            {connected ? <Wifi size={20} /> : <WifiOff size={20} />}
+          </span>
+          <div className="border-l border-line pl-4 text-right leading-tight">
+            <p className="text-base font-bold">{time}</p>
+            <p className="text-[11px] text-ink-faint">{formatLongDate(now)}</p>
           </div>
         </div>
-        <NavButton active={section === 'hall'} onClick={() => setScreen({ kind: 'hall' })} icon={<DoorOpen size={18} />} label="Xonalar" badge={busyRooms} />
-        <NavButton active={section === 'saboy'} onClick={() => setScreen({ kind: 'saboy' })} icon={<Phone size={18} />} label="Saboy" badge={openSaboy} />
-        <NavButton active={section === 'today'} onClick={() => setScreen({ kind: 'today' })} icon={<BarChart3 size={18} />} label="Bugungi kassa" />
-
-        <div className="ml-auto hidden items-center gap-4 rounded-xl bg-white/10 px-4 py-2 text-sm lg:flex" title="Bugun qabul qilingan to‘lovlar">
-          <span className="flex items-center gap-1.5"><Banknote size={15} /> {formatUzs(totals.cash)}</span>
-          <span className="flex items-center gap-1.5"><CreditCard size={15} /> {formatUzs(totals.card)}</span>
-          <span className="font-bold">Jami: {formatUzs(totals.cash + totals.card + totals.other)}</span>
-        </div>
-        <div className="ml-3 text-right leading-tight">
-          <p className="text-lg font-bold">{time}</p>
-          <p className="text-[11px] text-white/70">{formatLongDate(now)}</p>
-        </div>
-        <span className={cn('ml-2 h-3 w-3 rounded-full', connected ? 'bg-emerald-300' : 'bg-amber-400')} title={connected ? 'Online' : 'Qayta ulanmoqda'} />
       </header>
 
       {notice && <div className="border-b border-amber-200 bg-amber-50 px-4 py-2 text-sm font-medium text-amber-900">{notice}</div>}
@@ -159,7 +160,7 @@ function Pos() {
           <HallScreen
             rooms={rooms}
             loading={roomsQuery.isLoading}
-            onOpen={(roomId) => setScreen({ kind: 'order', target: { kind: 'room', roomId }, from: 'hall' })}
+            onOpen={(roomId, people) => setScreen({ kind: 'order', target: { kind: 'room', roomId, people }, from: 'hall' })}
           />
         )}
         {screen.kind === 'saboy' && (
@@ -198,13 +199,13 @@ function NavButton({ active, onClick, icon, label, badge }: { active: boolean; o
     <button
       onClick={onClick}
       className={cn(
-        'flex h-12 items-center gap-2 rounded-xl px-5 text-base font-semibold transition active:scale-95',
-        active ? 'bg-white text-primary' : 'text-white/85 hover:bg-white/10',
+        'flex h-11 items-center gap-2 rounded-lg px-4 text-sm font-bold tracking-wide transition active:scale-95',
+        active ? 'bg-[#243b31] text-white' : 'text-ink hover:bg-paper',
       )}
     >
       {icon} {label}
       {badge ? (
-        <span className={cn('rounded-full px-2 text-xs', active ? 'bg-primary text-white' : 'bg-white/20')}>{badge}</span>
+        <span className={cn('rounded-full px-2 text-xs', active ? 'bg-white/20' : 'bg-paper')}>{badge}</span>
       ) : null}
     </button>
   );

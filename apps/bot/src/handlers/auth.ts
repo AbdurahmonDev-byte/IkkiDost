@@ -164,7 +164,6 @@ export function helpText(role?: string): string {
     lines.push('🏠 Xonalar — xonani bosing: taom qo‘shish, to‘lov, chek, yopish');
     lines.push('📞 Saboy — telefon orqali buyurtmalar');
   }
-  if (role === 'OWNER' || role === 'CHEF') lines.push('👨‍🍳 Oshxona — tayyorlanayotgan taomlar');
   if (role === 'OWNER' || role === 'WAITER' || role === 'CASHIER') {
     lines.push('➕ Yangi saboy — mijoz va buyurtma kiritish');
   }

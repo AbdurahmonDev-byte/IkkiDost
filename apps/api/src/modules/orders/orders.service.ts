@@ -142,9 +142,9 @@ export class OrdersService {
           ? {
               delivery: {
                 create: {
-                  customerName: input.customerName,
-                  customerPhone: input.customerPhone,
-                  address: input.address,
+                  customerName: input.customerName || 'Saboy',
+                  customerPhone: input.customerPhone || '—',
+                  address: input.address || '—',
                   status: 'CONFIRMED',
                   assignedToId: input.assignedToId ?? null,
                 },
@@ -394,9 +394,13 @@ export class OrdersService {
     if (!order || order.status === 'COMPLETED' || order.status === 'CANCELLED') return;
     const fullyPaid = order.paidAmount >= order.totalAmount;
     if (order.type === 'DELIVERY') {
-      if (fullyPaid && order.delivery?.status === 'DELIVERED') {
+      // Saboy is take-away: a full payment finishes it, whatever the courier status.
+      if (fullyPaid) {
+        if (order.delivery && order.delivery.status !== 'DELIVERED' && order.delivery.status !== 'CANCELLED') {
+          await tx.delivery.update({ where: { id: order.delivery.id }, data: { status: 'DELIVERED' } });
+        }
         await tx.order.update({ where: { id: orderId }, data: { status: 'COMPLETED' } });
-        await tx.orderStatusHistory.create({ data: { orderId, fromStatus: order.status, toStatus: 'COMPLETED', actorId, note: 'Yetkazildi va to‘liq to‘landi' } });
+        await tx.orderStatusHistory.create({ data: { orderId, fromStatus: order.status, toStatus: 'COMPLETED', actorId, note: 'To‘liq to‘landi (saboy)' } });
       }
     } else if (fullyPaid) {
       await tx.order.update({ where: { id: orderId }, data: { status: 'COMPLETED' } });
