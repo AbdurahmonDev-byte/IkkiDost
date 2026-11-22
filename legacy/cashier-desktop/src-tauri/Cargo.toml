@@ -1,6 +1,6 @@
 [package]
 name = "ikki-dost-cashier"
-version = "0.4.0"
+version = "0.4.1"
 description = "Ikki Do'st cashier desktop"
 authors = ["Ikki Do'st"]
 edition = "2021"
